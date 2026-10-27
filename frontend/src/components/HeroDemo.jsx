@@ -38,9 +38,9 @@ export function HeroDemo() {
         ? 'declined'
         : 'executed';
   return (
-    <div className="stage" aria-label="Live example">
+    <div className="stage" id="demo" aria-label="Interactive sample demo" tabIndex="-1">
       <div className="stage-top">
-        <span>Sample data</span>
+        <span>Try a request below · Sample data</span>
         <code>shop.sqlite</code>
       </div>
       <div className="stage-body">
@@ -93,7 +93,14 @@ export function HeroDemo() {
                   </div>
                 )
               ) : (
-                <ResultTable home rows={demo.rows} />
+                <>
+                  <p className="demo-answer">
+                    {active === 0
+                      ? '3 customers found in Missouri'
+                      : 'Average sale amount for 4 categories'}
+                  </p>
+                  <ResultTable home rows={demo.rows} />
+                </>
               ))}
           </div>
         </div>

@@ -111,12 +111,14 @@ CREATE TABLE IF NOT EXISTS requests (
     submitted_at TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending'
         CHECK(status IN ('pending','confirmed','declined','executed','rejected')),
-    error TEXT
+    error TEXT,
+    clarification_json TEXT
 );
 CREATE TABLE IF NOT EXISTS sql_commands (
     command_id INTEGER PRIMARY KEY,
     request_id INTEGER NOT NULL REFERENCES requests(request_id),
     sql_text TEXT NOT NULL,
+    summary TEXT NOT NULL DEFAULT '',
     kind TEXT NOT NULL CHECK(kind IN ('DDL','DML','SELECT')),
     operation TEXT NOT NULL,
     requires_confirmation INTEGER NOT NULL CHECK(requires_confirmation IN (0,1)),
@@ -278,6 +280,10 @@ class Repository:
                     connection.execute("ALTER TABLE sessions ADD COLUMN account_id INTEGER REFERENCES accounts(account_id)")
                 if "conversation_after" not in {row[1] for row in connection.execute("PRAGMA table_info(sessions)")}:
                     connection.execute("ALTER TABLE sessions ADD COLUMN conversation_after INTEGER NOT NULL DEFAULT 0")
+                if "summary" not in {row[1] for row in connection.execute("PRAGMA table_info(sql_commands)")}:
+                    connection.execute("ALTER TABLE sql_commands ADD COLUMN summary TEXT NOT NULL DEFAULT ''")
+                if "clarification_json" not in {row[1] for row in connection.execute("PRAGMA table_info(requests)")}:
+                    connection.execute("ALTER TABLE requests ADD COLUMN clarification_json TEXT")
                 connection.execute("CREATE INDEX IF NOT EXISTS sessions_account ON sessions(account_id,started_at)")
                 connection.commit()
                 self.path.chmod(0o600)
@@ -558,16 +564,33 @@ class Repository:
             self._session(connection, session_id, True)
             return connection.execute("INSERT INTO requests(session_id,request_text,submitted_at) VALUES(?,?,?)", (session_id, text, _now())).lastrowid
 
-    def reject_request(self, request_id, error):
+    def reject_request(self, request_id, error, clarification=None):
         with self._connection(write=True) as connection:
             request = connection.execute("SELECT * FROM requests WHERE request_id=?", (request_id,)).fetchone()
             if not request:
                 raise RepositoryError("Unknown request.")
             if connection.execute("SELECT 1 FROM sql_commands WHERE request_id=?", (request_id,)).fetchone():
                 raise RepositoryError("A request with commands cannot be rejected directly.")
-            connection.execute("UPDATE requests SET status='rejected',error=? WHERE request_id=?", (str(error), request_id))
+            metadata = json.dumps(clarification, ensure_ascii=False, allow_nan=False) if clarification is not None else None
+            connection.execute("UPDATE requests SET status='rejected',error=?,clarification_json=? WHERE request_id=?", (str(error), metadata, request_id))
 
-    def add_command(self, request_id, sql, kind, requires_confirmation, targets=(), operation=None, has_aggregation=False):
+    @staticmethod
+    def _request_record(row):
+        result = dict(row)
+        metadata = json.loads(result.pop("clarification_json", None) or "{}")
+        for key in ("needs_clarification", "choices", "suggestions", "intent", "task"):
+            if key in metadata:
+                result[key] = metadata[key]
+        result["text"] = result["request_text"]
+        return result
+
+    def pending_intent(self, session_id):
+        with self._connection() as connection:
+            session = self._session(connection, session_id, True)
+            row = connection.execute("SELECT * FROM requests WHERE session_id=? AND request_id>? ORDER BY request_id DESC LIMIT 1", (session_id, session["conversation_after"])).fetchone()
+            return self._request_record(row).get("intent", "") if row else ""
+
+    def add_command(self, request_id, sql, kind, requires_confirmation, targets=(), operation=None, has_aggregation=False, summary=""):
         kind = str(kind).upper().replace("_COMMAND", "")
         if kind not in {"DDL", "DML", "SELECT"}:
             raise RepositoryError("Command kind must be DDL, DML, or SELECT.")
@@ -595,9 +618,9 @@ class Repository:
                 for event in [_table_lifecycle(item["sql_text"])] if event]
             current_lifecycle = _table_lifecycle(sql)
             command_id = connection.execute("""
-                INSERT INTO sql_commands(request_id,sql_text,kind,operation,requires_confirmation,confirmation_token,created_at)
-                VALUES(?,?,?,?,?,?,?)
-            """, (request_id, sql, kind, operation, int(requires_confirmation), token, _now())).lastrowid
+                INSERT INTO sql_commands(request_id,sql_text,summary,kind,operation,requires_confirmation,confirmation_token,created_at)
+                VALUES(?,?,?,?,?,?,?,?)
+            """, (request_id, sql, str(summary or "")[:500], kind, operation, int(requires_confirmation), token, _now())).lastrowid
             if kind == "DDL":
                 connection.execute("INSERT INTO ddl_commands VALUES(?,?)", (command_id, operation))
             elif kind == "DML":
@@ -656,8 +679,7 @@ class Repository:
             row = connection.execute("SELECT * FROM requests WHERE request_id=?", (request_id,)).fetchone()
             if not row:
                 raise RepositoryError("Unknown request.")
-            result = dict(row)
-            result["text"] = result["request_text"]
+            result = self._request_record(row)
             result["commands"] = [self._command(connection, item[0]) for item in connection.execute("SELECT command_id FROM sql_commands WHERE request_id=? ORDER BY command_id", (request_id,))]
             return result
 
@@ -771,8 +793,7 @@ class Repository:
             rows = connection.execute("SELECT r.* FROM requests r WHERE " + " AND ".join(clauses) + " ORDER BY r.request_id DESC", params).fetchall()
             result = []
             for row in rows:
-                request = dict(row)
-                request["text"] = request["request_text"]
+                request = self._request_record(row)
                 request["commands"] = [self._command(connection, command[0]) for command in connection.execute("SELECT command_id FROM sql_commands WHERE request_id=? ORDER BY command_id", (row["request_id"],))]
                 result.append(request)
             return result
@@ -782,19 +803,32 @@ class Repository:
         with self._connection() as connection:
             session = self._session(connection, session_id, True)
             rows = connection.execute("""
-                SELECT request_id,request_text,status,error FROM requests
+                SELECT request_id,request_text,status,error,clarification_json FROM requests
                 WHERE session_id=? AND request_id>? ORDER BY request_id DESC LIMIT ?
             """, (session_id, session["conversation_after"], limit)).fetchall()
             turns, size = [], 0
             for row in rows:
                 commands = []
-                for command in connection.execute("SELECT command_id,sql_text,operation,status FROM sql_commands WHERE request_id=? ORDER BY command_id", (row["request_id"],)):
-                    targets = [target[0] for target in connection.execute("SELECT table_name FROM command_targets WHERE command_id=?", (command["command_id"],))]
+                for command in connection.execute("""SELECT c.command_id,c.sql_text,c.summary,c.operation,c.status,c.error,
+                        r.output_text,r.result_type FROM sql_commands c LEFT JOIN results r USING(command_id)
+                        WHERE c.request_id=? ORDER BY c.command_id""", (row["request_id"],)):
+                    targets = [dict(target) for target in connection.execute("SELECT table_name,access_type FROM command_targets WHERE command_id=?", (command["command_id"],))]
+                    outcome = {"type":command["result_type"]} if command["result_type"] else None
+                    output = command["output_text"] or ""
+                    # Old programmatic results can store JSON here. Never send row payloads.
+                    if outcome and output and not output.lstrip().startswith(("{", "[")):
+                        outcome["message"] = output[:500]
                     commands.append({"sql": command["sql_text"], "operation": command["operation"],
-                                     "status": command["status"], "tables": targets})
+                                     "status": command["status"], "tables": [target["table_name"] for target in targets],
+                                     "targets": targets, "summary": command["summary"], "result": outcome,
+                                     "error": command["error"]})
                 turn = {"request_id": row["request_id"], "question": row["request_text"], "status": row["status"], "commands": commands}
                 if row["error"]:
                     turn["clarification"] = row["error"]
+                metadata = json.loads(row["clarification_json"] or "{}")
+                for key in ("needs_clarification", "intent", "choices", "task"):
+                    if key in metadata:
+                        turn[key] = metadata[key]
                 length = len(json.dumps(turn))
                 if size + length > 24000:
                     break

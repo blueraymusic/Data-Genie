@@ -15,9 +15,31 @@ def previous_read(turns):
     return None
 
 
+def latest_executed(turns):
+    for turn in reversed(turns):
+        for command in reversed(turn["commands"]):
+            if command["status"] == "executed":
+                return turn, command
+    return None
+
+
+def pending_task(turns):
+    """Keep the user's original request distinct from an assistant's assumptions."""
+    candidates = []
+    for turn in reversed(turns):
+        if turn.get("commands"):
+            break
+        if turn.get("task") and len(re.findall(r"\w+", turn["task"])) >= 2:
+            return turn["task"]
+        question = turn.get("question", "")
+        if len(re.findall(r"\w+", question)) >= 2:
+            candidates.append(question)
+    return candidates[-1][:1500] if candidates else ""
+
+
 def query_scope(sql, question):
     """Remove an automatic preview cap, but keep limits the user requested."""
-    if re.search(r"\b(?:limit|first|top|last|highest|lowest)\b", question, re.IGNORECASE):
+    if re.search(r"\b(?:limit|first|top|last|highest|lowest)\b|\b(?:show|list|display|give)(?: me)?(?: only)? (?:50|fifty)\b", question, re.IGNORECASE):
         return sql
     parts, depth = tokens(sql), 0
     for index, (kind, value, start, _) in enumerate(parts):
@@ -27,6 +49,49 @@ def query_scope(sql, question):
             if index == len(parts) - 2 and parts[index + 1][1] == "50":
                 return sql[:start].rstrip()
     return sql
+
+
+def describe_read(sql, tables, question=""):
+    """Describe actual query context; ignore quoted text that merely says WHERE."""
+    parts = tokens(sql)
+    filters = []
+    in_filter = False
+    for index, (kind, value, _, _) in enumerate(parts):
+        if kind == "word" and value.lower() == "where":
+            in_filter = True
+        elif kind == "word" and value.lower() in {"group", "order", "limit", "union"}:
+            in_filter = False
+        if not in_filter or kind not in {"word", "identifier"}:
+            continue
+        if index and parts[index - 1][1].lower() == "collate":
+            continue
+        tail = index + 1
+        if tail + 1 < len(parts) and parts[tail][1].lower() == "collate":
+            tail += 2
+        if tail + 1 >= len(parts) or parts[tail][1] != "=":
+            continue
+        literal = parts[tail + 1]
+        if literal[0] not in {"string", "number"}:
+            continue
+        name = value.strip('"`[]').replace('""', '"').replace('_', ' ')
+        content = literal[1][1:-1].replace("''", "'") if literal[0] == "string" else literal[1]
+        label = f"{name}: {content}"
+        if label not in filters:
+            filters.append(label[:100])
+    return {"tables": list(tables), "filters": filters[:4], "request": question[:200]}
+
+
+def conversation_context(turns):
+    previous = latest_executed(turns)
+    if not previous:
+        return None
+    turn, command = previous
+    if command["operation"] == "SELECT":
+        return describe_read(command["sql"], command["tables"], turn["question"])
+    if command["operation"] == "DROP":
+        return None
+    targets = [target["table_name"] for target in command.get("targets", []) if target["access_type"] in {"write", "define"}]
+    return {"tables": targets or command["tables"], "filters": [], "request": turn["question"]}
 
 
 def followup_plan(question, turns, selected_table, columns_for_query):

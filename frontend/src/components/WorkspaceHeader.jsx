@@ -58,9 +58,6 @@ export function WorkspaceHeader({ session, view, onNavigate, onEnd, disabled }) 
       </nav>
       <div className="top-actions">
         <SessionTimer started={session.started_at} />
-        <button className="btn quiet" disabled={disabled} onClick={() => onEnd(false)}>
-          End session
-        </button>
         <ThemeToggle className="icon-button" />
         <div className="user-dropdown">
           <button
@@ -78,6 +75,15 @@ export function WorkspaceHeader({ session, view, onNavigate, onEnd, disabled }) 
               <button onClick={() => onNavigate('account')}>Account &amp; preferences</button>
               <Link href="/faq">FAQ &amp; help</Link>
               <Link href="/">Homepage</Link>
+              <button
+                disabled={disabled}
+                onClick={() => {
+                  setMenu(false);
+                  onEnd(false);
+                }}
+              >
+                End session
+              </button>
               <button
                 disabled={disabled}
                 onClick={() => {

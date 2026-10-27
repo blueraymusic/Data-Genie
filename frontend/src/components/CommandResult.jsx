@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { SqlBlock } from './SqlBlock';
 import { ResultTable, Cell } from './ResultTable';
 import { formatTime } from '../lib/api';
+import { api } from '../lib/api';
+import { resultHeadline } from '../lib/resultData';
 export const operationOf = (command) =>
   command.sql_operation ||
   (!['read', 'write'].includes(command.operation) && command.operation) ||
@@ -68,9 +70,9 @@ function Chart({ rows, type }) {
   );
 }
 
-export function ResultOutput({ command }) {
+export function ResultOutput({ command, sessionId, onUseSuggestion }) {
   const data = command.result?.payload || command,
-    rows = data.rows || [],
+    initialRows = data.rows || [],
     type =
       data.visualization ||
       (command.sql?.includes(' AS period')
@@ -78,6 +80,37 @@ export function ResultOutput({ command }) {
         : command.sql?.includes(' AS label')
           ? 'bar'
           : 'table');
+  const [extra, setExtra] = useState([]),
+    [hasMore, setHasMore] = useState(Boolean(data.has_more ?? data.truncated)),
+    [loadingMore, setLoadingMore] = useState(false),
+    [pageMessage, setPageMessage] = useState(''),
+    [view, setView] = useState('chart');
+  const rows = [...initialRows, ...extra];
+  async function loadMore() {
+    if (loadingMore || !sessionId || !command.command_id) return;
+    setLoadingMore(true);
+    setPageMessage('');
+    try {
+      const query = new URLSearchParams({ command_id: command.command_id, offset: rows.length });
+      const next = await api('/api/results/page?' + query, { sessionId });
+      setExtra((previous) => [...previous, ...next.rows]);
+      setHasMore(next.has_more);
+      setPageMessage(next.message);
+    } catch (error) {
+      setPageMessage(error.message);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+  const tableProps = {
+    rows,
+    truncated: hasMore,
+    loadingMore,
+    onLoadMore: sessionId && command.command_id ? loadMore : undefined,
+    onUseSuggestion,
+    recovery: data.recovery || [],
+    filename: (data.query_context?.tables || []).join('-') || 'data-genie-results',
+  };
   const summary =
     type === 'table' &&
     (data.result_type === 'summary' || command.has_aggregation) &&
@@ -95,10 +128,13 @@ export function ResultOutput({ command }) {
     );
   return (
     <>
-      {command.result?.created_at && (
-        <p className="result-meta">
-          Saved {formatTime(command.result.created_at)}. The data may have changed since.
-        </p>
+      {!summary && (rows.length > 0 || operationOf(command) === 'SELECT' || data.inventory) && (
+        <div className="result-heading">
+          <h3>{resultHeadline(command, rows, hasMore)}</h3>
+          {data.query_context?.filters?.length > 0 && (
+            <p className="result-scope">{data.query_context.filters.join(' · ')}</p>
+          )}
+        </div>
       )}
       {command.metadata && !rows.length ? (
         <p className="muted">
@@ -115,17 +151,52 @@ export function ResultOutput({ command }) {
         </div>
       ) : canChart ? (
         <>
-          {data.truncated && <p className="notice">Chart limited to the first 500 result rows.</p>}
-          <Chart rows={rows} type={type} />
-          <details className="chart-data">
-            <summary>View chart data</summary>
-            <ResultTable rows={rows} truncated={data.truncated} />
-          </details>
+          <div className="result-view" role="group" aria-label="Result display">
+            {['chart', 'table'].map((value) => (
+              <button
+                type="button"
+                key={value}
+                aria-pressed={view === value}
+                onClick={() => setView(value)}
+              >
+                {value === 'chart' ? 'Chart' : 'Table'}
+              </button>
+            ))}
+          </div>
+          {view === 'chart' ? (
+            <>
+              <Chart rows={rows} type={type} />
+              <details className="chart-data">
+                <summary>View chart data</summary>
+                <ResultTable {...tableProps} />
+              </details>
+            </>
+          ) : (
+            <ResultTable {...tableProps} />
+          )}
         </>
       ) : rows.length || operationOf(command) === 'SELECT' || data.changes === undefined ? (
-        <ResultTable rows={rows} truncated={data.truncated} />
+        <ResultTable {...tableProps} compactTools />
       ) : (
         <p className="result-message">{data.message || `${data.changes} row(s) affected.`}</p>
+      )}
+      {command.result?.created_at && (
+        <p
+          className="result-meta saved-result"
+          title={
+            'Saved ' + formatTime(command.result.created_at) + '. The data may have changed since.'
+          }
+        >
+          <span aria-hidden="true">Saved result</span>
+          <span className="sr-only">
+            Saved {formatTime(command.result.created_at)}. The data may have changed since.
+          </span>
+        </p>
+      )}
+      {pageMessage && (
+        <p className="result-meta" role="status">
+          {pageMessage}
+        </p>
       )}
     </>
   );
@@ -156,20 +227,26 @@ export function Confirmation({ command, predecessors = [], onDecide, busy = fals
   const label =
     drop || ['CREATE', 'ALTER'].includes(operation)
       ? `${action} table ${target}`
-      : operation === 'DELETE' && Number.isInteger(count)
-        ? `Delete ${count} ${count === 1 ? 'row' : 'rows'}`
+      : ['DELETE', 'UPDATE', 'INSERT', 'REPLACE'].includes(operation) && Number.isInteger(count)
+        ? `${action} ${count} ${count === 1 ? 'row' : 'rows'}`
         : `${action} ${operation === 'SELECT' ? 'step' : 'records'}`;
   return (
-    <div className="confirm" role="alert">
+    <div
+      className={
+        'confirm' + (['DELETE', 'DROP'].includes(operation) ? ' destructive' : ' constructive')
+      }
+      role="alert"
+      tabIndex="-1"
+    >
       <b>
         {drop
           ? `This will drop table ${target}.`
-          : operation === 'DELETE' && Number.isInteger(count)
-            ? `This will delete ${count} ${count === 1 ? 'row' : 'rows'} from ${target}.`
+          : ['DELETE', 'UPDATE', 'INSERT', 'REPLACE'].includes(operation) && Number.isInteger(count)
+            ? `This will ${action.toLowerCase()} ${count} ${count === 1 ? 'row' : 'rows'} ${operation === 'DELETE' ? 'from' : operation === 'INSERT' ? 'to' : 'in'} ${target}.`
             : `This will ${operation === 'SELECT' ? 'read' : 'change'} ${target}.`}
       </b>
       <p>
-        Review the SQL above before you continue.
+        Review this change before you continue.
         {['DELETE', 'DROP'].includes(operation) ? ' Deleted data cannot be restored here.' : ''}
       </p>
       {command.preview_error && <p className="err">{command.preview_error}</p>}
@@ -211,6 +288,8 @@ export function CommandOutput({
   onDecide,
   busy = false,
   actionable = true,
+  sessionId,
+  onUseSuggestion,
 }) {
   if (command.error || command.status === 'failed')
     return <p className="err">{command.error || 'This command failed.'}</p>;
@@ -227,7 +306,7 @@ export function CommandOutput({
     return (
       <p className="muted">Waiting for the command to finish. Check History before retrying.</p>
     );
-  return <ResultOutput command={command} />;
+  return <ResultOutput command={command} sessionId={sessionId} onUseSuggestion={onUseSuggestion} />;
 }
 
 export function Translation({ request, workbench, onUseSuggestion }) {
@@ -240,7 +319,7 @@ export function Translation({ request, workbench, onUseSuggestion }) {
   return (
     <article
       className={'exchange' + (request.sending ? '' : ' ready')}
-      data-status={request.status}
+      data-status={request.needs_clarification ? 'clarification' : request.status}
     >
       <div className="exchange-margin">
         <time>
@@ -250,15 +329,19 @@ export function Translation({ request, workbench, onUseSuggestion }) {
           })}
         </time>
         <span className="exchange-status">
-          {request.status === 'rejected' ? (hasSql ? 'failed' : 'not run') : request.status}
+          {request.needs_clarification
+            ? 'needs details'
+            : request.status === 'rejected'
+              ? hasSql
+                ? 'failed'
+                : 'not run'
+              : request.status}
         </span>
       </div>
       <div className="exchange-content">
         <div className={'translation' + (errorWithoutSql ? ' without-sql' : '')}>
           <section className="request-panel" aria-label="Your request">
-            <h2 className="exchange-label">
-              Your request <span>Input</span>
-            </h2>
+            <h2 className="exchange-label">Your request</h2>
             <p className="request-text">{request.text}</p>
           </section>
           {(hasSql || request.sending) && (
@@ -287,7 +370,6 @@ export function Translation({ request, workbench, onUseSuggestion }) {
                 : hasSql || request.sending
                   ? 'Generated SQL'
                   : 'Database inspection'}
-              <span>Output</span>
             </h2>
             {request.sending ? (
               <div className="skeleton" aria-label="Writing the SQL">
@@ -303,20 +385,27 @@ export function Translation({ request, workbench, onUseSuggestion }) {
                     : 'This request wasn’t run.'}
                 </p>
                 <p>{request.error}</p>
-                {request.suggestions?.length > 0 && onUseSuggestion && (
-                  <div className="clarification-suggestions">
-                    {request.suggestions.map((suggestion) => (
-                      <button
-                        key={suggestion}
-                        type="button"
-                        disabled={workbench.busy || workbench.pending}
-                        onClick={() => onUseSuggestion(suggestion)}
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {(request.choices?.length > 0 || request.suggestions?.length > 0) &&
+                  onUseSuggestion && (
+                    <div className="clarification-suggestions">
+                      {(request.choices?.length
+                        ? request.choices
+                        : request.suggestions.map((suggestion) => ({
+                            label: suggestion,
+                            request: suggestion,
+                          }))
+                      ).map((choice) => (
+                        <button
+                          key={choice.request}
+                          type="button"
+                          disabled={workbench.busy || workbench.pending}
+                          onClick={() => onUseSuggestion(choice.request)}
+                        >
+                          {choice.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 <small>No SQL run. No changes made.</small>
               </div>
             ) : (
@@ -329,9 +418,10 @@ export function Translation({ request, workbench, onUseSuggestion }) {
                       declined={command.status === 'declined'}
                     />
                   )}
-                  {(command.answer || command.summary) && (
-                    <p className="command-explanation">{command.answer || command.summary}</p>
-                  )}
+                  {(command.metadata || command.status === 'executed') &&
+                    (command.answer || command.summary) && (
+                      <p className="command-explanation">{command.answer || command.summary}</p>
+                    )}
                 </div>
               ))
             )}
@@ -340,8 +430,7 @@ export function Translation({ request, workbench, onUseSuggestion }) {
         {hasOutput && !errorWithoutSql && (
           <section className="exchange-results" aria-label={waiting ? 'Review change' : 'Result'}>
             <h2 className="exchange-label">
-              {waiting ? 'Review change' : 'Result'}{' '}
-              <span>{waiting ? 'Confirmation required' : 'Database output'}</span>
+              {waiting ? 'Review change' : 'Result'} {waiting && <span>Confirmation required</span>}
             </h2>
             {request.error && !request.commands.some((command) => command.error) ? (
               <p className="err">{request.error}</p>
@@ -353,6 +442,8 @@ export function Translation({ request, workbench, onUseSuggestion }) {
                     predecessors={request.commands.slice(0, index)}
                     onDecide={workbench.decide}
                     busy={workbench.workingCommands.has(command.command_id)}
+                    sessionId={workbench.session?.session_id}
+                    onUseSuggestion={onUseSuggestion}
                   />
                 </div>
               ))

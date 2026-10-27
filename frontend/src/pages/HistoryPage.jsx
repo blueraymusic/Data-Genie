@@ -108,6 +108,7 @@ export default function HistoryPage({ workbench, onReuse }) {
                     <SqlBlock sql={command.sql} operation={operationOf(command)} />
                     <CommandOutput
                       command={command}
+                      sessionId={target === id ? id : undefined}
                       predecessors={request.commands.slice(0, index)}
                       onDecide={decide}
                       busy={workbench.workingCommands.has(command.command_id)}

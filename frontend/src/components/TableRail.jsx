@@ -28,15 +28,15 @@ export function TableRail({
   return (
     <aside className={'side' + (open ? ' open' : '')} id="tableRail">
       <div className="rail-heading">
-        <span>Database</span>
+        <span>{session.source === 'demo' ? 'Sample database' : 'Database'}</span>
         <button className="text-button" onClick={() => onNavigate('connect')}>
-          Switch
+          Change
         </button>
       </div>
       <b className="rail-database">{session.database}</b>
       <p className="rail-meta">
         <span className="dot" />
-        Connected
+        Connected · {session.tables.length} {session.tables.length === 1 ? 'table' : 'tables'}
       </p>
       <label className="sr-only" htmlFor="tableSearch">
         Search tables and columns
@@ -57,7 +57,7 @@ export function TableRail({
           onClick={onNewTable}
           aria-haspopup="dialog"
         >
-          + New
+          + New table
         </button>
       </div>
       <div>
@@ -68,7 +68,10 @@ export function TableRail({
             open={expanded.has(table.name)}
             onToggle={(event) => toggle(table.name, event.currentTarget.open)}
           >
-            <summary onClick={() => setSelected(table.name)}>
+            <summary
+              onClick={() => setSelected(table.name)}
+              aria-current={selected === table.name ? 'true' : undefined}
+            >
               {table.name}
               <span className="row-count">{table.row_count}</span>
             </summary>

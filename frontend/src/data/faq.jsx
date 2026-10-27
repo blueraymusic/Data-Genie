@@ -99,17 +99,19 @@ export const faqGroups = [
       {
         question: 'What does Gemini receive about my database?',
         search:
-          'Gemini receives your request and the database structure: table and column names, data types, and relevant key and constraint information. This helps it generate SQL for the database you are actually using.Data Genie does not automatically send your table rows, saved history, file paths, or profile to Gemini. Any values you type into a request are included in that request.',
+          'Gemini receives your request, the database structure, and up to eight recent turns from this conversation. Context includes your messages, assistant replies, clarification questions, SQL, execution status, and brief result summaries. Table rows, other conversations, file paths, and profile details are not sent. Values typed into a request are included. New conversation clears the context for future requests.',
         answer: (
           <>
             <p>
               Gemini receives your request and the database structure: table and column names, data
-              types, and relevant key and constraint information. This helps it generate SQL for the
-              database you are actually using.
+              types, and relevant key and constraint information. It also receives up to eight
+              recent turns from this conversation, including your messages, assistant replies,
+              clarification questions, SQL, execution status, and brief result summaries.
             </p>
             <p>
-              Data Genie does not automatically send your table rows, saved history, file paths, or
-              profile to Gemini. Any values you type into a request are included in that request.
+              Table rows, other conversations, file paths, and profile details are not sent. Values
+              you type into a request are included. Use New conversation to clear the context for
+              future requests; your saved History stays available.
             </p>
           </>
         ),

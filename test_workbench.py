@@ -12,6 +12,20 @@ from repository import Repository
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_natural_table_count_and_names_are_answered_without_generated_sql(self):
+        questions = ['how many tables do I have and what are their names', 'how many tables do I have, and what are their names?', 'show tables', 'what are the names of my tables', 'count tables']
+        with patch.object(app.gemini_provider, 'generate_plans') as generate:
+            for question in questions:
+                with self.subTest(question=question):
+                    result = app.submit_request(self.session_id, question, interpreter='gemini')
+                    self.assertTrue(result['matched'])
+                    self.assertTrue(result['inventory'])
+                    self.assertEqual(result['table_count'], 5)
+                    self.assertEqual([row['table_name'] for row in result['rows']], ['accounts','odd table','products','sales','summary'])
+                    self.assertNotIn('sql', result)
+            generate.assert_not_called()
+        self.assertEqual(app.history_for_session(self.session_id), [])
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="genie-service-test-")
         self.root = Path(self.temporary.name)

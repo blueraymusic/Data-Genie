@@ -158,6 +158,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json({"requests": requests})
             if parsed.path == "/api/schema":
                 return self.json(workbench.schema_for_session(session_id))
+            if parsed.path == "/api/results/page":
+                return self.json(workbench.result_page(session_id, int(query.get("command_id", ["0"])[0]), int(query.get("offset", ["0"])[0])))
             if parsed.path == "/api/sample":
                 table = query.get("table", [""])[0]
                 with workbench.session_scope(session_id):

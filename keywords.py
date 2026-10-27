@@ -192,6 +192,20 @@ def metadata_plan(question, tables):
     return None
 
 
+def wants_table_inventory(question):
+    """Recognize table names/count questions without asking a model for SQL."""
+    text = re.sub(r"\s+", " ", str(question or "").strip().lower().replace(",", " ")).rstrip("?.!")
+    scope = r"(?: (?:in|of|from) (?:the |this |my |our )?(?:database|db))?"
+    return bool(re.fullmatch(
+        rf"(?:tables|(?:show|list|display|name)(?: me)? (?:all |the |my |existing |available )?tables){scope}|"
+        rf"(?:what|which) (?:are )?(?:the )?(?:table names|names of (?:the |my |all )?tables){scope}|"
+        rf"(?:what|which) tables (?:do (?:i|we) have|are there){scope}|"
+        rf"how many tables (?:do (?:i|we) have|are there|are in (?:the |this |my |our )?(?:database|db)){scope}"
+        r"(?: (?:and |, )?(?:what|which) (?:are )?(?:their|the) names)?|"
+        rf"(?:count|number of) (?:the |my |all )?tables{scope}", text
+    ))
+
+
 def wants_database_structure(question):
     """Recognize whole-database inspection requests before an AI planner sees them."""
     text = re.sub(r"\s+", " ", str(question or "").strip().lower()).rstrip("?")

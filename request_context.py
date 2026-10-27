@@ -23,8 +23,8 @@ def contextual_read(question, tables, schema, selected_table=None):
     table = selected_table or (tables[0] if len(tables) == 1 else None)
     if not table:
         raise RequestClarification(
-            "Which table would you like to use? Choose a table above or name it in your request.",
-            [f"show {quote_identifier(name)}" for name in tables[:3]],
+            "Which table would you like to explore?",
+            [f"show {quote_identifier(name)}" for name in tables[:6]],
         )
     if preview:
         return keywords.result_plan(f"SELECT * FROM {quote_identifier(table)} LIMIT 50", f"Preview of the selected table, {table}.")
@@ -45,3 +45,26 @@ def contextual_read(question, tables, schema, selected_table=None):
         f"What would you like to chart in {table}? Choose a grouping or measure, or preview the rows.",
         suggestions[:2] + [f"show {quote_identifier(table)}"],
     )
+
+
+def recovery_choices(tables, selected_table=None, suggestions=None):
+    suggestions = suggestions or ([f"show {quote_identifier(name)}" for name in tables[:6]] if not selected_table else [
+        f"show {quote_identifier(selected_table)}", f"count {quote_identifier(selected_table)}",
+        f"show columns from {quote_identifier(selected_table)}",
+    ])
+    if not tables:
+        suggestions = ["create a table notes with a body"]
+    choices = []
+    for request in suggestions:
+        label = request
+        for name in tables:
+            if request == f"show {quote_identifier(name)}":
+                label = "Preview rows" if selected_table == name else name
+            elif request == f"count {quote_identifier(name)}":
+                label = "Count rows"
+            elif request == f"show columns from {quote_identifier(name)}":
+                label = "View columns"
+        if request == "create a table notes with a body":
+            label = "Create a first table"
+        choices.append({"label": label, "request": request})
+    return choices

@@ -4,8 +4,14 @@ import { quoteIdentifier } from '../lib/api';
 import { requestProblem } from '../lib/requestValidation';
 export default function AskPage({ workbench, selected, mode, draft, setDraft, onNewTable }) {
   const textarea = useRef(null),
-    end = useRef(null);
+    feed = useRef(null),
+    wasBlocked = useRef(false);
   const [validation, setValidation] = useState('');
+  const context = workbench.session.conversation_context;
+  const contextTables = context?.tables || [];
+  const changedTable = Boolean(
+    selected && contextTables.length && !contextTables.includes(selected),
+  );
   useLayoutEffect(() => {
     if (textarea.current) {
       textarea.current.style.height = 'auto';
@@ -13,8 +19,23 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
     }
   }, [draft]);
   useLayoutEffect(() => {
-    if (workbench.feed.length) end.current?.scrollIntoView({ block: 'end', behavior: 'auto' });
+    const latest = feed.current?.lastElementChild;
+    if (!workbench.feed.length || !latest) return;
+    latest.scrollIntoView({ block: 'start', behavior: 'auto' });
+    const container = feed.current.closest('.content'),
+      composer = container?.querySelector('.composer');
+    if (composer) {
+      const overlap = latest.getBoundingClientRect().bottom - composer.getBoundingClientRect().top;
+      if (overlap > 0) container.scrollTo({ top: container.scrollTop + overlap, behavior: 'auto' });
+    }
   }, [workbench.feed.length, workbench.busy]);
+  useLayoutEffect(() => {
+    const blocked = Boolean(workbench.busy || workbench.pending);
+    if (wasBlocked.current && !blocked) textarea.current?.focus({ preventScroll: true });
+    if (workbench.pending && !workbench.busy)
+      feed.current?.lastElementChild?.querySelector('.confirm')?.focus({ preventScroll: true });
+    wasBlocked.current = blocked;
+  }, [workbench.busy, workbench.pending]);
   const examples = selected
     ? [
         `show ${quoteIdentifier(selected)}`,
@@ -26,7 +47,17 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
     event.preventDefault();
     if (!draft.trim() || workbench.busy || workbench.pending) return;
     const text = draft.trim();
-    const problem = requestProblem(text, workbench.feed.length > 0);
+    const previous = workbench.feed.at(-1);
+    const answering = Boolean(
+      workbench.session.pending_intent ||
+      (previous &&
+        (previous.needs_clarification ||
+          previous.intent ||
+          (previous.error &&
+            previous.status === 'rejected' &&
+            !previous.error.startsWith('Gemini')))),
+    );
+    const problem = requestProblem(text, workbench.feed.length > 0, answering);
     setValidation(problem);
     if (problem) {
       textarea.current?.focus();
@@ -44,7 +75,11 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
         </p>
         {!workbench.session.tables.length && (
           <p className="empty-inline">
-            This database is empty. Start with a new table or ask Data Genie to create one.
+            This database is empty.{' '}
+            <button type="button" className="text-button" onClick={onNewTable}>
+              Create your first table
+            </button>
+            , or describe the table you need below.
           </p>
         )}
         <div className="chips">
@@ -64,7 +99,7 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
           ))}
         </div>
       </div>
-      <div id="feed" aria-live="polite">
+      <div id="feed" ref={feed} aria-live="polite">
         {workbench.feed.map((request) => (
           <Translation
             key={request.request_id}
@@ -78,11 +113,33 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
           />
         ))}
       </div>
-      <div ref={end} />
       <div className="composer">
-        {workbench.feed.length > 0 && (
-          <div className="conversation-tools">
-            <span>Follow-ups use recent requests in this database.</span>
+        {workbench.session.pending_intent && (
+          <p className="pending-intent" title={workbench.session.pending_intent}>
+            <strong>Working on:</strong> {workbench.session.pending_intent}
+          </p>
+        )}
+        <div className="conversation-tools">
+          <div
+            className="conversation-context"
+            aria-label="Conversation context"
+            title={context?.request || undefined}
+          >
+            <span className="context-dot" aria-hidden="true" />
+            <span>
+              {changedTable
+                ? `Using ${selected} · selected table changed`
+                : contextTables.length
+                  ? `Following up on ${contextTables.join(', ')}`
+                  : selected
+                    ? `Using ${selected}`
+                    : 'Ready for your first table'}
+              {!changedTable && context?.filters?.length > 0 && (
+                <span className="context-filters"> · {context.filters.join(' · ')}</span>
+              )}
+            </span>
+          </div>
+          {workbench.feed.length > 0 && (
             <button
               type="button"
               className="text-button"
@@ -97,19 +154,12 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
             >
               New conversation
             </button>
-          </div>
-        )}
+          )}
+        </div>
         <div className="composer-tools">
           <label className="composer-label" htmlFor="request-input">
             {workbench.feed.length ? 'Follow up or ask a new question' : 'Your next request'}
           </label>
-          <button
-            className="text-button"
-            onClick={onNewTable}
-            disabled={workbench.busy || workbench.pending}
-          >
-            New table
-          </button>
           <span>Changes always wait for your OK.</span>
         </div>
         <form className="ask" onSubmit={ask}>
@@ -130,7 +180,7 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
               workbench.pending
                 ? 'Review the pending change above to continue.'
                 : workbench.feed.length
-                  ? 'Ask a follow-up, or start a new question…'
+                  ? 'Ask a follow-up…'
                   : 'Ask in plain English…'
             }
             onKeyDown={(event) => {
@@ -153,8 +203,7 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
           </p>
         )}
         <p className="composer-hint" id="composer-hint">
-          {mode === 'gemini' ? 'Gemini AI' : 'Keywords'} · Enter to ask. Shift + Enter for a new
-          line.
+          Enter to ask · Shift + Enter for a new line · Changes wait for your OK.
         </p>
       </div>
     </section>

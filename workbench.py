@@ -14,9 +14,9 @@ import uuid
 
 import keywords
 import gemini_provider
-from request_validation import RequestClarification, validate_request
-from request_context import contextual_read
-from conversation import followup_plan
+from request_validation import RequestClarification, validate_request, awaiting_answer
+from request_context import contextual_read, recovery_choices
+from conversation import followup_plan, query_scope, conversation_context, describe_read, pending_task
 import settings
 from database_files import create_database_file, database_filename
 from repository import Repository, RepositoryError
@@ -202,7 +202,9 @@ def database_info():
         source = "attached"
     return {**(current or {}), "database": current["database"] if current else ACTIVE_DB_NAME,
             "tables": tables, "table_count": len(tables), "source": source,
-            "table_details": [table_schema(name) for name in tables], "ai": settings.public_ai_settings()}
+            "table_details": [table_schema(name) for name in tables], "ai": settings.public_ai_settings(),
+            "conversation_context": conversation_context(get_repository().conversation(current["session_id"])) if current else None,
+            "pending_intent": get_repository().pending_intent(current["session_id"]) if current else ""}
 
 
 def database_structure():
@@ -313,6 +315,7 @@ def history_for_session(session_id, search="", operation=None, history_session_i
     # A restored confirmation must show a fresh preview, including after reload.
     if target_id == session_id and current["ended_at"] is None:
         with session_scope(session_id), _lock(current["path"]):
+            tables = visible_tables()
             for request in requests:
                 pending = [command for command in request["commands"] if command["status"] == "pending" and command["requires_confirmation"]]
                 if not pending:
@@ -335,7 +338,7 @@ def _display(command, visualization=None):
             "requires_confirmation": command["requires_confirmation"] and command["status"] == "pending",
             "operation": "read" if command["kind"] == "SELECT" else "write", "sql_operation": command["operation"],
             "kind": command["kind"], "status": command["status"], "sql": sql, "visualization": visualization,
-            "answer": f"{command['operation'].title()} command.", "rows": [], "changes": 0, "targets": command.get("targets", [])}
+            "answer": command.get("summary") or f"{command['operation'].title()} command.", "rows": [], "changes": 0, "targets": command.get("targets", [])}
 
 
 def _run_command(session_id, command_id, token=None, summary=None, visualization=None):
@@ -351,6 +354,15 @@ def _run_command(session_id, command_id, token=None, summary=None, visualization
     try:
         result = execute_sql(command["sql"], response["operation"])
         response.update(result)
+        if response["operation"] == "read":
+            question = repository.get_request(command["request_id"])["text"]
+            context = describe_read(command["sql"], [target["table_name"] for target in command.get("targets", []) if target["access_type"] == "read"], question)
+            response["query_context"] = context
+            response["has_more"] = bool(result["truncated"])
+            if len(result["rows"]) == 50 and query_scope(command["sql"], question) != command["sql"]:
+                response["has_more"] = bool(_read_page(command["sql"], question, 50, 1)["rows"])
+            if len(context["tables"]) == 1:
+                response["recovery"] = [{"label": "Show all " + context["tables"][0], "request": "show " + quote_identifier(context["tables"][0])}]
         response.update(status="executed", requires_confirmation=False, schema_changed=command["kind"] == "DDL")
         response["message"] = f"{result['changes']} row(s) affected." if response["operation"] == "write" else f"{len(result['rows'])} row(s) returned."
         if command["kind"] == "DDL":
@@ -435,6 +447,14 @@ def submit_request(session_id, text, raw_sql=False, interpreter="keywords", sele
         raise ValueError("Choose Keywords or Gemini AI.")
     with session_scope(session_id) as session, _lock(_path()):
         # Structural inspection is function 2; it does not create history records.
+        if not raw_sql and keywords.wants_table_inventory(text):
+            tables = visible_tables()
+            count = len(tables)
+            title = f"{count} {'table' if count == 1 else 'tables'} in this database"
+            answer = f"You have {count} {'table' if count == 1 else 'tables'}" + (": " + ", ".join(tables) + "." if tables else ". Create a table to get started.")
+            return {"matched":True, "metadata":True, "inventory":True, "table_count":count,
+                    "session_id":session_id, "rows":[{"table_name":name} for name in tables],
+                    "answer":answer, "result_heading":title, "visualization":"table", "operation":"read", "requires_confirmation":False}
         if not raw_sql and keywords.wants_database_structure(text):
             rows = database_structure()
             return {"matched": True, "metadata": True, "session_id": session_id, "rows": rows,
@@ -453,7 +473,7 @@ def submit_request(session_id, text, raw_sql=False, interpreter="keywords", sele
         try:
             context_plan = None
             if not raw_sql:
-                validate_request(text, has_context=bool(conversation))
+                validate_request(text, has_context=bool(conversation), allow_short_reply=awaiting_answer(conversation))
                 tables = visible_tables()
                 selected_table = keywords.resolve_table(str(selected_table), tables) if selected_table else None
                 context_plan = contextual_read(text, tables, table_schema, selected_table)
@@ -470,15 +490,35 @@ def submit_request(session_id, text, raw_sql=False, interpreter="keywords", sele
             else:
                 plans = _prepare(text, raw_sql)
         except (ValueError, sqlite3.Error, gemini_provider.GeminiError) as exc:
-            repository.reject_request(request_id, str(exc))
+            clarify = isinstance(exc, (RequestClarification, keywords.KeywordError))
+            message = str(exc)
+            unknown_table = "Unknown table:" in message or "Name an available table" in message
+            choices = getattr(exc, "choices", [])
+            suggestions = getattr(exc, "suggestions", [])
+            if not choices and (suggestions or isinstance(exc, keywords.KeywordError)):
+                choices = recovery_choices(visible_tables(), None if unknown_table else selected_table, suggestions)
+            if isinstance(exc, keywords.KeywordError) and "Use show, count" in message:
+                message = "What would you like to find or change? Choose a starting point below."
+            elif unknown_table:
+                message = "Which table would you like to explore? Choose one of the available tables below."
+            if isinstance(exc, gemini_provider.GeminiError) and exc.retryable:
+                choices = [{"label":"Try again", "request":text}]
+            previous_intent = conversation[-1].get("intent", "") if conversation and not conversation[-1].get("commands") else ""
+            intent = getattr(exc, "intent", None)
+            intent = previous_intent if intent is None else intent
+            original = pending_task(conversation)
+            if getattr(exc, "continues_task", None) is False or not original:
+                original = text
+            metadata = {"needs_clarification":clarify, "choices":choices, "suggestions":suggestions, "intent":intent, "task":original[:1500]}
+            repository.reject_request(request_id, message, metadata)
             return {"matched": False, "session_id": session_id, "request_id": request_id, "interpreter": interpreter,
-                    "needs_clarification": isinstance(exc, RequestClarification), "suggestions": getattr(exc, "suggestions", []), "message": str(exc)}
+                    **metadata, "message": message}
         commands = []
         deferred = False
         for plan in plans:
             deferred = deferred or plan["access"] == "write"
             command = repository.add_command(request_id, plan["sql"], plan["kind"], deferred,
-                                             targets=plan["targets"], operation=plan["operation"], has_aggregation=plan["has_aggregation"])
+                                             targets=plan["targets"], operation=plan["operation"], has_aggregation=plan["has_aggregation"], summary=plan["summary"])
             commands.append(command)
         responses = []
         for command, plan in zip(commands, plans):
@@ -502,6 +542,33 @@ def _query_columns(sql):
     with db(readonly=True) as connection:
         statement_details(connection, sql)
         return [column[0] for column in connection.execute(f"SELECT * FROM ({sql}) LIMIT 0").description]
+
+
+def _read_page(sql, question, offset, limit=50):
+    sql, access = validate_sql(query_scope(sql, question))
+    if access != "read":
+        raise ValueError("Only read results can be browsed.")
+    with db(readonly=True) as connection:
+        statement_details(connection, sql)
+        # Keep unusually expensive queries bounded while browsing.
+        import time
+        deadline = time.monotonic() + 5
+        connection.set_progress_handler(lambda: int(time.monotonic() > deadline), 10000)
+        rows = connection.execute(f"SELECT * FROM ({sql}) AS result_page LIMIT ? OFFSET ?", (limit + 1, offset)).fetchall()
+    return {"rows": [row_dict(row) for row in rows[:limit]], "has_more": len(rows) > limit}
+
+
+def result_page(session_id, command_id, offset=0):
+    if isinstance(offset, bool) or not isinstance(offset, int) or not 0 <= offset <= 1000000:
+        raise ValueError("Choose a valid row position.")
+    with session_scope(session_id), _lock(_path()):
+        repository = get_repository()
+        command = repository.get_command(command_id, session_id)
+        if command["kind"] != "SELECT" or command["status"] != "executed":
+            raise ValueError("Only completed read results can be browsed.")
+        request = repository.get_request(command["request_id"])
+        return {**_read_page(command["sql"], request["text"], offset), "offset": offset,
+                "message": "Additional rows read from the current database. Saved history stays unchanged."}
 
 
 def reset_conversation(session_id):

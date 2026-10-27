@@ -19,9 +19,11 @@ export function Router({ children }) {
   }, []);
   useEffect(() => {
     if (location.hash)
-      requestAnimationFrame(() =>
-        document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView(),
-      );
+      requestAnimationFrame(() => {
+        const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+        target?.scrollIntoView();
+        if (target?.hasAttribute('tabindex')) target.focus({ preventScroll: true });
+      });
     else window.scrollTo(0, 0);
   }, [route]);
   return (

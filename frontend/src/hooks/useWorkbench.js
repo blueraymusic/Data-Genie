@@ -172,6 +172,8 @@ export function useWorkbench(user) {
           error: data.matched === false ? data.message : null,
           needs_clarification: data.needs_clarification,
           suggestions: data.suggestions || [],
+          choices: data.choices || [],
+          intent: data.intent || '',
           commands: commands.map((command) => ({
             ...command,
             status: command.status || (command.requires_confirmation ? 'pending' : 'executed'),
@@ -288,7 +290,12 @@ export function useWorkbench(user) {
         body: {},
       });
       if (active.current !== id || version.current !== revision) return false;
-      setSession((current) => ({ ...current, conversation_after: data.conversation_after }));
+      setSession((current) => ({
+        ...current,
+        conversation_after: data.conversation_after,
+        conversation_context: null,
+        pending_intent: '',
+      }));
       setFeed([]);
       setMessage('New conversation started. Previous requests are saved in History.');
       return true;

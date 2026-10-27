@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { PublicHeader, EntryLink } from '../components/PublicHeader';
+import { PublicHeader } from '../components/PublicHeader';
 import { HeroDemo } from '../components/HeroDemo';
 import { HomeSafety } from '../components/HomeSafety';
 import { HomeHistory } from '../components/HomeHistory';
@@ -32,14 +32,24 @@ export default function HomePage() {
       <PublicHeader />
       <main id="main">
         <section className="hero wrap" id="top" aria-labelledby="h1">
-          <h1 id="h1">Ask your database in plain English.</h1>
-          <p className="lede">
-            Data Genie writes the SQL, runs it, and shows you the result. Nothing is deleted without
-            your OK.
-          </p>
-          <div className="cta-row">
-            <EntryLink primary className="btn btn-primary" />
-            <EntryLink className="btn btn-secondary" />
+          <div className="hero-intro">
+            <h1 id="h1">Ask your database in plain English.</h1>
+            <div className="hero-start">
+              <p className="lede">
+                Ask a question. See the SQL and your answer. Changes always wait for your OK.
+              </p>
+              <div className="cta-row">
+                <Link href="/#demo" className="btn btn-primary">
+                  Try the demo <span aria-hidden="true">↓</span>
+                </Link>
+                <Link href={user ? '/databases' : '/signin'} className="btn btn-secondary">
+                  Open my database
+                </Link>
+              </div>
+              <p className="hero-hint">
+                No account needed to try the demo. SQLite files supported.
+              </p>
+            </div>
           </div>
           <HeroDemo />
         </section>

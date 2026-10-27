@@ -63,6 +63,37 @@ class RepositoryTests(unittest.TestCase):
         with self.assertRaises(RepositoryError):
             self.repository.start_session("Ada", "Lovelace", "ada@example.com", self.repository_path, "repository")
 
+    def test_existing_commands_survive_summary_column_migration(self):
+        session = self.session()
+        request_id, command = self.command(session)
+        with connect(self.repository_path) as connection:
+            connection.execute('ALTER TABLE sql_commands DROP COLUMN summary')
+        migrated = Repository(self.repository_path)
+        restored = migrated.get_request(request_id)['commands'][0]
+        self.assertEqual(restored['sql'], command['sql'])
+        self.assertEqual(restored['summary'], '')
+        self.assertEqual(restored['status'], 'pending')
+
+    def test_legacy_requests_survive_clarification_metadata_migration(self):
+        session = self.session()
+        request_id = self.repository.create_request(session['session_id'], 'generate sample customers')
+        self.repository.reject_request(request_id, 'How many rows?')
+        with connect(self.repository_path) as connection:
+            connection.execute('ALTER TABLE requests DROP COLUMN clarification_json')
+        restored = Repository(self.repository_path).get_request(request_id)
+        self.assertEqual(restored['error'], 'How many rows?')
+        self.assertEqual(restored['text'], 'generate sample customers')
+
+    def test_chat_context_does_not_send_legacy_json_result_rows(self):
+        session = self.session()
+        _, command = self.command(session)
+        self.repository.claim_command(session['session_id'], command['command_id'])
+        self.repository.finish_command(command['command_id'], {'rows':[{'private':'never send this record'}]}, 'table')
+        context = json.dumps(self.repository.conversation(session['session_id']))
+        self.assertNotIn('never send this record', context)
+        self.assertNotIn('private', context)
+        self.assertNotIn('"rows"', context)
+
     def test_sessions_users_and_databases_persist_and_reuse_identity(self):
         first = self.session()
         second = Repository(self.repository_path).start_session("Ada", "Lovelace", "ADA@example.com", self.source, "customers.sqlite3")

@@ -65,6 +65,10 @@ export default function WorkspaceApp() {
     if (session && !session.tables.includes(selected)) setSelected(session.tables[0] || '');
   }, [session, selected]);
   useEffect(() => {
+    const tables = session?.conversation_context?.tables || [];
+    if (tables.length === 1 && session.tables.includes(tables[0])) setSelected(tables[0]);
+  }, [session?.conversation_context?.request, session?.session_id]);
+  useEffect(() => {
     document.title = titles[view] + ' | Data Genie';
     content.current?.scrollTo(0, 0);
     setRailOpen(false);
@@ -173,7 +177,7 @@ export default function WorkspaceApp() {
                 aria-controls="tableRail"
                 onClick={() => setRailOpen(!railOpen)}
               >
-                Tables
+                Tables & database
               </button>
             </div>
             <main className="content" id="workspaceContent" tabIndex="-1" ref={content}>
@@ -192,28 +196,37 @@ export default function WorkspaceApp() {
                   </span>
                 </div>
                 {session.tables.length > 0 && (
-                  <label className="table-selector">
-                    Selected table
-                    <select
-                      value={selected}
-                      onChange={(event) => setSelected(event.target.value)}
-                      aria-label="Table for suggested requests"
+                  <div className="mobile-context mobile-db-controls">
+                    <label className="table-selector">
+                      Table
+                      <select
+                        value={selected}
+                        onChange={(event) => setSelected(event.target.value)}
+                        aria-label="Table for suggested requests"
+                      >
+                        {session.tables.map((table) => (
+                          <option key={table}>{table}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      className="btn add-table"
+                      type="button"
+                      aria-label="Create a new table"
+                      aria-haspopup="dialog"
+                      disabled={disabled}
+                      onClick={newTable}
                     >
-                      {session.tables.map((table) => (
-                        <option key={table}>{table}</option>
-                      ))}
-                    </select>
-                  </label>
+                      +
+                    </button>
+                  </div>
                 )}
-                <button className="btn quiet" disabled={disabled} onClick={() => go('connect')}>
-                  Change database
-                </button>
                 {session.source === 'demo' && (
                   <p className="demo-notice">Sample data. Your own files stay separate.</p>
                 )}
               </div>
               {workbench.message && (
-                <p className="status-note err" role="status">
+                <p className="status-note" role="status">
                   {workbench.message}
                 </p>
               )}
