@@ -1,0 +1,29 @@
+:root {
+  --chalk:#EFF2F7; --paper:#FFFFFF; --sunken:#E6EAF2;
+  --ink:#16213A; --ink-soft:#55607A; --rule:#D9DFEA;
+  --lapis:#2D4EA2; --lapis-wash:#E6ECFA; --on-lapis:#FFFFFF;
+  --brass:#C99A2E; --add:#23704F; --change:#9A5B0C;
+  --remove:#B52D23; --on-remove:#FFFFFF; --structure:#6B3FA0;
+  --serif:'Newsreader','Iowan Old Style',Georgia,serif;
+  --sans:'Schibsted Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'Spline Sans Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark) {
+  :root:not([data-theme="light"]) {
+    --chalk:#0E1424; --paper:#151D33; --sunken:#1B2442;
+    --ink:#E6EAF5; --ink-soft:#9AA5C2; --rule:#2A3558;
+    --lapis:#8CA8FF; --lapis-wash:#1B2850; --on-lapis:#0E1424;
+    --brass:#E3B84F; --add:#5CC796; --change:#E0A24A;
+    --remove:#FF7A6B; --on-remove:#1A0705; --structure:#B79BFF;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"] {
+  --chalk:#0E1424; --paper:#151D33; --sunken:#1B2442;
+  --ink:#E6EAF5; --ink-soft:#9AA5C2; --rule:#2A3558;
+  --lapis:#8CA8FF; --lapis-wash:#1B2850; --on-lapis:#0E1424;
+  --brass:#E3B84F; --add:#5CC796; --change:#E0A24A;
+  --remove:#FF7A6B; --on-remove:#1A0705; --structure:#B79BFF;
+  color-scheme:dark;
+}

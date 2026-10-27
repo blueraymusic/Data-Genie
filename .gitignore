@@ -1,0 +1,28 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local accounts, databases, and saved query results
+db/
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.sqlite3-*
+*.db
+*.db-*
+
+# Dependencies and generated files
+.venv/
+venv/
+__pycache__/
+*.pyc
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# Local QA screenshots
+docs/screenshots/

@@ -1,0 +1,60 @@
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 90px;
+}
+body {
+  margin: 0;
+  background: var(--chalk);
+  color: var(--ink);
+  font: 14px/1.5 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+.hidden {
+  display: none !important;
+}
+:focus-visible {
+  outline: 2px solid var(--lapis);
+  outline-offset: 3px;
+}
+.workspace-page #app {
+  min-height: 520px;
+}
+.workspace-page .gate .fields > .wide {
+  grid-column: 1/-1;
+}
+.workspace-page .gate .fields > .wide > label {
+  display: block;
+  margin-bottom: 6px;
+}
+.workspace-page .gate .btn {
+  min-height: 44px;
+}
+.workspace-page .constraint-chip + .constraint-chip {
+  margin-left: 4px;
+}
+.workspace-page section:not(#v-ask) > .exchange {
+  margin-top: 24px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,316 @@
+import { useEffect, useRef, useState } from 'react';
+import { useWorkbench } from '../hooks/useWorkbench';
+import { useAuth } from '../context/AuthContext';
+import { useRouter } from '../lib/router';
+import { quoteIdentifier } from '../lib/api';
+import { AuthShell } from '../components/AuthShell';
+import { WorkspaceHeader } from '../components/WorkspaceHeader';
+import { TableRail } from '../components/TableRail';
+import { Modal } from '../components/Modal';
+import DatabaseChooser from './DatabaseChooser';
+import AskPage from './AskPage';
+import StructurePage from './StructurePage';
+import HistoryPage from './HistoryPage';
+import AccountPage from './AccountPage';
+import DatabasesPage from './DatabasesPage';
+import SqlPage from './SqlPage';
+export const viewRoutes = {
+  ask: '/app',
+  schema: '/app?view=structure',
+  history: '/history',
+  account: '/account',
+  connect: '/databases',
+  sql: '/app?view=sql',
+};
+export function viewFromRoute(route) {
+  if (route.startsWith('/history')) return 'history';
+  if (route.startsWith('/account')) return 'account';
+  if (route.startsWith('/databases')) return 'connect';
+  const value = new URLSearchParams(route.split('?')[1] || '').get('view');
+  return value === 'structure' ? 'schema' : value === 'sql' ? 'sql' : 'ask';
+}
+const titles = {
+  ask: 'Workspace',
+  schema: 'Structure',
+  history: 'History',
+  account: 'Account',
+  connect: 'Databases',
+  sql: 'SQL review',
+};
+
+export default function WorkspaceApp() {
+  const { user, logout } = useAuth(),
+    { route, navigate } = useRouter(),
+    workbench = useWorkbench(user);
+  const [selected, setSelected] = useState(''),
+    [railOpen, setRailOpen] = useState(false),
+    [draft, setDraft] = useState(''),
+    [sqlDraft, setSqlDraft] = useState(''),
+    [modal, setModal] = useState(null),
+    [tableName, setTableName] = useState(''),
+    [dialogError, setDialogError] = useState('');
+  const [savedMode, setSavedMode] = useState(() => {
+    try {
+      return localStorage.getItem('dg-request-mode:' + user.account_id) || 'gemini';
+    } catch {
+      return 'gemini';
+    }
+  });
+  const content = useRef(null),
+    view = viewFromRoute(route),
+    session = workbench.session;
+  const mode = session?.ai?.enabled ? savedMode : 'keywords';
+  const disabled = workbench.busy || workbench.pending || workbench.workingCommands.size > 0;
+  useEffect(() => {
+    if (session && !session.tables.includes(selected)) setSelected(session.tables[0] || '');
+  }, [session, selected]);
+  useEffect(() => {
+    document.title = titles[view] + ' | Data Genie';
+    content.current?.scrollTo(0, 0);
+    setRailOpen(false);
+  }, [view]);
+  function go(next) {
+    navigate(viewRoutes[next]);
+  }
+  function setMode(value) {
+    setSavedMode(value);
+    try {
+      localStorage.setItem('dg-request-mode:' + user.account_id, value);
+    } catch {}
+  }
+  function newTable() {
+    setDialogError('');
+    setTableName('');
+    setModal('table');
+  }
+  async function prepareTable(event) {
+    event.preventDefault();
+    const name = tableName.trim();
+    if (!name || name.includes('\0')) {
+      setDialogError('Choose a table name without null characters.');
+      return;
+    }
+    if (session.tables.some((table) => table.toLowerCase() === name.toLowerCase())) {
+      setDialogError('A table with this name already exists.');
+      return;
+    }
+    setModal(null);
+    go('ask');
+    await workbench.submit(`CREATE TABLE ${quoteIdentifier(name)} (id INTEGER PRIMARY KEY)`, true);
+  }
+  async function finish() {
+    setDialogError('');
+    try {
+      await workbench.end();
+      if (modal === 'signout') await logout();
+      setModal(null);
+      navigate(modal === 'signout' ? '/' : '/databases', true);
+    } catch (error) {
+      setDialogError(error.message);
+    }
+  }
+  function reuse(request) {
+    const raw =
+      request.commands?.length === 1 &&
+      request.text.trim().replace(/;$/, '') === request.commands[0].sql.trim().replace(/;$/, '');
+    if (raw) {
+      setSqlDraft(request.text);
+      go('sql');
+    } else {
+      setDraft(request.text);
+      go('ask');
+    }
+  }
+  if (workbench.loading)
+    return (
+      <AuthShell title="Opening your workspace." lead="Restoring your database and saved requests.">
+        <p role="status">Loading…</p>
+      </AuthShell>
+    );
+  if (!session) return <DatabaseChooser workbench={workbench} />;
+  return (
+    <div className="workspace-page">
+      <a className="skip-link" href="#workspaceContent">
+        Skip to main content
+      </a>
+      <div id="app">
+        <WorkspaceHeader
+          session={session}
+          view={view}
+          onNavigate={go}
+          onEnd={(signout) => {
+            setDialogError('');
+            setModal(signout ? 'signout' : 'end');
+          }}
+          disabled={disabled}
+        />
+        <div className="dashboard-body">
+          <TableRail
+            key={session.session_id}
+            {...{ session, selected, setSelected }}
+            open={railOpen}
+            onNewTable={newTable}
+            onNavigate={go}
+            disabled={disabled}
+          />
+          <div className="main">
+            <div className="workspace-toolbar">
+              <span>{titles[view]}</span>
+              <div className="view-tabs">
+                <button className={view === 'ask' ? 'on' : undefined} onClick={() => go('ask')}>
+                  Ask
+                </button>
+                <button
+                  className={view === 'schema' ? 'on' : undefined}
+                  onClick={() => go('schema')}
+                >
+                  Structure
+                </button>
+              </div>
+              <button
+                className="text-button rail-toggle"
+                aria-expanded={railOpen}
+                aria-controls="tableRail"
+                onClick={() => setRailOpen(!railOpen)}
+              >
+                Tables
+              </button>
+            </div>
+            <main className="content" id="workspaceContent" tabIndex="-1" ref={content}>
+              <div className="connection-summary" aria-label="Current database">
+                <div className="connection-title">
+                  <span className="db-source">
+                    {{
+                      created: 'New database',
+                      demo: 'Demo sample data',
+                      uploaded: 'Attached SQLite file',
+                    }[session.source] || 'Connected database'}
+                  </span>
+                  <strong>{session.database}</strong>
+                  <span className="small muted">
+                    {session.tables.length} {session.tables.length === 1 ? 'table' : 'tables'}
+                  </span>
+                </div>
+                {session.tables.length > 0 && (
+                  <label className="table-selector">
+                    Selected table
+                    <select
+                      value={selected}
+                      onChange={(event) => setSelected(event.target.value)}
+                      aria-label="Table for suggested requests"
+                    >
+                      {session.tables.map((table) => (
+                        <option key={table}>{table}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <button className="btn quiet" disabled={disabled} onClick={() => go('connect')}>
+                  Change database
+                </button>
+                {session.source === 'demo' && (
+                  <p className="demo-notice">Sample data. Your own files stay separate.</p>
+                )}
+              </div>
+              {workbench.message && (
+                <p className="status-note err" role="status">
+                  {workbench.message}
+                </p>
+              )}
+              {view === 'ask' && (
+                <AskPage
+                  {...{ workbench, selected, mode, draft, setDraft }}
+                  onNewTable={newTable}
+                />
+              )}
+              {view === 'schema' && <StructurePage workbench={workbench} />}
+              {view === 'history' && <HistoryPage workbench={workbench} onReuse={reuse} />}
+              {view === 'account' && <AccountPage {...{ workbench, mode, setMode }} />}
+              {view === 'connect' && (
+                <DatabasesPage workbench={workbench} onOpened={() => go('ask')} />
+              )}
+              {view === 'sql' && (
+                <SqlPage
+                  {...{ workbench, selected }}
+                  draft={sqlDraft}
+                  setDraft={setSqlDraft}
+                  onNewTable={newTable}
+                />
+              )}
+            </main>
+          </div>
+        </div>
+      </div>
+      <nav className="tabs" aria-label="Mobile navigation">
+        {[
+          ['connect', 'Databases'],
+          ['ask', 'Workspace'],
+          ['history', 'History'],
+          ['account', 'Account'],
+        ].map(([id, label]) => (
+          <button className={view === id ? 'on' : undefined} key={id} onClick={() => go(id)}>
+            {label}
+          </button>
+        ))}
+      </nav>
+      {modal === 'table' && (
+        <Modal titleId="newTableTitle" onClose={() => setModal(null)}>
+          <form onSubmit={prepareTable}>
+            <h2 id="newTableTitle">New table</h2>
+            <p className="muted">
+              Choose a name. The table starts with an id primary key; add other columns through a
+              request.
+            </p>
+            <label htmlFor="newTableName">Table name</label>
+            <input
+              id="newTableName"
+              autoFocus
+              value={tableName}
+              onChange={(event) => setTableName(event.target.value)}
+              maxLength={100}
+              placeholder="e.g. books"
+              required
+            />
+            {dialogError && (
+              <p className="err" role="status">
+                {dialogError}
+              </p>
+            )}
+            <p className="dialog-actions">
+              <button className="btn" type="button" onClick={() => setModal(null)}>
+                Cancel
+              </button>
+              <button className="btn pri">Review table</button>
+            </p>
+          </form>
+        </Modal>
+      )}
+      {['end', 'signout'].includes(modal) && (
+        <Modal titleId="endTitle" onClose={() => setModal(null)}>
+          <h2 id="endTitle">
+            {modal === 'signout' ? 'Sign out and end this session?' : 'End this session?'}
+          </h2>
+          <p>Your requests, SQL, and results for {session.database} stay in History.</p>
+          {dialogError && (
+            <p className="err" role="status">
+              {dialogError}
+            </p>
+          )}
+          <div className="dialog-actions">
+            <button
+              className="btn"
+              autoFocus
+              disabled={workbench.busy}
+              onClick={() => setModal(null)}
+            >
+              Keep working
+            </button>
+            <button className="btn pri" disabled={workbench.busy} onClick={finish}>
+              {workbench.busy ? 'Ending…' : modal === 'signout' ? 'Sign out' : 'End session'}
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
