@@ -30,7 +30,7 @@ export default function AccountPage({ workbench, mode, setMode }) {
   return (
     <section>
       <h1>Account &amp; preferences</h1>
-      <p className="lead">Your account, your appearance, your copy of the data.</p>
+      <p className="lead">Your account, appearance, and database connection.</p>
       <div className="account-ledger">
         <p>
           <span>Name</span>
@@ -60,17 +60,32 @@ export default function AccountPage({ workbench, mode, setMode }) {
             <option value="keywords">Keywords</option>
           </select>
         </p>
-        <p>
-          <span>Database copy</span>
-          <a
-            className="btn"
-            href={'/api/download?session_id=' + encodeURIComponent(workbench.session.session_id)}
-            download
-          >
-            Download SQLite file
-          </a>
-        </p>
+        {workbench.session.source === 'postgresql' ? (
+          <p>
+            <span>PostgreSQL access</span>
+            <strong>
+              {workbench.session.read_only ? 'Read-only' : 'Changes require confirmation'}
+            </strong>
+          </p>
+        ) : (
+          <p>
+            <span>Database copy</span>
+            <a
+              className="btn"
+              href={'/api/download?session_id=' + encodeURIComponent(workbench.session.session_id)}
+              download
+            >
+              Download SQLite file
+            </a>
+          </p>
+        )}
       </div>
+      {workbench.session.source === 'postgresql' && (
+        <p className="small muted">
+          Confirmed edits are saved directly in the connected PostgreSQL database when changes are
+          enabled. Use Download CSV on a result to save a copy of its shown rows.
+        </p>
+      )}
       <form className="password-form" onSubmit={submit}>
         <h2>Change password</h2>
         <label>

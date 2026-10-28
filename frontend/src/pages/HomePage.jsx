@@ -14,14 +14,11 @@ export default function HomePage() {
   }, []);
   const steps = [
     [
-      'Connect a SQLite file',
-      'Upload a file, create an empty database, or try the sample. Data Genie reads its structure.',
+      'Choose your database',
+      'Upload a SQLite file, connect PostgreSQL, create a local database, or try the sample. Data Genie reads its structure.',
     ],
     ['Ask in plain English', 'Type what you want to find, add, change or total up. No SQL needed.'],
-    [
-      'Review the SQL',
-      'Every request shows the SQL it wrote. Anything risky waits for your OK first.',
-    ],
+    ['Review the SQL', 'See the SQL behind your request. Changes always wait for your OK first.'],
     ['Get the result', 'The result and the SQL behind it are saved, so you can find them again.'],
   ];
   return (
@@ -47,7 +44,7 @@ export default function HomePage() {
                 </Link>
               </div>
               <p className="hero-hint">
-                No account needed to try the demo. SQLite files supported.
+                No account needed to try the demo. SQLite files and PostgreSQL connections.
               </p>
             </div>
           </div>

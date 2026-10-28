@@ -165,7 +165,7 @@ export default function FaqPage() {
             </div>
             <section className="next-step">
               <h2>Put your first question to work.</h2>
-              <p>Bring a SQLite file, start fresh, or explore the sample.</p>
+              <p>Bring a SQLite file, connect PostgreSQL, start fresh, or explore the sample.</p>
               <EntryLink primary className="btn primary" />
               <Link className="back-link" href="/">
                 Back to homepage <span aria-hidden="true">↗</span>

@@ -53,7 +53,15 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS databases (
     database_id INTEGER PRIMARY KEY,
     database_name TEXT NOT NULL,
-    path TEXT NOT NULL UNIQUE
+    path TEXT NOT NULL UNIQUE,
+    connection_id TEXT
+);
+CREATE TABLE IF NOT EXISTS external_connections (
+    connection_id TEXT PRIMARY KEY,
+    account_id INTEGER NOT NULL REFERENCES accounts(account_id),
+    provider TEXT NOT NULL CHECK(provider='postgresql'),
+    encrypted_config TEXT NOT NULL,
+    created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS sessions (
     session_id TEXT PRIMARY KEY,
@@ -284,6 +292,8 @@ class Repository:
                     connection.execute("ALTER TABLE sql_commands ADD COLUMN summary TEXT NOT NULL DEFAULT ''")
                 if "clarification_json" not in {row[1] for row in connection.execute("PRAGMA table_info(requests)")}:
                     connection.execute("ALTER TABLE requests ADD COLUMN clarification_json TEXT")
+                if "connection_id" not in {row[1] for row in connection.execute("PRAGMA table_info(databases)")}:
+                    connection.execute("ALTER TABLE databases ADD COLUMN connection_id TEXT")
                 connection.execute("CREATE INDEX IF NOT EXISTS sessions_account ON sessions(account_id,started_at)")
                 connection.commit()
                 self.path.chmod(0o600)
@@ -308,7 +318,8 @@ class Repository:
     @staticmethod
     def _session(connection, session_id, active_only=False):
         row = connection.execute("""
-            SELECT s.*,d.database_name AS database,d.path,
+            SELECT s.*,d.database_name AS database,d.path,d.connection_id,
+                   CASE WHEN d.connection_id IS NULL THEN 'sqlite' ELSE 'postgresql' END AS provider,
                    COALESCE(a.first_name,u.first_name) AS first_name,
                    COALESCE(a.last_name,u.last_name) AS last_name,COALESCE(a.email,u.email) AS email
             FROM sessions s JOIN users u USING(user_id)
@@ -374,6 +385,36 @@ class Repository:
         with self._connection() as connection:
             return self._session(connection, session_id, active_only)
 
+    def create_external_session(self, account_id, name=None, encrypted_config=None, connection_id=None):
+        """Register an owned remote database without passing its credentials to session views."""
+        session_id = str(uuid.uuid4())
+        with self._connection(write=True) as connection:
+            account = connection.execute("SELECT * FROM accounts WHERE account_id=?", (account_id,)).fetchone()
+            if account is None:
+                raise RepositoryError("Unknown account.")
+            if connection_id:
+                saved = connection.execute("SELECT d.database_id FROM databases d JOIN external_connections e USING(connection_id) WHERE e.connection_id=? AND e.account_id=?", (connection_id, account_id)).fetchone()
+                if saved is None:
+                    raise RepositoryError("This connection is not available for your account.")
+                database_id = saved[0]
+            else:
+                if not name or not encrypted_config:
+                    raise RepositoryError("A connection name and encrypted settings are required.")
+                connection_id = str(uuid.uuid4())
+                connection.execute("INSERT INTO external_connections VALUES(?,?,'postgresql',?,?)", (connection_id, account_id, encrypted_config, _now()))
+                database_id = connection.execute("INSERT INTO databases(database_name,path,connection_id) VALUES(?,?,?)", (name, "postgresql:" + connection_id, connection_id)).lastrowid
+            connection.execute("INSERT INTO users(first_name,last_name,email) VALUES(?,?,?) ON CONFLICT(email) DO UPDATE SET first_name=excluded.first_name,last_name=excluded.last_name", (account["first_name"], account["last_name"], account["email"]))
+            user_id = connection.execute("SELECT user_id FROM users WHERE email=?", (account["email"],)).fetchone()[0]
+            connection.execute("INSERT INTO sessions(session_id,user_id,database_id,started_at,account_id) VALUES(?,?,?,?,?)", (session_id,user_id,database_id,_now(),account_id))
+        return self.get_session(session_id)
+
+    def external_connection(self, connection_id, account_id):
+        with self._connection() as connection:
+            row = connection.execute("SELECT encrypted_config FROM external_connections WHERE connection_id=? AND account_id=?", (connection_id, account_id)).fetchone()
+            if row is None:
+                raise RepositoryError("This connection is not available for your account.")
+            return row[0]
+
     def list_sessions(self, email=None, account_id=None):
         with self._connection() as connection:
             sql = "SELECT s.session_id FROM sessions s JOIN users u USING(user_id)"
@@ -427,12 +468,13 @@ class Repository:
         finally:
             source.close()
 
-    def sync_schema(self, database_id, path, exclude_tables=()):
-        database_path = str(Path(path).expanduser().resolve())
-        schema = self._read_schema(database_path, exclude_tables)
+    def sync_schema(self, database_id, path, exclude_tables=(), schema=None):
+        external = schema is not None
+        database_path = str(path) if external else str(Path(path).expanduser().resolve())
+        schema = schema if external else self._read_schema(database_path, exclude_tables)
         with self._connection(write=True) as connection:
-            database = connection.execute("SELECT path FROM databases WHERE database_id=?", (database_id,)).fetchone()
-            if not database or database["path"] != database_path:
+            database = connection.execute("SELECT path,connection_id FROM databases WHERE database_id=?", (database_id,)).fetchone()
+            if not database or database["path"] != database_path or bool(database["connection_id"]) != external:
                 raise RepositoryError("Schema path does not match the registered database.")
             current = {row["table_name"].lower(): row for row in connection.execute(
                 "SELECT * FROM schema_tables WHERE database_id=? AND is_dropped=0", (database_id,))}
@@ -468,6 +510,7 @@ class Repository:
                         constraints.append(("NOT NULL", ""))
                     if column["dflt_value"] is not None:
                         constraints.append(("DEFAULT", column["dflt_value"]))
+                    constraints.extend(column.get("extra_constraints", []))
                     for members in table["unique_indexes"]:
                         if name in members:
                             constraints.append(("UNIQUE", json.dumps(members)))
@@ -508,7 +551,7 @@ class Repository:
 
     def get_schema(self, database_id, include_dropped=False):
         with self._connection() as connection:
-            database = connection.execute("SELECT path FROM databases WHERE database_id=?", (database_id,)).fetchone()
+            database = connection.execute("SELECT path,connection_id FROM databases WHERE database_id=?", (database_id,)).fetchone()
             if not database:
                 raise RepositoryError("Unknown database.")
             sql = "SELECT * FROM schema_tables WHERE database_id=?"
@@ -538,6 +581,8 @@ class Repository:
                     item["columns"].append(detail)
                 item["foreign_keys"] = [reference for column in item["columns"] for reference in column["references"]]
                 result.append(item)
+            if database["connection_id"]:
+                return result
             # Row counts are derived from the connected file, never persisted.
             source = None
             try:

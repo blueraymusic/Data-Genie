@@ -384,3 +384,32 @@
     padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
 }
+.workspace-page .database-modes {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.postgres-fields {
+  margin: 20px 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.postgres-fields input:not([type='checkbox']) {
+  width: 100%;
+  min-width: 0;
+}
+.postgres-url {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.postgres-url button {
+  flex-shrink: 0;
+}
+.postgres-fields > .btn {
+  justify-self: start;
+}
+.connection-test-result:empty {
+  display: none;
+}

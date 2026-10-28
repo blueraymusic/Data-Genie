@@ -1,22 +1,32 @@
 import { useState } from 'react';
 import { encodeDatabase } from '../lib/api';
+import { PostgresConnectionFields } from './PostgresConnectionFields';
 export function DatabaseForm({ onOpen, busy = false }) {
   const [mode, setMode] = useState('create'),
     [file, setFile] = useState(null),
     [name, setName] = useState('my_database.sqlite3'),
     [starter, setStarter] = useState(false),
     [error, setError] = useState(''),
-    [reading, setReading] = useState(false);
+    [reading, setReading] = useState(false),
+    [postgres, setPostgres] = useState({
+      database_name: '',
+      connection_url: '',
+      schema_name: 'public',
+      allow_changes: false,
+    });
   async function submit(event) {
     event.preventDefault();
     setError('');
     setReading(true);
     try {
       await onOpen(
-        mode === 'upload'
-          ? { database_mode: mode, name: file?.name, contents: await encodeDatabase(file) }
-          : { database_mode: mode, database_name: name, starter },
+        mode === 'postgresql'
+          ? { database_mode: mode, ...postgres }
+          : mode === 'upload'
+            ? { database_mode: mode, name: file?.name, contents: await encodeDatabase(file) }
+            : { database_mode: mode, database_name: name, starter },
       );
+      if (mode === 'postgresql') setPostgres((previous) => ({ ...previous, connection_url: '' }));
     } catch (error) {
       setError(error.message);
     } finally {
@@ -42,6 +52,7 @@ export function DatabaseForm({ onOpen, busy = false }) {
             ['create', 'Create new', 'Start empty'],
             ['upload', 'Upload SQLite', 'Your existing file'],
             ['sample', 'Try the sample', 'Explore safely'],
+            ['postgresql', 'PostgreSQL', 'Connect a live database'],
           ].map(([value, label, hint]) => (
             <label key={value}>
               <input
@@ -108,14 +119,23 @@ export function DatabaseForm({ onOpen, busy = false }) {
           Missouri”.
         </p>
       )}
+      {mode === 'postgresql' && (
+        <PostgresConnectionFields
+          value={postgres}
+          onChange={setPostgres}
+          disabled={busy || reading}
+        />
+      )}
       <button className="btn pri start-button" disabled={busy || reading}>
         {busy || reading
           ? 'Opening database…'
-          : mode === 'create'
-            ? 'Create database & start'
-            : mode === 'upload'
-              ? 'Attach database'
-              : 'Open sample database'}
+          : mode === 'postgresql'
+            ? 'Connect PostgreSQL'
+            : mode === 'create'
+              ? 'Create database & start'
+              : mode === 'upload'
+                ? 'Attach database'
+                : 'Open sample database'}
       </button>
       <p className="err" role="status">
         {error}

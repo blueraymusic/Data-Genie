@@ -20,10 +20,11 @@ export default function DatabasesPage({ workbench, onOpened }) {
         <div className="drop">
           <h2>Bring your data</h2>
           <p>
-            Choose Upload SQLite to open an existing file, or start an empty database of your own.
+            Upload a SQLite file, start a local database, or connect a live PostgreSQL database.
           </p>
           <p className="small muted">
-            Up to 25 MB. You work on a copy; download it to keep your changes.
+            SQLite uploads use a copy you can download. PostgreSQL works on your connected database;
+            enable changes only when you want to confirm edits there.
           </p>
         </div>
       </div>

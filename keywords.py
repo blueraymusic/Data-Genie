@@ -188,7 +188,7 @@ def metadata_plan(question, tables):
     if match:
         table = resolve_table(match[1], tables)
         table_literal = "'" + table.replace("'", "''") + "'"
-        return result_plan(f"SELECT name,type,pk AS primary_key FROM pragma_table_info({table_literal})", f"Columns in {table}.")
+        return {**result_plan(f"SELECT name,type,pk AS primary_key FROM pragma_table_info({table_literal})", f"Columns in {table}."), "table": table}
     return None
 
 

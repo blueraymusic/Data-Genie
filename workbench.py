@@ -18,6 +18,7 @@ from request_validation import RequestClarification, validate_request, awaiting_
 from request_context import contextual_read, recovery_choices
 from conversation import followup_plan, query_scope, conversation_context, describe_read, pending_task
 import settings
+from connections import PostgresConnector, connection_config, CredentialVault
 from database_files import create_database_file, database_filename
 from repository import Repository, RepositoryError
 from sql_tools import execute, quote_identifier, row_dict, statement_details, validate_sql
@@ -37,6 +38,7 @@ KeywordError = keywords.KeywordError
 
 _session = ContextVar("data_genie_session", default=None)
 _database_override = ContextVar("data_genie_database_override", default=None)
+_connector = ContextVar("data_genie_connector", default=None)
 _state_lock = threading.RLock()
 _repositories = {}
 _database_locks = {}
@@ -69,6 +71,8 @@ def _lock(path):
 
 
 def db(readonly=False):
+    if _connector.get() is not None:
+        raise ValueError("This operation requires a local SQLite file.")
     path = _path()
     if readonly:
         connection = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, factory=Conn, timeout=10)
@@ -82,10 +86,17 @@ def db(readonly=False):
 @contextmanager
 def session_scope(session_id, active_only=True):
     session = get_repository().get_session(session_id, active_only=active_only)
+    adapter = None
+    if session.get("connection_id"):
+        repository = get_repository()
+        encrypted = repository.external_connection(session["connection_id"], session["account_id"])
+        adapter = PostgresConnector(CredentialVault(repository.path).decrypt(encrypted))
     token = _session.set(session)
+    adapter_token = _connector.set(adapter)
     try:
         yield session
     finally:
+        _connector.reset(adapter_token)
         _session.reset(token)
 
 
@@ -148,12 +159,19 @@ def ensure_shop_database(path=None):
 
 
 def visible_tables():
+    if _connector.get() is not None:
+        return [table["name"] for table in _connector.get().schema()]
     with db(readonly=True) as connection:
         names = [row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")]
     return [name for name in names if not (_path() == DEFAULT_DB_PATH.resolve() and name == "preset_answers")]
 
 
 def table_schema(name):
+    if _connector.get() is not None:
+        table = next((table for table in _connector.get().schema() if table["name"] == name), None)
+        if table is None:
+            raise ValueError("Unknown table: " + name)
+        return table
     with db(readonly=True) as connection:
         quoted = quote_identifier(name)
         columns = []
@@ -173,11 +191,17 @@ def table_schema(name):
 
 
 def query_rows(sql, params=()):
+    if _connector.get() is not None:
+        if params:
+            raise ValueError("Use the connector's parameterized query API.")
+        return _connector.get().execute(sql)["rows"]
     with db(readonly=True) as connection:
         return [row_dict(row) for row in connection.execute(sql, params).fetchall()]
 
 
 def execute_sql(sql, operation):
+    if _connector.get() is not None:
+        return _connector.get().execute(sql, operation)
     with db(readonly=(operation == "read")) as connection:
         # Preparation authorizes the actual SQLite operations, including CTEs.
         statement_details(connection, sql)
@@ -192,6 +216,13 @@ def database_info():
     current = _session.get()
     tables = visible_tables()
     path = _path()
+    if _connector.get() is not None:
+        adapter = _connector.get()
+        return {**current, "database": current["database"], "tables": tables, "table_count": len(tables),
+                "source": "postgresql", "dialect": "postgresql", "schema_name": adapter.config["schema_name"],
+                "read_only": adapter.config["read_only"], "table_details": adapter.schema(),
+                "ai": settings.public_ai_settings(), "conversation_context": conversation_context(get_repository().conversation(current["session_id"])),
+                "pending_intent": get_repository().pending_intent(current["session_id"])}
     if path in {DEFAULT_DB_PATH.resolve(), SHOP_DB_PATH.resolve()} or (path.parent == DATABASE_DIRECTORY.resolve() and path.name.startswith("sample-")):
         source = "demo"
     elif path.is_relative_to(UPLOAD_DIRECTORY.resolve()):
@@ -226,6 +257,14 @@ def database_structure():
 
 
 def _sync(session):
+    if _connector.get() is not None:
+        schema = _connector.get().schema(refresh=True)
+        saved = get_repository().sync_schema(session["database_id"], session["path"], schema=schema)
+        by_name = {table["name"]: table for table in schema}
+        for table in saved:
+            table["row_count"] = by_name[table["name"]]["row_count"]
+            table["row_count_estimated"] = True
+        return saved
     excluded = ("preset_answers",) if Path(session["path"]).resolve() == DEFAULT_DB_PATH.resolve() else ()
     return get_repository().sync_schema(session["database_id"], session["path"], exclude_tables=excluded)
 
@@ -259,6 +298,45 @@ def start_session(first_name, last_name, email, path=None, name=None, use_demo=F
         _sync(session)
         with session_scope(session["session_id"]):
             return database_info()
+
+
+def test_postgres_connection(payload):
+    config = connection_config(payload)
+    tables = PostgresConnector(config).schema()
+    return {"connected": True, "provider": "postgresql", "database": config["dbname"],
+            "schema_name": config["schema_name"], "read_only": config["read_only"],
+            "table_count": len(tables), "tables": [table["name"] for table in tables]}
+
+
+def start_postgres_session(account_id, payload):
+    config = connection_config(payload)
+    PostgresConnector(config).schema()  # Verify access before storing a connection.
+    repository = get_repository()
+    encrypted = CredentialVault(repository.path).encrypt(config)
+    session = repository.create_external_session(account_id, config["name"], encrypted)
+    try:
+        with session_scope(session["session_id"]):
+            _sync(session)
+            return database_info()
+    except Exception:
+        repository.end_session(session["session_id"])
+        raise
+
+
+def resume_session(session_id):
+    previous = get_repository().get_session(session_id)
+    if not previous["ended_at"]:
+        with session_scope(session_id):
+            return database_info()
+    if previous.get("connection_id"):
+        repository = get_repository()
+        config = CredentialVault(repository.path).decrypt(repository.external_connection(previous["connection_id"], previous["account_id"]))
+        PostgresConnector(config).schema()
+        result = repository.create_external_session(previous["account_id"], connection_id=previous["connection_id"])
+        with session_scope(result["session_id"]):
+            _sync(result)
+            return database_info()
+    return start_session(previous["first_name"], previous["last_name"], previous["email"], path=previous["path"], name=previous["database"], account_id=previous["account_id"])
 
 
 def create_database_session(first_name, last_name, email, path=None, name=None, starter=True, account_id=None):
@@ -384,6 +462,8 @@ def _prepare_plans(source_plans):
     """Validate untrusted SQL against a throwaway snapshot, without real writes."""
     if not source_plans:
         raise ValueError("No SQL commands were prepared.")
+    if _connector.get() is not None:
+        return _connector.get().prepare_batch(source_plans)
     prepared = []
     with tempfile.TemporaryDirectory(prefix="data-genie-plan-") as directory:
         shadow = Path(directory) / "plan.sqlite3"
@@ -411,6 +491,8 @@ def _prepare_plans(source_plans):
 def _prepare(text, raw_sql):
     """Prepare keyword or SQL-workspace requests through the common safe path."""
     fragments = [text] if raw_sql else keywords.split_requests(text)
+    if _connector.get() is not None:
+        return _prepare_plans(({"sql": fragment, "summary": "Prepared from your request.", "visualization": "table"} if raw_sql else keyword_plan(fragment) for fragment in fragments))
     prepared = []
     with tempfile.TemporaryDirectory(prefix="data-genie-plan-") as directory:
         shadow = Path(directory) / "plan.sqlite3"
@@ -463,6 +545,12 @@ def submit_request(session_id, text, raw_sql=False, interpreter="keywords", sele
         if not raw_sql:
             metadata = keywords.metadata_plan(text, visible_tables())
             if metadata:
+                if _connector.get() is not None:
+                    table = metadata.get("table")
+                    if table:
+                        rows = [{"cid": index, "name": column["name"], "type": column["type"], "notnull": int(column["not_null"]), "dflt_value": column["default"], "pk": column["pk"]} for index, column in enumerate(table_schema(table)["columns"])]
+                        return {"matched": True, "metadata": True, "session_id": session_id, "rows": rows,
+                                "answer": "Columns in " + table + ".", "visualization": "table", "operation": "read", "requires_confirmation": False}
                 sql, operation = validate_sql(metadata["sql"])
                 result = execute_sql(sql, operation)
                 return {**result, "matched": True, "metadata": True, "session_id": session_id,
@@ -485,7 +573,8 @@ def submit_request(session_id, text, raw_sql=False, interpreter="keywords", sele
                 config = settings.gemini_settings()
                 plans = _prepare_plans(gemini_provider.generate_plans(
                     text, [table_schema(name) for name in tables], config["api_key"], config["model"],
-                    selected_table=selected_table, conversation=conversation
+                    selected_table=selected_table, conversation=conversation,
+                    **({"dialect": "postgresql", "schema_name": _connector.get().config["schema_name"], "read_only": _connector.get().config["read_only"]} if _connector.get() else {})
                 ))
             else:
                 plans = _prepare(text, raw_sql)
@@ -536,6 +625,8 @@ def submit_request(session_id, text, raw_sql=False, interpreter="keywords", sele
 
 
 def _query_columns(sql):
+    if _connector.get() is not None:
+        return _connector.get().columns(sql)
     sql, access = validate_sql(sql)
     if access != "read":
         raise ValueError("A conversation follow-up must refer to a read query.")
@@ -545,6 +636,9 @@ def _query_columns(sql):
 
 
 def _read_page(sql, question, offset, limit=50):
+    if _connector.get() is not None:
+        result = _connector.get().execute(query_scope(sql, question), limit=limit, offset=offset)
+        return {"rows": result["rows"], "has_more": result["truncated"]}
     sql, access = validate_sql(query_scope(sql, question))
     if access != "read":
         raise ValueError("Only read results can be browsed.")

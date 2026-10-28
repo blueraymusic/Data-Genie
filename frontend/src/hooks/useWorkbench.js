@@ -94,25 +94,31 @@ export function useWorkbench(user) {
       try {
         const data = resumeId
           ? await api('/api/sessions/resume', { method: 'POST', body: { session_id: resumeId } })
-          : active.current
-            ? await api(
-                payload.database_mode === 'create'
-                  ? '/api/databases'
-                  : payload.database_mode === 'sample'
-                    ? '/api/reset'
-                    : '/api/connect',
-                {
-                  method: 'POST',
-                  sessionId: active.current,
-                  body:
-                    payload.database_mode === 'create'
-                      ? { name: payload.database_name, starter: payload.starter }
-                      : payload.database_mode === 'sample'
-                        ? { sample: true }
-                        : payload,
-                },
-              )
-            : await api('/api/sessions', { method: 'POST', body: payload });
+          : payload.database_mode === 'postgresql'
+            ? await api('/api/sessions', {
+                method: 'POST',
+                sessionId: active.current,
+                body: payload,
+              })
+            : active.current
+              ? await api(
+                  payload.database_mode === 'create'
+                    ? '/api/databases'
+                    : payload.database_mode === 'sample'
+                      ? '/api/reset'
+                      : '/api/connect',
+                  {
+                    method: 'POST',
+                    sessionId: active.current,
+                    body:
+                      payload.database_mode === 'create'
+                        ? { name: payload.database_name, starter: payload.starter }
+                        : payload.database_mode === 'sample'
+                          ? { sample: true }
+                          : payload,
+                  },
+                )
+              : await api('/api/sessions', { method: 'POST', body: payload });
         await adopt(data);
         return data;
       } catch (error) {

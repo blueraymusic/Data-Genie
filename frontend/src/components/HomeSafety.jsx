@@ -10,12 +10,13 @@ export function HomeSafety() {
         <h2 id="safe-h">Safe by default</h2>
         <div className="safe-copy">
           <p>
-            Reads run straight away. Anything that deletes rows or drops a table stops first, shows
-            the SQL, says exactly how many rows it will touch, and waits for you.
+            Reads run straight away. Changes show the SQL for review and wait for your OK. SQLite
+            previews include affected-row counts when available.
           </p>
           <p>
-            Dropping a table also asks you to type its name. If you say no, the request stays in
-            your history and never runs.
+            PostgreSQL connections start read-only. If you enable changes, confirmed edits apply
+            directly to the connected database. Dropping a table also asks you to type its name. If
+            you say no, the request stays in your history and never runs.
           </p>
         </div>
         <div className="safe-grid">

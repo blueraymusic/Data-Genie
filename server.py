@@ -220,20 +220,23 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == "/api/sessions/resume":
                 payload = self.read_json()
                 previous = self.owned_session(payload.get("session_id"), user)
-                if previous["ended_at"]:
-                    result = workbench.start_session(user["first_name"], user["last_name"], user["email"], path=previous["path"], name=previous["database"], account_id=user["account_id"])
-                else:
-                    with workbench.session_scope(previous["session_id"]):
-                        result = workbench.database_info()
+                result = workbench.resume_session(previous["session_id"])
                 return self.json(result)
+            if parsed.path == "/api/connections/test":
+                return self.json(workbench.test_postgres_connection(self.read_json(16 * 1024)))
             if parsed.path == "/api/sessions":
                 payload = self.read_json()
                 # Browser clients choose a file through upload, never an arbitrary server path.
                 identity = (user["first_name"], user["last_name"], user["email"])
                 mode = payload.get("database_mode")
+                previous = self.owned_session(self.headers["X-Session-ID"], user, active_only=True) if mode == "postgresql" and self.headers.get("X-Session-ID") else None
                 if mode is None and payload.get("use_demo") is True:
                     mode = "demo"
-                if mode in {"demo", "sample"}:
+                if mode == "postgresql":
+                    result = workbench.start_postgres_session(user["account_id"], payload)
+                    if previous:
+                        workbench.end_session(previous["session_id"])
+                elif mode in {"demo", "sample"}:
                     result = workbench.start_sample_session(*identity, account_id=user["account_id"])
                 elif mode == "create":
                     result = workbench.create_database_session(*identity, name=payload.get("database_name"), starter=payload.get("starter", False) is True, account_id=user["account_id"])

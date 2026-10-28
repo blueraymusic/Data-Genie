@@ -42,7 +42,9 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
         `count ${quoteIdentifier(selected)}`,
         `show columns from ${quoteIdentifier(selected)}`,
       ]
-    : ['show the structure of the database', 'create a table notes with a body'];
+    : workbench.session.read_only
+      ? ['show the structure of the database']
+      : ['show the structure of the database', 'create a table notes with a body'];
   async function ask(event) {
     event.preventDefault();
     if (!draft.trim() || workbench.busy || workbench.pending) return;
@@ -75,11 +77,17 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
         </p>
         {!workbench.session.tables.length && (
           <p className="empty-inline">
-            This database is empty.{' '}
-            <button type="button" className="text-button" onClick={onNewTable}>
-              Create your first table
-            </button>
-            , or describe the table you need below.
+            {workbench.session.read_only ? (
+              'This schema has no readable tables. Choose another schema, or add a connection with changes enabled.'
+            ) : (
+              <>
+                This database is empty.{' '}
+                <button type="button" className="text-button" onClick={onNewTable}>
+                  Create your first table
+                </button>
+                , or describe the table you need below.
+              </>
+            )}
           </p>
         )}
         <div className="chips">

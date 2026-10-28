@@ -23,7 +23,12 @@ function SchemaTable({ table, sessionId, index }) {
     <div className="tbl" id={'schema-table-' + index}>
       <h3>
         {table.name}
-        <span className="schema-count">· {table.row_count} rows</span>
+        <span className="schema-count">
+          ·{' '}
+          {table.row_count == null
+            ? 'Row count unavailable'
+            : (table.row_count_estimated ? '~ ' : '') + table.row_count.toLocaleString() + ' rows'}
+        </span>
       </h3>
       <div className="tw schema-columns">
         <table>

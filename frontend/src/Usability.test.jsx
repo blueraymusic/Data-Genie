@@ -5,6 +5,7 @@ import { ResultTable } from './components/ResultTable';
 import { Confirmation, ResultOutput, Translation } from './components/CommandResult';
 import { exportRows, sortedRows } from './lib/resultData';
 import AskPage from './pages/AskPage';
+import { DatabaseForm } from './components/DatabaseForm';
 
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
@@ -13,6 +14,51 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+});
+
+it('connects PostgreSQL with credentials masked and changes disabled by default', async () => {
+  const events = userEvent.setup(),
+    open = vi.fn().mockResolvedValue();
+  render(<DatabaseForm onOpen={open} />);
+  await events.click(screen.getByRole('radio', { name: /PostgreSQL/ }));
+  const input = screen.getByLabelText('PostgreSQL connection URL');
+  expect(input.getAttribute('type')).toBe('password');
+  expect(screen.getByLabelText('Allow changes after I confirm them').checked).toBe(false);
+  await events.type(input, 'postgresql://user:fixture-password@localhost/shop');
+  await events.click(screen.getByRole('button', { name: 'Connect PostgreSQL', exact: true }));
+  expect(open).toHaveBeenCalledWith({
+    database_mode: 'postgresql',
+    database_name: '',
+    connection_url: 'postgresql://user:fixture-password@localhost/shop',
+    schema_name: 'public',
+    allow_changes: false,
+  });
+  expect(input.value).toBe('');
+});
+
+it('tests a PostgreSQL connection and clears stale connection feedback after edits', async () => {
+  const events = userEvent.setup();
+  fetch.mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      connected: true,
+      database: 'shop',
+      schema_name: 'public',
+      table_count: 2,
+    }),
+  });
+  render(<DatabaseForm onOpen={vi.fn()} />);
+  await events.click(screen.getByRole('radio', { name: /PostgreSQL/ }));
+  await events.type(
+    screen.getByLabelText('PostgreSQL connection URL'),
+    'postgresql://user:fixture-password@localhost/shop',
+  );
+  await events.click(screen.getByRole('button', { name: 'Test connection', exact: true }));
+  expect(await screen.findByText('Connected to shop · public · 2 tables')).toBeTruthy();
+  expect(fetch.mock.calls[0][0]).toBe('/api/connections/test');
+  await events.type(screen.getByLabelText('Schema'), 'other');
+  expect(screen.queryByText('Connected to shop · public · 2 tables')).toBeNull();
 });
 
 it('accepts a numeric clarification answer and keeps the original goal visible', async () => {

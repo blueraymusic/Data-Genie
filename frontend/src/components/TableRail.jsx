@@ -28,7 +28,13 @@ export function TableRail({
   return (
     <aside className={'side' + (open ? ' open' : '')} id="tableRail">
       <div className="rail-heading">
-        <span>{session.source === 'demo' ? 'Sample database' : 'Database'}</span>
+        <span>
+          {session.source === 'demo'
+            ? 'Sample database'
+            : session.source === 'postgresql'
+              ? 'PostgreSQL'
+              : 'Database'}
+        </span>
         <button className="text-button" onClick={() => onNavigate('connect')}>
           Change
         </button>
@@ -38,6 +44,11 @@ export function TableRail({
         <span className="dot" />
         Connected · {session.tables.length} {session.tables.length === 1 ? 'table' : 'tables'}
       </p>
+      {session.source === 'postgresql' && (
+        <p className="small muted">
+          {session.schema_name} · {session.read_only ? 'Read-only' : 'Changes need confirmation'}
+        </p>
+      )}
       <label className="sr-only" htmlFor="tableSearch">
         Search tables and columns
       </label>
@@ -73,7 +84,14 @@ export function TableRail({
               aria-current={selected === table.name ? 'true' : undefined}
             >
               {table.name}
-              <span className="row-count">{table.row_count}</span>
+              <span
+                className="row-count"
+                title={table.row_count_estimated ? 'Estimated row count' : 'Row count'}
+              >
+                {table.row_count == null
+                  ? '—'
+                  : (table.row_count_estimated ? '~ ' : '') + table.row_count.toLocaleString()}
+              </span>
             </summary>
             <div className="rail-columns">
               {table.columns.map((column) => (

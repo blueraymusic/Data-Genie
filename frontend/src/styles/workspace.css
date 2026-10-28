@@ -239,6 +239,8 @@
   flex-direction: column;
 }
 .workspace-page .top {
+  position: relative;
+  z-index: 40;
   min-height: 64px;
   flex: none;
   display: flex;
@@ -317,6 +319,9 @@
   top: 44px;
   z-index: 25;
   min-width: 232px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 80px);
+  overflow-y: auto;
   padding: 6px;
   background: var(--paper);
   border: 1px solid var(--rule);
@@ -341,6 +346,7 @@
   background: var(--lapis-wash);
 }
 .workspace-page .dashboard-body {
+  isolation: isolate;
   flex: 1;
   min-height: 0;
   display: grid;
@@ -468,6 +474,17 @@
   border-bottom: 1px solid var(--rule);
   color: var(--ink-soft);
   font-size: 12px;
+}
+.workspace-page .workspace-section-label {
+  padding-right: 24px;
+  border-right: 1px solid var(--rule);
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: default;
 }
 .workspace-page .view-tabs {
   display: flex;
@@ -1624,7 +1641,7 @@
     padding: 0 16px;
     gap: 12px;
   }
-  .workspace-page .workspace-toolbar > span {
+  .workspace-page .workspace-section-label {
     display: none;
   }
   .workspace-page .content {

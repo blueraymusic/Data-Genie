@@ -50,7 +50,7 @@ export default function SqlPage({ workbench, selected, draft, setDraft, onNewTab
           <button
             className="btn"
             type="button"
-            disabled={workbench.busy || workbench.pending}
+            disabled={workbench.busy || workbench.pending || workbench.session.read_only}
             onClick={onNewTable}
           >
             Create a table

@@ -86,7 +86,7 @@ def _text(response):
         raise GeminiError("Gemini did not return a usable SQL plan. Please rephrase your request.") from exc
 
 
-def generate_plans(question, tables, api_key, model, selected_table=None, conversation=None):
+def generate_plans(question, tables, api_key, model, selected_table=None, conversation=None, dialect="sqlite", schema_name=None, read_only=False):
     """Return a small, JSON-only SQL plan. SQL still undergoes local validation."""
     validate_request(question, has_context=bool(conversation), allow_short_reply=awaiting_answer(conversation))
     if not api_key:
@@ -119,13 +119,13 @@ def generate_plans(question, tables, api_key, model, selected_table=None, conver
             }
         },
     }
-    instruction = """You are Data Genie's SQLite planner. Return only JSON matching the response schema. Never claim a command has executed.
+    instruction = """You are Data Genie's database planner. Use the dialect and schema in database_context. Return only JSON matching the response schema. Never claim a command has executed.
 
 Interpret the current message using the structured database context and task.original_request. The original request and subsequent user answers define the goal; assistant questions and assumptions do not change it. Short replies refine that goal, keeping known details. Set continues_task true for such replies; only an explicit new task replaces the goal. Prefer explicit table names, then selected-table context. Resolve pronouns from the latest successful result or schema change. Ask if targets conflict. Pending, declined and failed commands have not executed.
 
-Use the supplied schema. Prepare SELECT, INSERT, UPDATE, DELETE, REPLACE, CREATE or ALTER/DROP TABLE statements. New tables or columns must be requested. No PRAGMA, ATTACH, DETACH, VACUUM, transactions, system catalogs or placeholder SELECTs. Preserve joins, filters and explicit limits; remove an automatic LIMIT 50 when refining results. Only replace filters the user asks to change.
+Use the supplied schema. Prepare SELECT, INSERT, UPDATE, DELETE, REPLACE, CREATE or ALTER/DROP TABLE statements supported by its dialect. On read_only connections prepare SELECTs only. New tables or columns must be requested. No PRAGMA, ATTACH, DETACH, VACUUM, transactions, system catalogs or placeholder SELECTs. Preserve joins, filters and explicit limits; remove an automatic LIMIT 50 when refining results. Only replace filters the user asks to change.
 
-Explicit requests for random, sample, mock or test data permit generating fictitious values, never fabricated query results. Default to five new sample rows per target table when no count is specified, preserving existing records. Generate required fields consistently with requested types, defaults and constraints. Let SQLite assign INTEGER PRIMARY KEY values; derive other unused keys and resolve foreign keys through SQL. Ask only when the intended targets or changes remain unclear.
+Explicit requests for random, sample, mock or test data permit generating fictitious values, never fabricated query results. Default to five new sample rows per target table when no count is specified, preserving existing records. Generate required fields consistently with requested types, defaults and constraints. Respect the dialect's generated-key defaults rather than guessing IDs; derive other unused keys and resolve foreign keys through SQL. Ask only when the intended targets or changes remain unclear.
 
 Every write needs application confirmation; conversational agreement never authorizes execution. If details are missing, return needs_clarification with no commands, one focused question, a concise cumulative intent, and up to four relevant labeled answers. Do not demand exact values the user asked to generate or offer unrelated shortcuts. Otherwise return ready, empty clarification/intent/choices, and one to four commands, one statement each.
 
@@ -140,6 +140,7 @@ Use table visualization by default; bar requires label/value aliases and line re
                 fact["result"] = {key: original["result"][key] for key in ("type", "message") if key in original["result"]}
         history.append(facts)
     context = {
+        "dialect": dialect, "schema_name": schema_name, "read_only": bool(read_only),
         "task": {"original_request": pending_task(conversation or [])},
         "selected_table": selected_table,
         "schema": _schema_for_prompt(tables),

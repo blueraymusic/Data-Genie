@@ -1,0 +1,4 @@
+# Optional external database support; the SQLite app needs only Python's stdlib.
+psycopg[binary]==3.3.6
+sqlglot==30.25.0
+cryptography==49.0.0
