@@ -67,6 +67,8 @@ def validate_sql(sql):
 
 
 def json_value(value):
+    if isinstance(value, int) and not isinstance(value, bool) and abs(value) > 9007199254740991:
+        return str(value)
     if isinstance(value, bytes):
         return {"type": "blob", "encoding": "base64", "data": base64.b64encode(value).decode("ascii"), "size": len(value)}
     if isinstance(value, float) and not math.isfinite(value):
@@ -75,7 +77,22 @@ def json_value(value):
 
 
 def row_dict(row):
-    return {key: json_value(row[key]) for key in row.keys()}
+    return {key: json_value(row[index]) for index, key in enumerate(unique_columns(row.keys()))}
+
+
+def unique_columns(names):
+    """Keep every selected value when a join returns repeated column labels."""
+    names = list(names)
+    result, used = [], set()
+    originals = set(names)
+    for name in names:
+        label, suffix = name, 2
+        while label in used or (label != name and label in originals):
+            label = f"{name}_{suffix}"
+            suffix += 1
+        result.append(label)
+        used.add(label)
+    return result
 
 
 def statement_details(connection, sql):

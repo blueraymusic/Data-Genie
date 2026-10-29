@@ -1,11 +1,59 @@
 /* Shared refinements: fewer competing controls, clearer answers. */
+.workspace-page .personal-content {
+  width: 100%;
+  max-width: 1120px;
+  align-self: center;
+}
+.workspace-page .account-gate {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.workspace-page .gate-account-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.workspace-page .saved-database-entry {
+  margin-bottom: 8px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--paper);
+}
+.workspace-page .saved-database-entry .saved-database {
+  width: 100%;
+  border: 0;
+  padding: 16px;
+}
+.workspace-page .saved-database[aria-current='true'] {
+  opacity: 1;
+  cursor: default;
+  background: var(--lapis-wash);
+}
+.workspace-page .saved-database-error {
+  padding: 12px 16px;
+  color: var(--ink);
+  background: var(--paper);
+  border-left: 2px solid var(--remove);
+}
+.workspace-page .saved-database-error p + p {
+  margin-top: 8px;
+}
+.workspace-page .saved-database-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
 .home-page .top,
+.faq-page .top,
 .workspace-page .top {
   background: color-mix(in srgb, var(--chalk) 92%, transparent);
   backdrop-filter: blur(16px);
 }
 .home-page .hero {
-  padding-top: 36px;
+  padding-top: 60px;
 }
 .home-page .hero-intro {
   display: grid;
@@ -14,8 +62,15 @@
   align-items: center;
 }
 .home-page .hero h1 {
-  font-size: clamp(38px, 4.3vw, 54px);
+  font-size: clamp(42px, 4.7vw, 64px);
   max-width: 19ch;
+}
+.home-page .hero-heading .eyebrow {
+  margin-bottom: 18px;
+}
+.home-page .hero h1 em {
+  color: var(--lapis);
+  font-weight: inherit;
 }
 .home-page .lede,
 .workspace-page .lead {
@@ -24,25 +79,25 @@
   line-height: 26px;
 }
 .home-page .hero .lede {
-  font-size: 16px;
-  line-height: 26px;
+  font-size: 18px;
+  line-height: 29px;
   margin-top: 0;
 }
 .home-page .cta-row {
   margin-top: 20px;
 }
 .home-page .hero-hint {
-  margin-top: 12px;
+  margin-top: 16px;
   color: var(--ink-soft);
   font-size: 12px;
   line-height: 20px;
 }
 .home-page .stage {
-  margin-top: 28px;
+  margin-top: 40px;
   scroll-margin-top: 84px;
 }
 .home-page .stage-body {
-  padding: 20px;
+  padding: 28px 24px;
   min-height: 0;
 }
 .home-page .tx .result {
@@ -91,11 +146,10 @@
   padding-bottom: 16px;
 }
 .workspace-page .request-panel {
-  background: transparent;
-  border-color: transparent;
-  border-left-color: var(--rule);
-  border-radius: 0;
-  padding-left: 16px;
+  background: color-mix(in srgb, var(--paper) 58%, var(--chalk));
+  border-color: var(--rule);
+  border-radius: 12px;
+  padding: 20px;
 }
 .workspace-page .exchange-results {
   position: relative;
@@ -103,18 +157,16 @@
   border-color: color-mix(in srgb, var(--lapis) 24%, var(--rule));
 }
 .workspace-page .exchange {
-  padding-top: 16px;
-  padding-bottom: 16px;
+  padding-top: 28px;
+  padding-bottom: 28px;
 }
 .workspace-page .exchange-results > .exchange-label {
-  padding-right: 185px;
+  padding-right: 0;
   margin-bottom: 12px;
 }
 .workspace-page .result-tools.compact-tools {
-  position: absolute;
-  top: 8px;
-  right: 18px;
-  margin: 0;
+  justify-content: flex-end;
+  margin: 0 0 12px;
 }
 .workspace-page .saved-result {
   font-size: 11px;
@@ -126,8 +178,7 @@
   display: none;
 }
 .workspace-page .exchange-margin {
-  font-size: 11px;
-  opacity: 0.82;
+  font-size: 12px;
 }
 .workspace-page .exchange-label {
   letter-spacing: 0.04em;
@@ -160,6 +211,17 @@
 .workspace-page .tw td,
 .workspace-page .tw th {
   font-family: var(--sans);
+}
+.workspace-page .tw th {
+  font-size: 12px;
+  background: color-mix(in srgb, var(--lapis-wash) 30%, var(--paper));
+}
+.workspace-page .tw td {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.workspace-page .tw tbody tr:hover td {
+  background: var(--lapis-wash);
 }
 .workspace-page .exchange-results .tw {
   max-height: min(340px, 40dvh);
@@ -287,6 +349,42 @@
   color: var(--lapis);
   text-align: left;
 }
+.workspace-page .chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.workspace-page .chips button {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 16px;
+  border-radius: 12px;
+  color: var(--ink);
+}
+.workspace-page .chips button > .ic {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--lapis);
+}
+.workspace-page .chips button > span {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.workspace-page .chips strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.workspace-page .chips button span span {
+  color: var(--ink-soft);
+  font: 400 12px/20px var(--sans);
+  overflow-wrap: anywhere;
+}
+.workspace-page .chips .suggestion-arrow {
+  width: 14px;
+  margin-left: auto;
+}
 .workspace-page .chips button:hover,
 .workspace-page .clarification-suggestions button:hover {
   border-color: var(--lapis);
@@ -298,6 +396,9 @@
   }
   .home-page .tx .result {
     margin-top: 8px;
+  }
+  .workspace-page .chips {
+    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 850px) {
@@ -326,17 +427,20 @@
     padding: 0;
     font-size: 22px;
   }
+  .workspace-page .connection-summary .add-table {
+    display: inline-flex;
+  }
 }
 @media (max-width: 700px) {
   .home-page .hero {
-    padding-top: 28px;
+    padding-top: 36px;
   }
   .home-page .hero-intro {
     grid-template-columns: minmax(0, 1fr);
     gap: 18px;
   }
   .home-page .hero h1 {
-    font-size: 40px;
+    font-size: clamp(40px, 10.5vw, 52px);
     max-width: 19ch;
   }
   .home-page .cta-row {
@@ -351,6 +455,9 @@
   .home-page .stage-top {
     padding: 12px;
     font-size: 11px;
+  }
+  .home-page .stage-caption > span {
+    display: none;
   }
 }
 @media (max-width: 620px) {
@@ -368,7 +475,7 @@
     gap: 16px;
   }
   .workspace-page .result-tools button {
-    min-height: 36px;
+    min-height: 44px;
   }
   .workspace-page .result-heading h3 {
     font-size: 17px;
@@ -382,6 +489,12 @@
   }
   .workspace-page .composer {
     padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .workspace-page .chips button {
+    padding: 14px;
+  }
+  .workspace-page .chips button > span {
+    gap: 3px;
   }
 }
 .workspace-page .database-modes {

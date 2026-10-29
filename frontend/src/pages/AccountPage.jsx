@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { Link } from '../lib/router';
 export default function AccountPage({ workbench, mode, setMode }) {
   const { user, changePassword } = useAuth(),
     { theme, toggle } = useTheme();
@@ -34,7 +35,7 @@ export default function AccountPage({ workbench, mode, setMode }) {
       <div className="account-ledger">
         <p>
           <span>Name</span>
-          <strong>
+          <strong style={{ textTransform: 'capitalize' }}>
             {user.first_name} {user.last_name}
           </strong>
         </p>
@@ -45,42 +46,60 @@ export default function AccountPage({ workbench, mode, setMode }) {
         <p>
           <span>Appearance</span>
           <button className="btn" onClick={toggle}>
-            Change theme · {theme}
+            <strong style= {{ textTransform: 'capitalize' }}>
+              {theme} 
+            </strong>
           </button>
         </p>
-        <p>
-          <span>Request interpretation</span>
-          <label className="sr-only" htmlFor="requestMode">
-            Request interpretation
-          </label>
-          <select id="requestMode" value={mode} onChange={(event) => setMode(event.target.value)}>
-            <option value="gemini" disabled={!workbench.session.ai?.enabled}>
-              Gemini AI
-            </option>
-            <option value="keywords">Keywords</option>
-          </select>
-        </p>
-        {workbench.session.source === 'postgresql' ? (
-          <p>
-            <span>PostgreSQL access</span>
-            <strong>
-              {workbench.session.read_only ? 'Read-only' : 'Changes require confirmation'}
-            </strong>
-          </p>
-        ) : (
-          <p>
-            <span>Database copy</span>
-            <a
-              className="btn"
-              href={'/api/download?session_id=' + encodeURIComponent(workbench.session.session_id)}
-              download
-            >
-              Download SQLite file
-            </a>
-          </p>
+        {workbench.session && (
+          <>
+            <p>
+              <span>Request interpretation</span>
+              <label className="sr-only" htmlFor="requestMode">
+                Request interpretation
+              </label>
+              <select
+                id="requestMode"
+                value={mode}
+                onChange={(event) => setMode(event.target.value)}
+              >
+                <option value="gemini" disabled={!workbench.session.ai?.enabled}>
+                  Gemini AI
+                </option>
+                <option value="keywords">Keywords</option>
+              </select>
+            </p>
+            {workbench.session.source === 'postgresql' ? (
+              <p>
+                <span>PostgreSQL access</span>
+                <strong>
+                  {workbench.session.read_only ? 'Read-only' : 'Changes require confirmation'}
+                </strong>
+              </p>
+            ) : (
+              <p>
+                <span>Database copy</span>
+                <a
+                  className="btn"
+                  href={
+                    '/api/download?session_id=' + encodeURIComponent(workbench.session.session_id)
+                  }
+                  download
+                >
+                  Download SQLite file
+                </a>
+              </p>
+            )}
+          </>
         )}
       </div>
-      {workbench.session.source === 'postgresql' && (
+      {!workbench.session && (
+        <p className="small muted">
+          <Link href="/databases">Choose a database</Link> to change request interpretation or
+          export a SQLite file.
+        </p>
+      )}
+      {workbench.session?.source === 'postgresql' && (
         <p className="small muted">
           Confirmed edits are saved directly in the connected PostgreSQL database when changes are
           enabled. Use Download CSV on a result to save a copy of its shown rows.

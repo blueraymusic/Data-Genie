@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { encodeDatabase } from '../lib/api';
 import { PostgresConnectionFields } from './PostgresConnectionFields';
-export function DatabaseForm({ onOpen, busy = false }) {
-  const [mode, setMode] = useState('create'),
+import { Icon } from './Icon';
+export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
+  const form = useRef(null);
+  const [mode, setMode] = useState(initialMode),
     [file, setFile] = useState(null),
     [name, setName] = useState('my_database.sqlite3'),
     [starter, setStarter] = useState(false),
@@ -14,6 +16,9 @@ export function DatabaseForm({ onOpen, busy = false }) {
       schema_name: 'public',
       allow_changes: false,
     });
+  useEffect(() => {
+    if (initialMode === 'postgresql') form.current?.querySelector('#postgresUrl')?.focus();
+  }, [initialMode]);
   async function submit(event) {
     event.preventDefault();
     setError('');
@@ -35,6 +40,8 @@ export function DatabaseForm({ onOpen, busy = false }) {
   }
   return (
     <form
+      className="database-form"
+      ref={form}
       onSubmit={submit}
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
@@ -49,11 +56,11 @@ export function DatabaseForm({ onOpen, busy = false }) {
         <legend>Choose your database</legend>
         <div className="database-modes">
           {[
-            ['create', 'Create new', 'Start empty'],
-            ['upload', 'Upload SQLite', 'Your existing file'],
-            ['sample', 'Try the sample', 'Explore safely'],
-            ['postgresql', 'PostgreSQL', 'Connect a live database'],
-          ].map(([value, label, hint]) => (
+            ['create', 'Create new', 'Start empty', 'plus'],
+            ['upload', 'Upload SQLite', 'Your existing file', 'upload'],
+            ['sample', 'Try the sample', 'Explore safely', 'layers'],
+            ['postgresql', 'PostgreSQL', 'Connect a live database', 'database'],
+          ].map(([value, label, hint, icon]) => (
             <label key={value}>
               <input
                 type="radio"
@@ -65,6 +72,7 @@ export function DatabaseForm({ onOpen, busy = false }) {
                   setError('');
                 }}
               />
+              <Icon name={icon} />
               <span>
                 <b>{label}</b>
                 <small>{hint}</small>

@@ -10,6 +10,7 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import threading
+import time
 import uuid
 
 import keywords
@@ -18,7 +19,7 @@ from request_validation import RequestClarification, validate_request, awaiting_
 from request_context import contextual_read, recovery_choices
 from conversation import followup_plan, query_scope, conversation_context, describe_read, pending_task
 import settings
-from connections import PostgresConnector, connection_config, CredentialVault
+from connections import PostgresConnector, connection_config, CredentialVault, ConnectionFailure
 from database_files import create_database_file, database_filename
 from repository import Repository, RepositoryError
 from sql_tools import execute, quote_identifier, row_dict, statement_details, validate_sql
@@ -31,6 +32,7 @@ UPLOAD_DIRECTORY = ROOT / "db" / "uploads"
 DATABASE_DIRECTORY = ROOT / "db" / "databases"
 SHOP_DB_PATH = ROOT / "db" / "shop_sample.sqlite3"
 MAX_DATABASE_BYTES = 25 * 1024 * 1024
+SQLITE_QUERY_TIMEOUT = 5
 # Fallbacks support low-level helpers in tests and scripts without a session.
 ACTIVE_DB_PATH = DEFAULT_DB_PATH
 ACTIVE_DB_NAME = "sales_db.sqlite3"
@@ -45,11 +47,23 @@ _database_locks = {}
 
 
 class Conn(sqlite3.Connection):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._deadline = time.monotonic() + SQLITE_QUERY_TIMEOUT
+        self.set_progress_handler(lambda: int(time.monotonic() > self._deadline), 10000)
+
+    def execute(self, *args, **kwargs):
+        self._deadline = time.monotonic() + SQLITE_QUERY_TIMEOUT
+        return super().execute(*args, **kwargs)
+
     def __exit__(self, *exc):
         try:
-            return super().__exit__(*exc)
+            result = super().__exit__(*exc)
         finally:
             self.close()
+        if isinstance(exc[1], sqlite3.OperationalError) and str(exc[1]) == "interrupted":
+            raise ValueError("The SQLite query timed out. Try a smaller request.") from None
+        return result
 
 
 def get_repository():
@@ -88,9 +102,7 @@ def session_scope(session_id, active_only=True):
     session = get_repository().get_session(session_id, active_only=active_only)
     adapter = None
     if session.get("connection_id"):
-        repository = get_repository()
-        encrypted = repository.external_connection(session["connection_id"], session["account_id"])
-        adapter = PostgresConnector(CredentialVault(repository.path).decrypt(encrypted))
+        adapter = PostgresConnector(_saved_postgres_config(session))
     token = _session.set(session)
     adapter_token = _connector.set(adapter)
     try:
@@ -98,6 +110,16 @@ def session_scope(session_id, active_only=True):
     finally:
         _connector.reset(adapter_token)
         _session.reset(token)
+
+
+def _saved_postgres_config(session):
+    repository = get_repository()
+    try:
+        encrypted = repository.external_connection(session["connection_id"], session["account_id"])
+    except RepositoryError:
+        raise ConnectionFailure("The saved PostgreSQL connection details are missing. Enter them again to reconnect. Your history is still saved.",
+                                "connection_missing", "reconnect", 409) from None
+    return CredentialVault(repository.path).decrypt(encrypted)
 
 
 @contextmanager
@@ -330,12 +352,16 @@ def resume_session(session_id):
             return database_info()
     if previous.get("connection_id"):
         repository = get_repository()
-        config = CredentialVault(repository.path).decrypt(repository.external_connection(previous["connection_id"], previous["account_id"]))
+        config = _saved_postgres_config(previous)
         PostgresConnector(config).schema()
         result = repository.create_external_session(previous["account_id"], connection_id=previous["connection_id"])
-        with session_scope(result["session_id"]):
-            _sync(result)
-            return database_info()
+        try:
+            with session_scope(result["session_id"]):
+                _sync(result)
+                return database_info()
+        except Exception:
+            repository.end_session(result["session_id"])
+            raise
     return start_session(previous["first_name"], previous["last_name"], previous["email"], path=previous["path"], name=previous["database"], account_id=previous["account_id"])
 
 
@@ -380,7 +406,7 @@ def schema_for_session(session_id):
         return {"session_id": session_id, "database": session["database"], "tables": tables}
 
 
-def history_for_session(session_id, search="", operation=None, history_session_id=None):
+def history_for_session(session_id, search="", operation=None, history_session_id=None, refresh_pending=True):
     repository = get_repository()
     current = repository.get_session(session_id)
     target_id = history_session_id or session_id
@@ -391,20 +417,25 @@ def history_for_session(session_id, search="", operation=None, history_session_i
         raise ValueError("That history belongs to a different account.")
     requests = repository.history(target_id, search=search, operation=operation)
     # A restored confirmation must show a fresh preview, including after reload.
-    if target_id == session_id and current["ended_at"] is None:
-        with session_scope(session_id), _lock(current["path"]):
-            tables = visible_tables()
-            for request in requests:
-                pending = [command for command in request["commands"] if command["status"] == "pending" and command["requires_confirmation"]]
-                if not pending:
-                    continue
-                try:
-                    plans = _prepare_plans([{"sql": command["sql"]} for command in pending])
-                    for command, plan in zip(pending, plans):
-                        command["preview"] = plan.get("preview")
-                except (ValueError, sqlite3.Error) as exc:
-                    for command in pending:
-                        command["preview_error"] = "The database changed. Decline this request and prepare it again. " + str(exc)
+    pending_commands = [command for request in requests for command in request["commands"]
+                        if command["status"] == "pending" and command["requires_confirmation"]]
+    if refresh_pending and pending_commands and target_id == session_id and current["ended_at"] is None:
+        try:
+            with session_scope(session_id), _lock(current["path"]):
+                for request in requests:
+                    pending = [command for command in request["commands"] if command["status"] == "pending" and command["requires_confirmation"]]
+                    if not pending:
+                        continue
+                    try:
+                        plans = _prepare_plans([{"sql": command["sql"]} for command in pending])
+                        for command, plan in zip(pending, plans):
+                            command["preview"] = plan.get("preview")
+                    except (ValueError, sqlite3.Error) as exc:
+                        for command in pending:
+                            command["preview_error"] = "The database changed. Decline this request and prepare it again. " + str(exc)
+        except (ValueError, sqlite3.Error) as exc:
+            for command in pending_commands:
+                command["preview_error"] = "The preview could not be refreshed. Reconnect before confirming. " + str(exc)
     return requests
 
 
@@ -444,7 +475,10 @@ def _run_command(session_id, command_id, token=None, summary=None, visualization
         response.update(status="executed", requires_confirmation=False, schema_changed=command["kind"] == "DDL")
         response["message"] = f"{result['changes']} row(s) affected." if response["operation"] == "write" else f"{len(result['rows'])} row(s) returned."
         if command["kind"] == "DDL":
-            _sync(_session.get())
+            try:
+                _sync(_session.get())
+            except (ValueError, sqlite3.Error, OSError):
+                response["schema_warning"] = "The change was applied, but the structure could not be refreshed. Refresh Structure after reconnecting."
         result_type = "summary" if command.get("has_aggregation") else "table" if response["operation"] == "read" or result["rows"] else "message"
         response["result_type"] = result_type
         if command["kind"] == "DDL":

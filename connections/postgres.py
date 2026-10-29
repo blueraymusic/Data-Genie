@@ -8,10 +8,18 @@ import logging
 from urllib.parse import parse_qsl, unquote, urlsplit
 from uuid import UUID
 
-from sql_tools import json_value, tokens, main_verb
+from sql_tools import json_value, tokens, main_verb, unique_columns
+from .errors import ConnectionFailure, missing_postgres_support
 
 
 SSL_MODES = {"disable", "require", "verify-full"}
+
+
+def _result_row(cursor):
+    names = unique_columns([column.name for column in cursor.description or []])
+    return lambda values: dict(zip(names, values))
+
+
 SAFE_FUNCTIONS = {
     "ABS", "AVG", "COUNT", "SUM", "MIN", "MAX", "ROUND", "FLOOR", "CEIL", "CEILING",
     "COALESCE", "NULLIF", "CAST", "TRY_CAST", "CASE", "IF", "LOWER", "UPPER", "LENGTH",
@@ -125,7 +133,7 @@ class PostgresConnector:
             import psycopg
             from psycopg.rows import dict_row
         except ImportError:
-            raise ValueError("Install PostgreSQL support: pip install -r requirements-postgres.txt") from None
+            raise missing_postgres_support() from None
         parameters = {key: self.config[key] for key in ("host", "port", "user", "password", "dbname", "sslmode")}
         parameters["channel_binding"] = self.config.get("channel_binding", "prefer")
         if self.config["sslmode"] == "verify-full":
@@ -139,6 +147,10 @@ class PostgresConnector:
                 yield connection
         except psycopg.Error as exc:
             code = exc.sqlstate or ""
+            if code in {"28P01", "28000", "3D000"}:
+                message = ("PostgreSQL rejected the saved login details. Enter the connection details again."
+                           if code != "3D000" else "The saved PostgreSQL database no longer exists. Check its connection details.")
+                raise ConnectionFailure(message, "postgres_credentials_invalid", "reconnect", 409) from None
             messages = {"28P01": "PostgreSQL rejected the username or password.",
                         "3D000": "The PostgreSQL database does not exist.",
                         "42501": "The PostgreSQL user does not have permission for this operation.",
@@ -148,7 +160,13 @@ class PostgresConnector:
             message = messages.get(code)
             if not message and code.startswith(("22", "23", "42")):
                 message = str(getattr(exc.diag, "message_primary", "") or "The SQL could not be executed.")[:300]
-            raise ValueError(message or "Could not reach PostgreSQL. Check the host, port, credentials, and SSL setting.") from None
+            if message:
+                raise ValueError(message) from None
+            raise ConnectionFailure(
+                "Could not reach PostgreSQL. Make sure its server is running and the host, port, and SSL settings are correct, "
+                "then try again. Your saved connection has not been removed.",
+                "postgres_unavailable",
+            ) from None
 
     def schema(self, refresh=False):
         if self._schema is not None and not refresh:
@@ -156,7 +174,8 @@ class PostgresConnector:
         namespace = self.config["schema_name"]
         with self.connection() as connection:
             if not connection.execute("SELECT 1 FROM pg_catalog.pg_namespace WHERE nspname=%s AND pg_catalog.has_schema_privilege(oid,'USAGE')", (namespace,)).fetchone():
-                raise ValueError("That PostgreSQL schema does not exist or is not accessible.")
+                raise ConnectionFailure("That PostgreSQL schema does not exist or is not accessible. Check the connection details.",
+                                        "postgres_schema_unavailable", "reconnect", 409)
             records = connection.execute("""
                 SELECT c.oid,c.relname,a.attnum,a.attname,pg_catalog.format_type(a.atttypid,a.atttypmod) AS data_type,
                        a.attnotnull,a.attidentity,pg_catalog.pg_get_expr(d.adbin,d.adrelid) AS column_default,
@@ -222,7 +241,7 @@ class PostgresConnector:
             from sqlglot import exp
             from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
         except ImportError:
-            raise ValueError("Install PostgreSQL support: pip install -r requirements-postgres.txt") from None
+            raise missing_postgres_support() from None
         # Unsupported-syntax warnings include raw SQL and may contain private literals.
         logging.getLogger("sqlglot").setLevel(logging.ERROR)
         try:
@@ -362,8 +381,9 @@ class PostgresConnector:
             # are rendered here; SQL percent literals must never become DB-API placeholders.
             statement = f"SELECT * FROM ({statement}) AS result_page LIMIT {limit + 1} OFFSET {offset or 0}"
         with self.connection(read_only=operation == "read") as connection:
-            cursor = connection.execute(statement)
-            columns = [item.name for item in cursor.description] if cursor.description else []
+            cursor = connection.cursor(row_factory=_result_row)
+            cursor.execute(statement)
+            columns = unique_columns([item.name for item in cursor.description]) if cursor.description else []
             fetched = cursor.fetchmany(limit + 1) if cursor.description else []
             changes = max(cursor.rowcount, 0) if operation == "write" else 0
             # Never leave a RETURNING cursor active when a confirmed transaction commits.

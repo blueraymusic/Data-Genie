@@ -12,6 +12,7 @@ export default function AuthPage() {
   useEffect(() => {
     document.title = (signup ? 'Sign up' : 'Log in') + ' | Data Genie';
     setError('');
+    setShow(false);
   }, [signup]);
   async function submit(event) {
     event.preventDefault();

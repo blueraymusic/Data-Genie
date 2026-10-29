@@ -42,8 +42,8 @@
 }
 .workspace-page h1 {
   margin: 0 0 12px;
-  font-size: 36px;
-  line-height: 42px;
+  font-size: 40px;
+  line-height: 46px;
   letter-spacing: -0.4px;
 }
 .workspace-page h2 {
@@ -145,9 +145,9 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 40px;
+  min-height: 44px;
   border: 1px solid var(--rule);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 9px 15px;
   background: var(--paper);
   color: var(--ink);
@@ -186,8 +186,8 @@
 .workspace-page .icon-button {
   display: inline-grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 0;
   border-radius: 6px;
@@ -212,15 +212,25 @@
 .workspace-page select,
 .workspace-page textarea {
   width: 100%;
+  min-height: 44px;
+  min-width: 0;
   border: 1px solid var(--rule);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--paper);
   padding: 10px 12px;
 }
 .workspace-page input::placeholder,
 .workspace-page textarea::placeholder {
   color: var(--ink-soft);
-  opacity: 0.8;
+  opacity: 1;
+}
+.workspace-page input:focus-visible,
+.workspace-page select:focus-visible,
+.workspace-page textarea:focus-visible {
+  border-color: var(--lapis);
+}
+.workspace-page .err:empty {
+  display: none;
 }
 .workspace-page input[type='checkbox'],
 .workspace-page input[type='radio'] {
@@ -301,8 +311,8 @@
 .workspace-page .user-menu {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   padding: 0;
   border: 1px solid var(--rule);
   border-radius: 50%;
@@ -359,6 +369,32 @@
   overflow: auto;
   padding: 24px 20px;
   border-right: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--paper) 30%, var(--chalk));
+}
+.workspace-page .rail-connection {
+  padding: 14px;
+  margin: -6px -6px 20px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--paper);
+}
+.workspace-page .rail-connection .rail-meta {
+  margin-bottom: 0;
+}
+.workspace-page .rail-connection > p:last-child {
+  margin-bottom: 0;
+}
+.workspace-page .rail-search {
+  position: relative;
+}
+.workspace-page .rail-search > .ic {
+  position: absolute;
+  top: 13px;
+  left: 10px;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-soft);
+  pointer-events: none;
 }
 .workspace-page .rail-heading {
   display: flex;
@@ -371,7 +407,7 @@
   display: block;
   margin: 8px 0;
   overflow-wrap: anywhere;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
 }
 .workspace-page .rail-meta {
@@ -383,7 +419,7 @@
   margin-bottom: 24px;
 }
 .workspace-page #tableSearch {
-  padding: 9px 10px;
+  padding: 10px 10px 10px 34px;
   background: transparent;
   font-size: 12px;
 }
@@ -514,7 +550,15 @@
 .workspace-page .content > section:not(#v-ask) {
   max-width: 1050px;
   margin: 0 auto;
-  padding: 32px 0 72px;
+  padding: 40px 0 72px;
+}
+.workspace-page .ask-content {
+  display: flex;
+  flex-direction: column;
+}
+.workspace-page .ask-content .connection-summary {
+  flex-shrink: 0;
+  width: 100%;
 }
 .workspace-page .connection-summary {
   display: flex;
@@ -577,16 +621,18 @@
 .workspace-page #v-ask {
   display: flex;
   flex-direction: column;
-  min-height: calc(100% - 80px);
+  flex: 1 0 auto;
+  min-height: 0;
+  width: 100%;
   max-width: 1050px;
   margin: 0 auto;
 }
 .workspace-page .workspace-intro {
-  padding: 44px 0 32px;
+  padding: 48px 0 36px;
 }
 .workspace-page .workspace-intro h1 {
-  font-size: 36px;
-  line-height: 42px;
+  font-size: 42px;
+  line-height: 48px;
 }
 .workspace-page .workspace-intro .lead {
   margin-bottom: 24px;
@@ -710,7 +756,7 @@
 }
 .workspace-page .request-text {
   margin: 0;
-  font: 400 21px/30px var(--serif);
+  font: 400 23px/32px var(--serif);
   overflow-wrap: anywhere;
 }
 .workspace-page .translation-thread {
@@ -783,7 +829,8 @@
 .workspace-page .sqlblock {
   position: relative;
   background: var(--sunken);
-  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--rule) 65%, transparent);
+  border-radius: 10px;
   min-width: 0;
 }
 .workspace-page .sqlhead {
@@ -866,10 +913,10 @@
   line-height: 20px;
 }
 .workspace-page .exchange-results {
-  margin-top: 20px;
-  padding: 18px;
+  margin-top: 24px;
+  padding: 22px;
   border: 1px solid var(--rule);
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--paper);
   min-width: 0;
 }
@@ -889,7 +936,7 @@
   max-height: 420px;
   overflow: auto;
   border: 1px solid var(--rule);
-  border-radius: 6px;
+  border-radius: 8px;
 }
 .workspace-page table {
   border-collapse: collapse;
@@ -1067,11 +1114,24 @@
 .workspace-page .ask textarea[aria-invalid='true'] {
   border-color: var(--remove);
 }
+.workspace-page .ask:has(textarea[aria-invalid='true']) {
+  border-color: var(--remove);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--remove) 12%, transparent);
+}
 .workspace-page .ask {
   display: flex;
   align-items: flex-end;
-  gap: 10px;
+  gap: 6px;
   margin: 0;
+  padding: 6px;
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 0 4px 20px #0308160d;
+}
+.workspace-page .ask:focus-within {
+  border-color: var(--lapis);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lapis) 12%, transparent);
 }
 .workspace-page .ask textarea {
   flex: 1;
@@ -1081,10 +1141,16 @@
   resize: none;
   padding: 12px 14px;
   line-height: 22px;
+  background: transparent;
+  border: 0;
+}
+.workspace-page .ask textarea:focus-visible {
+  outline: none;
 }
 .workspace-page .ask .btn {
   height: 48px;
-  padding: 0 24px;
+  padding: 0 18px;
+  border-radius: 9px;
 }
 .workspace-page .composer-hint {
   font-size: 11px;
@@ -1097,8 +1163,11 @@
 
 /* Structure, history, database and account pages */
 .workspace-page .tbl {
-  border-top: 1px solid var(--rule);
-  padding: 24px 0;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  background: var(--paper);
 }
 .workspace-page #schema {
   margin-top: 24px;
@@ -1129,6 +1198,10 @@
   align-items: end;
   gap: 12px;
   margin-bottom: 24px;
+  padding: 18px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--paper);
 }
 .workspace-page .history-filters label {
   display: grid;
@@ -1137,11 +1210,18 @@
   min-width: 150px;
 }
 .workspace-page .history-entry {
-  border-top: 1px solid var(--rule);
-  padding: 24px 0;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 16px;
+  background: var(--paper);
 }
 .workspace-page .history-entry h3 {
   font-size: 21px;
+  overflow-wrap: anywhere;
+}
+.workspace-page .tbl h3 {
+  overflow-wrap: anywhere;
 }
 .workspace-page .history-command {
   border-top: 1px solid var(--rule);
@@ -1154,7 +1234,7 @@
   margin-bottom: 12px;
 }
 .workspace-page .history-command .command {
-  max-width: 760px;
+  max-width: none;
 }
 .workspace-page .history-command .tw {
   margin-top: 16px;
@@ -1188,6 +1268,10 @@
 }
 .workspace-page .account-ledger {
   max-width: 720px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 0 24px;
+  background: var(--paper);
 }
 .workspace-page .account-ledger > p {
   display: flex;
@@ -1196,6 +1280,24 @@
   padding: 16px 0;
   margin: 0;
   border-top: 1px solid var(--rule);
+}
+.workspace-page .account-ledger > p:first-child {
+  border-top: 0;
+}
+.workspace-page .account-ledger strong {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.workspace-page .page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.workspace-page .page-heading > .btn {
+  flex-shrink: 0;
+  margin-top: 4px;
 }
 .workspace-page .account-ledger > p > span {
   min-width: 180px;
@@ -1287,8 +1389,37 @@
 .workspace-page .gate-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 100px;
+  gap: 80px;
   padding: 72px 0;
+}
+.workspace-page .gate-databases .gate-layout {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: 64px;
+  padding-top: 48px;
+}
+.workspace-page .gate-databases .gate-form {
+  max-width: none;
+}
+.workspace-page .gate-databases .gate-form h1 {
+  max-width: none;
+}
+.workspace-page .gate-databases .saved-databases {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.workspace-page .gate-databases .saved-databases > :not(.saved-database-entry) {
+  grid-column: 1 / -1;
+}
+.workspace-page .gate-databases .saved-databases h2 {
+  margin-bottom: 6px;
+}
+.workspace-page .gate-databases .saved-database-entry {
+  margin-bottom: 0;
+}
+.workspace-page .gate-databases .gate-example {
+  align-self: start;
+  margin-top: 12px;
 }
 .workspace-page .gate-form {
   max-width: 460px;
@@ -1320,32 +1451,42 @@
 }
 .workspace-page .auth-switch {
   display: flex;
-  gap: 24px;
+  gap: 4px;
   margin: 24px 0;
-  border-bottom: 1px solid var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  padding: 4px;
+  background: var(--paper);
 }
 .workspace-page .auth-switch a {
-  padding: 8px 0 12px;
+  flex: 1;
+  padding: 9px 12px;
+  text-align: center;
   color: var(--ink-soft);
   text-decoration: none;
-  border-bottom: 2px solid transparent;
+  border-radius: 6px;
 }
 .workspace-page .auth-switch a[aria-current='page'] {
   color: var(--lapis);
-  border-bottom-color: var(--lapis);
+  background: var(--lapis-wash);
 }
 .workspace-page .password-input {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 0;
+  position: relative;
 }
 .workspace-page .password-input input {
   min-width: 0;
+  padding-right: 64px;
 }
 .workspace-page .password-input button {
   flex: none;
   min-width: 44px;
   min-height: 44px;
+  position: absolute;
+  right: 8px;
+  text-align: center;
 }
 .workspace-page .account-gate {
   display: flex;
@@ -1401,15 +1542,18 @@
   flex: none;
 }
 .workspace-page .password-form {
-  max-width: 460px;
-  padding: 32px 0;
-  border-bottom: 1px solid var(--rule);
-  margin-bottom: 24px;
+  max-width: 720px;
+  padding: 24px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  margin: 24px 0;
+  background: var(--paper);
 }
 .workspace-page .password-form label {
   display: grid;
   gap: 6px;
   margin: 16px 0;
+  max-width: 460px;
 }
 .workspace-page .password-form button {
   margin-top: 8px;
@@ -1423,19 +1567,43 @@
   font-weight: 500;
   margin-bottom: 10px;
 }
+.workspace-page .database-form {
+  padding: 24px;
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  background: var(--paper);
+}
 .workspace-page .database-modes {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 .workspace-page .database-modes > label {
-  display: flex;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 16px;
   align-items: start;
-  gap: 5px;
+  gap: 10px;
   border: 1px solid var(--rule);
-  padding: 10px 7px;
-  border-radius: 6px;
+  padding: 16px 12px;
+  border-radius: 9px;
   cursor: pointer;
+}
+.workspace-page .database-modes > label:hover {
+  border-color: var(--lapis);
+}
+.workspace-page .database-modes > label:has(input:focus-visible) {
+  outline: 2px solid var(--lapis);
+  outline-offset: 3px;
+}
+.workspace-page .database-modes > label > .ic {
+  grid-column: 1;
+  grid-row: 1;
+  margin-top: 2px;
+  color: var(--lapis);
+}
+.workspace-page .database-modes > label > span {
+  grid-column: 2;
+  grid-row: 1;
 }
 .workspace-page .database-modes > label:has(input:checked) {
   background: var(--lapis-wash);
@@ -1443,16 +1611,22 @@
 }
 .workspace-page .database-modes b {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
 }
 .workspace-page .database-modes small {
   display: block;
   color: var(--ink-soft);
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 5px;
 }
 .workspace-page .database-modes input {
-  margin: 3px 0 0;
+  grid-column: 3;
+  grid-row: 1;
+  margin: 4px 0 0;
+  width: 14px;
+  height: 14px;
 }
 .workspace-page .database-fields > label {
   display: block;
@@ -1477,14 +1651,26 @@
 }
 .workspace-page .gate-example {
   align-self: center;
-  padding: 32px;
+  padding: 36px;
   background: var(--paper);
   border: 1px solid var(--rule);
-  border-radius: 6px;
+  border-radius: 16px;
+  box-shadow: 0 12px 36px #03081614;
+}
+.workspace-page .gate-example .eyebrow {
+  margin-bottom: 32px;
+  line-height: 20px;
+}
+.workspace-page .example-label {
+  margin: 0 0 12px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 .workspace-page .human-example {
   font: 400 25px/34px var(--serif);
-  margin: 32px 0 0;
+  margin: 0;
 }
 .workspace-page .example-thread {
   height: 32px;
@@ -1546,7 +1732,8 @@
     grid-template-columns: 58px minmax(0, 1fr);
     gap: 14px;
   }
-  .workspace-page .gate-layout {
+  .workspace-page .gate-layout,
+  .workspace-page .gate-databases .gate-layout {
     gap: 60px;
   }
 }
@@ -1592,7 +1779,8 @@
     padding: 6px 8px;
     font-size: 12px;
   }
-  .workspace-page .gate-layout {
+  .workspace-page .gate-layout,
+  .workspace-page .gate-databases .gate-layout {
     grid-template-columns: 1fr;
     max-width: 480px;
     margin: auto;
@@ -1630,12 +1818,12 @@
     padding: 6px;
   }
   .workspace-page .top-actions .icon-button {
-    width: 32px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
   }
   .workspace-page .user-menu {
-    width: 30px;
-    height: 30px;
+    width: 36px;
+    height: 36px;
   }
   .workspace-page .workspace-toolbar {
     padding: 0 16px;
@@ -1728,9 +1916,6 @@
   .workspace-page .copy-sql {
     opacity: 1;
   }
-  .workspace-page #v-ask {
-    min-height: calc(100% - 118px);
-  }
   .workspace-page .composer {
     padding-bottom: 12px;
   }
@@ -1744,7 +1929,7 @@
     padding: 0 18px;
   }
   .workspace-page .main {
-    padding-bottom: 56px;
+    padding-bottom: calc(68px + env(safe-area-inset-bottom));
   }
   .workspace-page .tabs {
     display: flex;
@@ -1759,12 +1944,17 @@
   }
   .workspace-page .tabs button {
     flex: 1;
-    min-height: 44px;
+    min-height: 58px;
     border: 0;
     border-radius: 6px;
     background: transparent;
     color: var(--ink-soft);
     font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
   }
   .workspace-page .tabs button.on {
     color: var(--lapis);
@@ -1783,9 +1973,49 @@
   }
   .workspace-page .history-filters {
     gap: 10px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 16px;
+  }
+  .workspace-page .personal-content {
+    padding-bottom: calc(68px + env(safe-area-inset-bottom));
   }
   .workspace-page .history-filters label {
-    min-width: 130px;
+    min-width: 0;
+  }
+  .workspace-page .history-filters label:nth-of-type(-n + 2) {
+    grid-column: 1 / -1;
+  }
+  .workspace-page .history-entry,
+  .workspace-page .tbl,
+  .workspace-page .database-form {
+    padding: 16px;
+  }
+  .workspace-page .database-modes > label {
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 8px;
+    padding: 12px;
+    position: relative;
+  }
+  .workspace-page .database-modes > label > span {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .workspace-page .database-modes input {
+    grid-column: 2;
+    justify-self: end;
+  }
+  .workspace-page .page-heading {
+    flex-wrap: wrap;
+    gap: 0;
+  }
+  .workspace-page .page-heading > .btn {
+    margin: 0 0 12px;
+  }
+  .workspace-page input:not([type='radio']):not([type='checkbox']),
+  .workspace-page select,
+  .workspace-page textarea {
+    font-size: 16px;
   }
   .workspace-page .gate {
     padding: 0 20px 32px;
@@ -1803,6 +2033,9 @@
   }
   .workspace-page .gate-layout {
     padding: 40px 0;
+  }
+  .workspace-page .gate-databases .saved-databases {
+    grid-template-columns: 1fr;
   }
 }
 @media (hover: none) {

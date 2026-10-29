@@ -97,6 +97,11 @@ class PostgresIntegrationTests(unittest.TestCase):
         self.assertNotEqual(reopened["session_id"], session_id)
         self.assertEqual(reopened["connection_id"], session["connection_id"])
 
+    def test_duplicate_result_labels_preserve_every_selected_value(self):
+        session_id = self.open()["session_id"]
+        result = workbench.submit_request(session_id,"SELECT id AS item,id+1 AS item,id+2 AS item_2 FROM customers ORDER BY customers.id LIMIT 1",raw_sql=True)
+        self.assertEqual(result["rows"],[{"item":1,"item_3":2,"item_2":3}])
+
     def test_writes_wait_for_confirmation_and_declines_leave_remote_rows_unchanged(self):
         session_id = self.open(changes=True)["session_id"]
         pending = workbench.submit_request(session_id, "INSERT INTO customers(name,state) VALUES ('New sample','Kansas')", raw_sql=True)

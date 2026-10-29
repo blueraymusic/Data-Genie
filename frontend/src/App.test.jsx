@@ -16,6 +16,7 @@ const user = {
 const session = {
   ...user,
   session_id: 'session-1',
+  database_id: 1,
   database: 'shop.sqlite',
   source: 'demo',
   started_at: new Date().toISOString(),
@@ -31,6 +32,48 @@ const session = {
 };
 const response = (data, status = 200) =>
   Promise.resolve({ ok: status < 400, status, json: async () => data });
+
+function switchingFixture({ failures = 0, recovery = 'retry', restore = true } = {}) {
+  history.replaceState({}, '', '/app');
+  if (restore)
+    sessionStorage.setItem(
+      'data-genie-session',
+      JSON.stringify({ session_id: session.session_id }),
+    );
+  const remote = {
+    ...session,
+    session_id: 'pg-session',
+    database_id: 2,
+    database: 'Remote shop',
+    source: 'postgresql',
+    provider: 'postgresql',
+  };
+  let attempts = 0;
+  fetch.mockImplementation((path) => {
+    if (path === '/api/auth/session') return response({ user, csrf_token: 'csrf-test' });
+    if (path === '/api/status') return response(session);
+    if (path === '/api/history') return response({ requests: [] });
+    if (path === '/api/sessions')
+      return response({
+        sessions: [session, remote, { ...remote, session_id: 'older-pg-session' }],
+      });
+    if (path === '/api/sessions/resume') {
+      attempts++;
+      return attempts <= failures
+        ? response(
+            {
+              error: 'The PostgreSQL server is unavailable.',
+              code: 'postgres_unavailable',
+              recovery,
+            },
+            recovery === 'reconnect' ? 409 : 503,
+          )
+        : response(remote);
+    }
+    return response({});
+  });
+  return remote;
+}
 
 beforeEach(() => {
   sessionStorage.clear();
@@ -67,6 +110,82 @@ afterEach(() => {
 });
 
 describe('React pages and account flow', () => {
+  it('switches to a saved PostgreSQL database from Change and marks the current database', async () => {
+    const remote = switchingFixture();
+    const events = userEvent.setup();
+    render(<App />);
+    await events.type(
+      await screen.findByRole('textbox', { name: 'Ask in plain English', exact: true }),
+      'show customers',
+    );
+    await events.click(screen.getByRole('button', { name: 'Change', exact: true }));
+    expect((await screen.findByRole('button', { name: /shop\.sqlite.*Current/ })).disabled).toBe(
+      true,
+    );
+    expect(screen.getAllByRole('button', { name: /Remote shop/ })).toHaveLength(1);
+    await events.click(screen.getByRole('button', { name: /Remote shop/ }));
+    expect(
+      (await screen.findByRole('textbox', { name: 'Ask in plain English', exact: true })).value,
+    ).toBe('');
+    expect(screen.getByLabelText('Current database').textContent).toContain(remote.database);
+    const [, options] = fetch.mock.calls.find(([path]) => path === '/api/sessions/resume');
+    expect(options.headers['X-Session-ID']).toBe(session.session_id);
+    expect(JSON.parse(options.body)).toEqual({ session_id: remote.session_id });
+  });
+
+  it('keeps the current database on an unavailable PostgreSQL open and can retry successfully', async () => {
+    switchingFixture({ failures: 1 });
+    const events = userEvent.setup();
+    render(<App />);
+    await screen.findByRole('textbox', { name: 'Ask in plain English', exact: true });
+    await events.click(screen.getByRole('button', { name: 'Change', exact: true }));
+    await events.click(await screen.findByRole('button', { name: /Remote shop/ }));
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'You’re still using shop.sqlite.',
+    );
+    expect(screen.getByLabelText('Current database').textContent).toContain(session.database);
+    await events.click(screen.getByRole('button', { name: 'Try again', exact: true }));
+    await screen.findByRole('textbox', { name: 'Ask in plain English', exact: true });
+    expect(screen.getByLabelText('Current database').textContent).toContain('Remote shop');
+  });
+
+  it('preserves the request draft when a database switch fails', async () => {
+    switchingFixture({ failures: 1 });
+    const events = userEvent.setup();
+    render(<App />);
+    await events.type(
+      await screen.findByRole('textbox', { name: 'Ask in plain English', exact: true }),
+      'count customers',
+    );
+    await events.click(screen.getByRole('button', { name: 'Change', exact: true }));
+    await events.click(await screen.findByRole('button', { name: /Remote shop/ }));
+    await screen.findByRole('alert');
+    await events.click(
+      within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
+        name: /Workspace/,
+      }),
+    );
+    expect(
+      (await screen.findByRole('textbox', { name: 'Ask in plain English', exact: true })).value,
+    ).toBe('count customers');
+  });
+
+  it('offers masked connection entry when saved PostgreSQL details are unavailable', async () => {
+    switchingFixture({ failures: 1, recovery: 'reconnect', restore: false });
+    const events = userEvent.setup();
+    render(<App />);
+    await events.click(await screen.findByRole('button', { name: /Remote shop/ }));
+    await events.click(
+      await screen.findByRole('button', { name: 'Enter connection details', exact: true }),
+    );
+    expect(screen.getByRole('radio', { name: /PostgreSQL/ }).checked).toBe(true);
+    const url = screen.getByLabelText('PostgreSQL connection URL');
+    expect(url.type).toBe('password');
+    expect(url.value).toBe('');
+    expect(document.activeElement).toBe(url);
+    expect(screen.getByLabelText('Allow changes after I confirm them').checked).toBe(false);
+  });
+
   it('keeps the homepage demo confirmation local', async () => {
     const events = userEvent.setup();
     render(<App />);

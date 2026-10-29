@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "start": "python3 -B scripts/start_server.py",
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "test": "vitest run",

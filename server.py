@@ -14,10 +14,12 @@ import os
 import sqlite3
 import sys
 import tempfile
+import errno
 
 import workbench
 import settings
 import authentication
+from connections import ConnectionFailure
 
 
 ROOT = Path(__file__).resolve().parent
@@ -138,8 +140,6 @@ class Handler(BaseHTTPRequestHandler):
                     user = self.account()
                     return self.json({"user": user, "csrf_token": authentication.csrf_token(self.login_token())})
                 except authentication.LoginRequired:
-                    if self.login_token():
-                        self.set_login_cookie("")
                     return self.json({"user": None})
             user = self.account()
             if parsed.path == "/api/sessions":
@@ -149,13 +149,19 @@ class Handler(BaseHTTPRequestHandler):
                     return self.json({"session_required": True, "database": None, "tables": [], "ai": settings.public_ai_settings()})
                 with workbench.session_scope(self.session_id(user=user)):
                     return self.json(workbench.database_info())
-            session_id = self.session_id(query, user=user)
             if parsed.path == "/api/history":
-                if query.get("history_session_id", [None])[0]:
-                    self.owned_session(query["history_session_id"][0], user)
+                explicit = query.get("history_session_id", [None])[0]
+                session_id = self.headers.get("X-Session-ID") or explicit
+                if not session_id:
+                    raise ValueError("Choose a saved session to view its history.")
+                self.owned_session(session_id, user)
+                if explicit:
+                    self.owned_session(explicit, user)
                 requests = workbench.history_for_session(session_id, query.get("search", [""])[0],
-                                                        query.get("operation", [None])[0], query.get("history_session_id", [None])[0])
+                                                        query.get("operation", [None])[0], explicit,
+                                                        refresh_pending=explicit is None or self.headers.get("X-Session-ID") == explicit)
                 return self.json({"requests": requests})
+            session_id = self.session_id(query, user=user)
             if parsed.path == "/api/schema":
                 return self.json(workbench.schema_for_session(session_id))
             if parsed.path == "/api/results/page":
@@ -174,10 +180,11 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send_body(path.read_bytes(), "application/vnd.sqlite3", filename=session["database"])
             return self.json({"error": "Not found."}, 404)
         except authentication.LoginRequired as exc:
-            self.set_login_cookie("")
             return self.json({"error": str(exc), "auth_required": True}, 401)
         except PermissionError as exc:
             return self.json({"error": str(exc)}, 403)
+        except ConnectionFailure as exc:
+            return self.json(exc.payload(), exc.status)
         except (ValueError, sqlite3.Error) as exc:
             return self.json({"error": str(exc)}, 400)
         except OSError:
@@ -220,7 +227,10 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == "/api/sessions/resume":
                 payload = self.read_json()
                 previous = self.owned_session(payload.get("session_id"), user)
+                current = self.owned_session(self.headers["X-Session-ID"], user) if self.headers.get("X-Session-ID") else None
                 result = workbench.resume_session(previous["session_id"])
+                if current and current["session_id"] != result["session_id"]:
+                    workbench.end_session(current["session_id"])
                 return self.json(result)
             if parsed.path == "/api/connections/test":
                 return self.json(workbench.test_postgres_connection(self.read_json(16 * 1024)))
@@ -229,13 +239,11 @@ class Handler(BaseHTTPRequestHandler):
                 # Browser clients choose a file through upload, never an arbitrary server path.
                 identity = (user["first_name"], user["last_name"], user["email"])
                 mode = payload.get("database_mode")
-                previous = self.owned_session(self.headers["X-Session-ID"], user, active_only=True) if mode == "postgresql" and self.headers.get("X-Session-ID") else None
+                previous = self.owned_session(self.headers["X-Session-ID"], user) if self.headers.get("X-Session-ID") else None
                 if mode is None and payload.get("use_demo") is True:
                     mode = "demo"
                 if mode == "postgresql":
                     result = workbench.start_postgres_session(user["account_id"], payload)
-                    if previous:
-                        workbench.end_session(previous["session_id"])
                 elif mode in {"demo", "sample"}:
                     result = workbench.start_sample_session(*identity, account_id=user["account_id"])
                 elif mode == "create":
@@ -245,6 +253,8 @@ class Handler(BaseHTTPRequestHandler):
                     result = workbench.start_uploaded_session(*identity, payload.get("name", "connected.sqlite3"), contents, account_id=user["account_id"])
                 else:
                     raise ValueError("Choose a database: create a new one, attach a SQLite file, or explicitly use the demo.")
+                if previous and previous["session_id"] != result["session_id"]:
+                    workbench.end_session(previous["session_id"])
                 return self.json(result, 201)
             session_id = self.session_id(user=user)
             if parsed.path == "/api/connect":
@@ -279,12 +289,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json(action(session_id, int(payload.get("command_id", 0)), payload.get("confirmation_token")))
             return self.json({"error": "Not found."}, 404)
         except authentication.LoginRequired as exc:
-            self.set_login_cookie("")
             return self.json({"error": str(exc), "auth_required": True}, 401)
         except PermissionError as exc:
             return self.json({"error": str(exc)}, 403)
         except authentication.TooManyAttempts as exc:
             return self.json({"error": str(exc)}, 429)
+        except ConnectionFailure as exc:
+            return self.json(exc.payload(), exc.status)
         except (ValueError, TypeError, binascii.Error, sqlite3.Error) as exc:
             return self.json({"error": str(exc)}, 400)
         except OSError:
@@ -296,13 +307,26 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    port = int(os.environ.get("PORT", sys.argv[1] if len(sys.argv) > 1 else 8000))
+    try:
+        port = int(os.environ.get("PORT", sys.argv[1] if len(sys.argv) > 1 else 8000))
+        if not 1 <= port <= 65535:
+            raise ValueError()
+    except ValueError:
+        raise SystemExit("Choose a port between 1 and 65535, for example: npm start -- 8001") from None
     workbench.get_repository()._initialize()
     if not (ROOT / "dist" / "index.html").is_file():
         raise SystemExit("Build the React frontend first: npm install && npm run build")
     workbench.ensure_demo_database()
-    print(f"Data Genie running at http://127.0.0.1:{port}")
-    ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    try:
+        with ThreadingHTTPServer(("127.0.0.1", port), Handler) as app:
+            print(f"Data Genie running at http://127.0.0.1:{port}", flush=True)
+            app.serve_forever()
+    except KeyboardInterrupt:
+        print("\nData Genie stopped.")
+    except OSError as error:
+        if error.errno == errno.EADDRINUSE:
+            raise SystemExit(f"Port {port} is already in use. Stop the other instance or run: npm start -- 8001") from None
+        raise SystemExit("Data Genie could not start. Check the selected port and local network permissions.") from None
 
 
 if __name__ == "__main__":

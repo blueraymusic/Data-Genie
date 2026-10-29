@@ -7,6 +7,7 @@ import { HomeHistory } from '../components/HomeHistory';
 import { SqlBlock } from '../components/SqlBlock';
 import { examples } from '../data/home';
 import { Link } from '../lib/router';
+import { Icon } from '../components/Icon';
 export default function HomePage() {
   const { user } = useAuth();
   useEffect(() => {
@@ -30,7 +31,12 @@ export default function HomePage() {
       <main id="main">
         <section className="hero wrap" id="top" aria-labelledby="h1">
           <div className="hero-intro">
-            <h1 id="h1">Ask your database in plain English.</h1>
+            <div className="hero-heading">
+              <p className="eyebrow">Your words. Your data.</p>
+              <h1 id="h1">
+                Ask your database in <em>plain English.</em>
+              </h1>
+            </div>
             <div className="hero-start">
               <p className="lede">
                 Ask a question. See the SQL and your answer. Changes always wait for your OK.
@@ -86,6 +92,16 @@ export default function HomePage() {
         </section>
         <HomeSafety />
         <HomeHistory />
+        <section className="closing wrap" aria-labelledby="closing-title">
+          <div>
+            <p className="eyebrow">From question to clarity</p>
+            <h2 id="closing-title">Your next answer starts with a question.</h2>
+            <p>Bring your database. We’ll help you find your way through it.</p>
+          </div>
+          <Link href={user ? '/databases' : '/signup'} className="btn btn-primary">
+            {user ? 'Open your workspace' : 'Get started'} <Icon name="arrow" />
+          </Link>
+        </section>
       </main>
       <footer className="foot">
         <div className="wrap">

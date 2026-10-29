@@ -65,6 +65,44 @@ export const faqGroups = [
     title: 'PostgreSQL connections',
     items: [
       {
+        question: 'Why won’t my saved PostgreSQL connection open?',
+        search:
+          'A saved connection stores settings, not a running PostgreSQL server. Start the database server and choose Try again if it is offline. A missing key or saved connection record offers Enter connection details. Start Data Genie with npm start to use the project .venv and installed connector packages. A failed open keeps your current database and saved History.',
+        answer: (
+          <>
+            <p>
+              A saved connection stores settings, not a running PostgreSQL server. If the database
+              is offline, start it and choose <strong>Try again</strong>. Missing saved details or
+              an encryption key offer <strong>Enter connection details</strong>.
+            </p>
+            <p>
+              Start Data Genie with <code>npm start</code> to use its project environment and
+              installed connector packages. A failed open keeps your current database and saved
+              History.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'How do I switch to another saved database?',
+        search:
+          'Choose Change in the sidebar or Databases in the main navigation. Your saved databases lists SQLite files and PostgreSQL connections. The current database is marked Current. Open another saved database to switch. Confirm or decline pending changes first. The previous session ends only after the new database opens successfully.',
+        answer: (
+          <>
+            <p>
+              Choose <strong>Change</strong> in the sidebar or <strong>Databases</strong> in the
+              main navigation. Your saved databases lists SQLite databases and PostgreSQL
+              connections, with the current one marked <strong>Current</strong>.
+            </p>
+            <p>
+              Choose <strong>Open</strong> beside another database. Confirm or decline pending
+              changes first. The previous session ends only after the new database opens
+              successfully.
+            </p>
+          </>
+        ),
+      },
+      {
         question: 'How do I connect PostgreSQL?',
         search:
           'Connect a local or hosted PostgreSQL database, including standard Supabase and Neon connections. In Databases choose PostgreSQL, paste the connection URL and choose a schema, usually public. Test connection checks access without changing data or saving credentials. Connect PostgreSQL saves the connection for your account. Install the optional Python connector dependencies using the README first.',
@@ -369,7 +407,7 @@ export const faqGroups = [
       {
         question: 'What is saved in History?',
         search:
-          'Your request, translated SQL, status, and available result are saved in a separate local application database. Search requests, filter by SQL operation and revisit sessions for SQLite and PostgreSQL. Saved results contain up to 500 rows and are snapshots, not a live view. Run the request again for current data.',
+          'Your request, translated SQL, status, and available result are saved locally. Search requests, filter by SQL operation and revisit SQLite and PostgreSQL sessions without a live database connection. Saved results contain up to 500 rows and are snapshots. Structure-only inspections stay in the conversation but are not stored in History. Run requests again for current data.',
         answer: (
           <>
             <p>
@@ -380,6 +418,10 @@ export const faqGroups = [
             <p>
               Saved results contain up to 500 rows and are snapshots, rather than a live view of
               SQLite or PostgreSQL. Run the request again for current data.
+            </p>
+            <p>
+              History is available without opening a database. Structure-only inspections stay in
+              the conversation but are not stored in History.
             </p>
           </>
         ),

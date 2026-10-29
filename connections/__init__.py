@@ -2,3 +2,4 @@
 
 from .postgres import PostgresConnector, connection_config
 from .vault import CredentialVault
+from .errors import ConnectionFailure

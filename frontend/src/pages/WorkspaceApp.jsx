@@ -7,6 +7,8 @@ import { AuthShell } from '../components/AuthShell';
 import { WorkspaceHeader } from '../components/WorkspaceHeader';
 import { TableRail } from '../components/TableRail';
 import { Modal } from '../components/Modal';
+import { PersonalWorkspace } from '../components/PersonalWorkspace';
+import { WorkspaceTabs } from '../components/WorkspaceTabs';
 import DatabaseChooser from './DatabaseChooser';
 import AskPage from './AskPage';
 import StructurePage from './StructurePage';
@@ -26,7 +28,7 @@ export function viewFromRoute(route) {
   if (route.startsWith('/history')) return 'history';
   if (route.startsWith('/account')) return 'account';
   if (route.startsWith('/databases')) return 'connect';
-  const value = new URLSearchParams(route.split('?')[1] || '').get('view');
+  const value = new URLSearchParams((route.split('?')[1] || '').split('#')[0]).get('view');
   return value === 'structure' ? 'schema' : value === 'sql' ? 'sql' : 'ask';
 }
 const titles = {
@@ -59,11 +61,16 @@ export default function WorkspaceApp() {
   const content = useRef(null),
     view = viewFromRoute(route),
     session = workbench.session;
+  const inWorkspace = ['ask', 'schema', 'sql'].includes(view);
   const mode = session?.ai?.enabled ? savedMode : 'keywords';
   const disabled = workbench.busy || workbench.pending || workbench.workingCommands.size > 0;
   useEffect(() => {
     if (session && !session.tables.includes(selected)) setSelected(session.tables[0] || '');
   }, [session, selected]);
+  useEffect(() => {
+    setDraft('');
+    setSqlDraft('');
+  }, [session?.session_id]);
   useEffect(() => {
     const tables = session?.conversation_context?.tables || [];
     if (tables.length === 1 && session.tables.includes(tables[0])) setSelected(tables[0]);
@@ -135,7 +142,19 @@ export default function WorkspaceApp() {
         <p role="status">Loading…</p>
       </AuthShell>
     );
-  if (!session) return <DatabaseChooser workbench={workbench} />;
+  if (!session) {
+    if (['history', 'account'].includes(view))
+      return (
+        <PersonalWorkspace user={user} view={view} onNavigate={go} logout={logout}>
+          {view === 'account' ? (
+            <AccountPage {...{ workbench, mode, setMode }} />
+          ) : (
+            <HistoryPage workbench={workbench} onReuse={reuse} />
+          )}
+        </PersonalWorkspace>
+      );
+    return <DatabaseChooser workbench={workbench} />;
+  }
   return (
     <div className="workspace-page">
       <a className="skip-link" href="#workspaceContent">
@@ -162,74 +181,88 @@ export default function WorkspaceApp() {
             disabled={disabled || session.read_only}
           />
           <div className="main">
-            <div className="workspace-toolbar">
-              <span className="workspace-section-label">{titles[view]}</span>
-              <div className="view-tabs">
-                <button className={view === 'ask' ? 'on' : undefined} onClick={() => go('ask')}>
-                  Ask
-                </button>
+            {inWorkspace && (
+              <div className="workspace-toolbar">
+                <span className="workspace-section-label">{titles[view]}</span>
+                <nav className="view-tabs" aria-label="Workspace views">
+                  <button
+                    className={view === 'ask' ? 'on' : undefined}
+                    aria-current={view === 'ask' ? 'page' : undefined}
+                    onClick={() => go('ask')}
+                  >
+                    Ask
+                  </button>
+                  <button
+                    className={view === 'schema' ? 'on' : undefined}
+                    aria-current={view === 'schema' ? 'page' : undefined}
+                    onClick={() => go('schema')}
+                  >
+                    Structure
+                  </button>
+                </nav>
                 <button
-                  className={view === 'schema' ? 'on' : undefined}
-                  onClick={() => go('schema')}
+                  className="text-button rail-toggle"
+                  aria-expanded={railOpen}
+                  aria-controls="tableRail"
+                  onClick={() => setRailOpen(!railOpen)}
                 >
-                  Structure
+                  Tables & database
                 </button>
               </div>
-              <button
-                className="text-button rail-toggle"
-                aria-expanded={railOpen}
-                aria-controls="tableRail"
-                onClick={() => setRailOpen(!railOpen)}
-              >
-                Tables & database
-              </button>
-            </div>
-            <main className="content" id="workspaceContent" tabIndex="-1" ref={content}>
-              <div className="connection-summary" aria-label="Current database">
-                <div className="connection-title">
-                  <span className="db-source">
-                    {{
-                      created: 'New database',
-                      demo: 'Demo sample data',
-                      uploaded: 'Attached SQLite file',
-                      postgresql: 'Connected PostgreSQL',
-                    }[session.source] || 'Connected database'}
-                  </span>
-                  <strong>{session.database}</strong>
-                  <span className="small muted">
-                    {session.tables.length} {session.tables.length === 1 ? 'table' : 'tables'}
-                  </span>
-                </div>
-                {session.tables.length > 0 && (
-                  <div className="mobile-context mobile-db-controls">
-                    <label className="table-selector">
-                      Table
-                      <select
-                        value={selected}
-                        onChange={(event) => setSelected(event.target.value)}
-                        aria-label="Table for suggested requests"
-                      >
-                        {session.tables.map((table) => (
-                          <option key={table}>{table}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <button
-                      className="btn add-table"
-                      type="button"
-                      aria-label="Create a new table"
-                      aria-haspopup="dialog"
-                      disabled={disabled || session.read_only}
-                      onClick={newTable}
-                    >
-                      +
-                    </button>
+            )}
+            <main
+              className={'content' + (view === 'ask' ? ' ask-content' : '')}
+              id="workspaceContent"
+              tabIndex="-1"
+              ref={content}
+            >
+              {inWorkspace && (
+                <div className="connection-summary" aria-label="Current database">
+                  <div className="connection-title">
+                    <span className="db-source">
+                      {{
+                        created: 'New database',
+                        demo: 'Demo sample data',
+                        uploaded: 'Attached SQLite file',
+                        postgresql: 'Connected PostgreSQL',
+                      }[session.source] || 'Connected database'}
+                    </span>
+                    <strong>{session.database}</strong>
+                    <span className="small muted">
+                      {session.tables.length} {session.tables.length === 1 ? 'table' : 'tables'}
+                    </span>
                   </div>
-                )}
-                {session.source === 'demo' && (
-                  <p className="demo-notice">Sample data. Your own files stay separate.</p>
-                )}
-              </div>
+                  {session.tables.length > 0 && (
+                    <div className="mobile-context mobile-db-controls">
+                      <label className="table-selector">
+                        Table
+                        <select
+                          value={selected}
+                          onChange={(event) => setSelected(event.target.value)}
+                          aria-label="Table for suggested requests"
+                        >
+                          {session.tables.map((table) => (
+                            <option key={table}>{table}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        className="btn add-table"
+                        type="button"
+                        aria-label="Create a new table"
+                        aria-haspopup="dialog"
+                        disabled={disabled || session.read_only}
+                        onClick={newTable}
+                      >
+                        +
+                      </button>
+                    </div>
+                  )}
+                  {session.source === 'demo' && (
+                    <p className="demo-notice">Sample data. Your own files stay separate.</p>
+                  )}
+                </div>
+              )}
               {workbench.message && (
                 <p className="status-note" role="status">
                   {workbench.message}
@@ -259,18 +292,7 @@ export default function WorkspaceApp() {
           </div>
         </div>
       </div>
-      <nav className="tabs" aria-label="Mobile navigation">
-        {[
-          ['connect', 'Databases'],
-          ['ask', 'Workspace'],
-          ['history', 'History'],
-          ['account', 'Account'],
-        ].map(([id, label]) => (
-          <button className={view === id ? 'on' : undefined} key={id} onClick={() => go(id)}>
-            {label}
-          </button>
-        ))}
-      </nav>
+      <WorkspaceTabs view={view} onNavigate={go} />
       {modal === 'table' && (
         <Modal titleId="newTableTitle" onClose={() => setModal(null)}>
           <form onSubmit={prepareTable}>

@@ -3,7 +3,7 @@ import { SqlBlock } from './SqlBlock';
 import { ResultTable, Cell } from './ResultTable';
 import { formatTime } from '../lib/api';
 import { api } from '../lib/api';
-import { resultHeadline } from '../lib/resultData';
+import { resultHeadline, chartNumber, isNumeric } from '../lib/resultData';
 export const operationOf = (command) =>
   command.sql_operation ||
   (!['read', 'write'].includes(command.operation) && command.operation) ||
@@ -12,7 +12,7 @@ export const operationOf = (command) =>
 
 function Chart({ rows, type }) {
   if (type === 'bar') {
-    const values = rows.map((row) => Number(row.value) || 0),
+    const values = rows.map((row) => chartNumber(row.value)),
       min = Math.min(...values, 0),
       max = Math.max(...values, 0),
       range = max - min || 1,
@@ -32,14 +32,16 @@ function Chart({ rows, type }) {
                 }}
               />
             </div>
-            <span>{values[index].toLocaleString()}</span>
+            <span>
+              <Cell value={row.value} />
+            </span>
           </div>
         ))}
       </div>
     );
   }
-  const values = rows.map((row) => Number(row.total) || 0),
-    max = Math.max(...values, 1),
+  const values = rows.map((row) => chartNumber(row.total)),
+    max = Math.max(...values, 0),
     min = Math.min(...values, 0),
     x = (index) => 32 + (index * 576) / Math.max(values.length - 1, 1),
     y = (value) => 188 - ((value - min) / (max - min || 1)) * 156;
@@ -56,7 +58,7 @@ function Chart({ rows, type }) {
         <g key={index}>
           <circle cx={x(index)} cy={y(value)} r="4" fill="var(--lapis)">
             <title>
-              {rows[index].period}: {value}
+              {rows[index].period}: {rows[index].total}
             </title>
           </circle>
           {(index % Math.max(1, Math.ceil(rows.length / 8)) === 0 || index === rows.length - 1) && (
@@ -115,16 +117,13 @@ export function ResultOutput({ command, sessionId, onUseSuggestion }) {
     type === 'table' &&
     (data.result_type === 'summary' || command.has_aggregation) &&
     rows.length === 1 &&
-    Object.values(rows[0]).some((value) => typeof value === 'number');
+    Object.values(rows[0]).some(isNumeric);
   const chartKeys = type === 'bar' ? ['label', 'value'] : ['period', 'total'];
   const canChart =
     ['bar', 'line'].includes(type) &&
     rows.length > 0 &&
     rows.every(
-      (row) =>
-        chartKeys.every((key) => key in row) &&
-        typeof row[chartKeys[1]] === 'number' &&
-        Number.isFinite(row[chartKeys[1]]),
+      (row) => chartKeys.every((key) => key in row) && chartNumber(row[chartKeys[1]]) !== null,
     );
   return (
     <>
@@ -141,14 +140,20 @@ export function ResultOutput({ command, sessionId, onUseSuggestion }) {
           This database has no tables yet. Create a table to start adding data.
         </p>
       ) : summary ? (
-        <div className="summary-values">
-          {Object.entries(rows[0]).map(([key, value]) => (
-            <div className="summary-value" key={key}>
-              <Cell value={typeof value === 'number' ? value.toLocaleString() : value} />
-              <small>{key.replaceAll('_', ' ')}</small>
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="summary-values">
+            {Object.entries(rows[0]).map(([key, value]) => (
+              <div className="summary-value" key={key}>
+                <Cell value={typeof value === 'number' ? value.toLocaleString() : value} />
+                <small>{key.replaceAll('_', ' ')}</small>
+              </div>
+            ))}
+          </div>
+          <details className="chart-data">
+            <summary>View result data</summary>
+            <ResultTable {...tableProps} />
+          </details>
+        </>
       ) : canChart ? (
         <>
           <div className="result-view" role="group" aria-label="Result display">
@@ -196,6 +201,11 @@ export function ResultOutput({ command, sessionId, onUseSuggestion }) {
       {pageMessage && (
         <p className="result-meta" role="status">
           {pageMessage}
+        </p>
+      )}
+      {data.schema_warning && (
+        <p className="result-meta" role="status">
+          {data.schema_warning}
         </p>
       )}
     </>

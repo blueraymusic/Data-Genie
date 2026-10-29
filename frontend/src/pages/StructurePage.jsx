@@ -1,22 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { ResultTable } from '../components/ResultTable';
 const identifierList = (value) => (Array.isArray(value) ? value.join(', ') : value);
 function SchemaTable({ table, sessionId, index }) {
+  const request = useRef(null);
   const [rows, setRows] = useState(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
+  useEffect(() => () => request.current?.abort(), [sessionId, table.name]);
   async function sample() {
+    const controller = new AbortController();
+    request.current?.abort();
+    request.current = controller;
     setBusy(true);
     setError('');
+    setRows(null);
     try {
       setRows(
-        (await api('/api/sample?table=' + encodeURIComponent(table.name), { sessionId })).rows,
+        (
+          await api('/api/sample?table=' + encodeURIComponent(table.name), {
+            sessionId,
+            signal: controller.signal,
+          })
+        ).rows,
       );
     } catch (error) {
-      setError(error.message);
+      if (!controller.signal.aborted) setError(error.message);
     } finally {
-      setBusy(false);
+      if (!controller.signal.aborted) setBusy(false);
     }
   }
   return (
@@ -27,7 +38,9 @@ function SchemaTable({ table, sessionId, index }) {
           ·{' '}
           {table.row_count == null
             ? 'Row count unavailable'
-            : (table.row_count_estimated ? '~ ' : '') + table.row_count.toLocaleString() + ' rows'}
+            : (table.row_count_estimated ? '~ ' : '') +
+              table.row_count.toLocaleString() +
+              (table.row_count === 1 ? ' row' : ' rows')}
         </span>
       </h3>
       <div className="tw schema-columns">
@@ -114,29 +127,43 @@ export default function StructurePage({ workbench }) {
   useEffect(() => {
     const controller = new AbortController();
     setTables(null);
+    setError('');
     api('/api/schema', { sessionId: workbench.session.session_id, signal: controller.signal })
-      .then((data) => setTables(data.tables))
+      .then((data) => {
+        if (!controller.signal.aborted) setTables(data.tables);
+      })
       .catch((error) => {
-        if (error.name !== 'AbortError') setError(error.message);
+        if (!controller.signal.aborted && error.name !== 'AbortError') {
+          setError(error.message);
+          setTables([]);
+        }
       });
     return () => controller.abort();
   }, [workbench.session.session_id, revision]);
   return (
     <section>
-      <h1>Structure</h1>
-      <p className="lead">The tables, columns, and links behind your data.</p>
-      <button
-        className="btn"
-        onClick={() => {
-          setRevision((value) => value + 1);
-          setError('');
-        }}
-      >
-        Refresh structure
-      </button>
-      {error && <p className="err">{error}</p>}
+      <header className="page-heading">
+        <div>
+          <h1>Structure</h1>
+          <p className="lead">The tables, columns, and links behind your data.</p>
+        </div>
+        <button
+          className="btn"
+          onClick={() => {
+            setRevision((value) => value + 1);
+            setError('');
+          }}
+        >
+          Refresh structure
+        </button>
+      </header>
+      {error && (
+        <p className="err" role="alert">
+          {error}
+        </p>
+      )}
       <div id="schema">
-        {tables === null ? (
+        {error ? null : tables === null ? (
           <p className="muted">Loading structure…</p>
         ) : !tables.length ? (
           <p className="muted">This database has no tables yet.</p>

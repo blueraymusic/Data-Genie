@@ -40,7 +40,9 @@ export function HeroDemo() {
   return (
     <div className="stage" id="demo" aria-label="Interactive sample demo" tabIndex="-1">
       <div className="stage-top">
-        <span>Try a request below · Sample data</span>
+        <span className="stage-caption">
+          <Icon name="database" /> Interactive demo <span>· Sample data</span>
+        </span>
         <code>shop.sqlite</code>
       </div>
       <div className="stage-body">
@@ -54,7 +56,10 @@ export function HeroDemo() {
               {status}
             </span>
           </div>
-          <p className={'req' + (!ready ? ' typing' : '')}>{typed}</p>
+          <div className="demo-request">
+            <p className="demo-label">Your request</p>
+            <p className={'req' + (!ready ? ' typing' : '')}>{typed}</p>
+          </div>
           <svg
             className="thread"
             viewBox="0 0 100 64"
@@ -64,6 +69,7 @@ export function HeroDemo() {
             <path className="line" d="M0 16C55 16 45 47 100 47" />
           </svg>
           <div className="sqlcol">
+            <p className="demo-label">SQL translation</p>
             <SqlBlock home sql={ready ? demo.sql : ''} operation={demo.operation} />
           </div>
           <p className="note">{ready ? demo.note : 'Writing the SQL…'}</p>

@@ -6,6 +6,7 @@ import { Confirmation, ResultOutput, Translation } from './components/CommandRes
 import { exportRows, sortedRows } from './lib/resultData';
 import AskPage from './pages/AskPage';
 import { DatabaseForm } from './components/DatabaseForm';
+import { api } from './lib/api';
 
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
@@ -14,6 +15,15 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+});
+
+it('explains how to recover when the Data Genie server cannot be reached', async () => {
+  fetch.mockRejectedValue(new TypeError('Failed to fetch'));
+  await expect(api('/api/sessions')).rejects.toMatchObject({
+    code: 'app_unavailable',
+    recovery: 'restart_server',
+    message: expect.stringContaining('npm start'),
+  });
 });
 
 it('connects PostgreSQL with credentials masked and changes disabled by default', async () => {

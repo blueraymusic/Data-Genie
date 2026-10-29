@@ -88,12 +88,18 @@ export function useWorkbench(user) {
   const open = useCallback(
     async (payload, resumeId) => {
       if (inFlight.current) throw new Error('Wait for the current request to finish.');
+      if (pending || commandLocks.current.size)
+        throw new Error('Confirm or decline the pending change before switching databases.');
       inFlight.current = true;
       setBusy(true);
       setMessage('');
       try {
         const data = resumeId
-          ? await api('/api/sessions/resume', { method: 'POST', body: { session_id: resumeId } })
+          ? await api('/api/sessions/resume', {
+              method: 'POST',
+              sessionId: active.current,
+              body: { session_id: resumeId },
+            })
           : payload.database_mode === 'postgresql'
             ? await api('/api/sessions', {
                 method: 'POST',
@@ -121,21 +127,18 @@ export function useWorkbench(user) {
               : await api('/api/sessions', { method: 'POST', body: payload });
         await adopt(data);
         return data;
-      } catch (error) {
-        setMessage(error.message);
-        throw error;
       } finally {
         inFlight.current = false;
         setBusy(false);
       }
     },
-    [adopt],
+    [adopt, pending],
   );
   const submit = useCallback(
     async (text, raw = false, interpreter = 'keywords', selectedTable = null) => {
       const id = active.current,
         revision = version.current;
-      if (!id || inFlight.current || pending || !text.trim()) return;
+      if (!id || inFlight.current || commandLocks.current.size || pending || !text.trim()) return;
       inFlight.current = true;
       setBusy(true);
       setMessage('');

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from '../lib/router';
+import { Icon } from './Icon';
 export function TableRail({
   session,
   selected,
@@ -27,38 +28,43 @@ export function TableRail({
   }
   return (
     <aside className={'side' + (open ? ' open' : '')} id="tableRail">
-      <div className="rail-heading">
-        <span>
-          {session.source === 'demo'
-            ? 'Sample database'
-            : session.source === 'postgresql'
-              ? 'PostgreSQL'
-              : 'Database'}
-        </span>
-        <button className="text-button" onClick={() => onNavigate('connect')}>
-          Change
-        </button>
-      </div>
-      <b className="rail-database">{session.database}</b>
-      <p className="rail-meta">
-        <span className="dot" />
-        Connected · {session.tables.length} {session.tables.length === 1 ? 'table' : 'tables'}
-      </p>
-      {session.source === 'postgresql' && (
-        <p className="small muted">
-          {session.schema_name} · {session.read_only ? 'Read-only' : 'Changes need confirmation'}
+      <div className="rail-connection">
+        <div className="rail-heading">
+          <span>
+            {session.source === 'demo'
+              ? 'Sample database'
+              : session.source === 'postgresql'
+                ? 'PostgreSQL'
+                : 'Database'}
+          </span>
+          <button className="text-button" onClick={() => onNavigate('connect')}>
+            Change
+          </button>
+        </div>
+        <b className="rail-database">{session.database}</b>
+        <p className="rail-meta">
+          <span className="dot" />
+          Connected · {session.tables.length} {session.tables.length === 1 ? 'table' : 'tables'}
         </p>
-      )}
-      <label className="sr-only" htmlFor="tableSearch">
-        Search tables and columns
-      </label>
-      <input
-        id="tableSearch"
-        type="search"
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        placeholder="Search tables and columns"
-      />
+        {session.source === 'postgresql' && (
+          <p className="small muted">
+            {session.schema_name} · {session.read_only ? 'Read-only' : 'Changes need confirmation'}
+          </p>
+        )}
+      </div>
+      <div className="rail-search">
+        <Icon name="search" />
+        <label className="sr-only" htmlFor="tableSearch">
+          Search tables and columns
+        </label>
+        <input
+          id="tableSearch"
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search tables and columns"
+        />
+      </div>
       <div className="rail-heading tables-heading">
         <span>Tables</span>
         <button

@@ -4,32 +4,56 @@ import { normalizeRequest } from '../hooks/useWorkbench';
 import { SqlBlock } from '../components/SqlBlock';
 import { CommandOutput, operationOf } from '../components/CommandResult';
 export default function HistoryPage({ workbench, onReuse }) {
-  const id = workbench.session.session_id;
+  const id = workbench.session?.session_id;
   const [sessions, setSessions] = useState([]),
-    [target, setTarget] = useState(id),
+    [target, setTarget] = useState(id || ''),
     [search, setSearch] = useState(''),
     [operation, setOperation] = useState(''),
     [filters, setFilters] = useState({ search: '', operation: '' }),
     [requests, setRequests] = useState(null),
     [error, setError] = useState(''),
+    [sessionsError, setSessionsError] = useState(''),
     [revision, setRevision] = useState(0);
   useEffect(() => {
-    const controller = new AbortController();
-    api('/api/sessions', { signal: controller.signal })
-      .then((data) => setSessions(data.sessions))
-      .catch((error) => {
-        if (error.name !== 'AbortError') setError(error.message);
-      });
-    return () => controller.abort();
+    setTarget(id || '');
   }, [id]);
   useEffect(() => {
     const controller = new AbortController();
+    setSessionsError('');
+    api('/api/sessions', { signal: controller.signal })
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        setSessions(data.sessions);
+        setTarget((current) =>
+          data.sessions.some((item) => item.session_id === current)
+            ? current
+            : id || data.sessions[0]?.session_id || '',
+        );
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted && error.name !== 'AbortError')
+          setSessionsError(error.message);
+      });
+    return () => controller.abort();
+  }, [id, revision]);
+  useEffect(() => {
+    if (!target) {
+      setRequests([]);
+      return;
+    }
+    const controller = new AbortController();
     setRequests(null);
+    setError('');
     const query = new URLSearchParams({ history_session_id: target, ...filters });
     api('/api/history?' + query, { sessionId: id, signal: controller.signal })
-      .then((data) => setRequests(data.requests.map(normalizeRequest)))
+      .then((data) => {
+        if (!controller.signal.aborted) setRequests(data.requests.map(normalizeRequest));
+      })
       .catch((error) => {
-        if (error.name !== 'AbortError') setError(error.message);
+        if (!controller.signal.aborted && error.name !== 'AbortError') {
+          setError(error.message);
+          setRequests([]);
+        }
       });
     return () => controller.abort();
   }, [id, target, filters, revision]);
@@ -37,6 +61,10 @@ export default function HistoryPage({ workbench, onReuse }) {
     await workbench.decide(command, decline);
     setRevision((value) => value + 1);
   }
+  const choices =
+    id && !sessions.some((item) => item.session_id === id)
+      ? [workbench.session, ...sessions]
+      : sessions;
   return (
     <section>
       <h1>On the record.</h1>
@@ -51,8 +79,13 @@ export default function HistoryPage({ workbench, onReuse }) {
       >
         <label>
           Session
-          <select value={target} onChange={(event) => setTarget(event.target.value)}>
-            {(sessions.length ? sessions : [workbench.session]).map((item) => (
+          <select
+            value={target}
+            disabled={!choices.length}
+            onChange={(event) => setTarget(event.target.value)}
+          >
+            {!choices.length && <option value="">No saved sessions</option>}
+            {choices.map((item) => (
               <option key={item.session_id} value={item.session_id}>
                 {item.database} · {formatTime(item.started_at)}
                 {item.session_id === id ? ' · Current' : item.ended_at ? ' · Ended' : ''}
@@ -73,23 +106,36 @@ export default function HistoryPage({ workbench, onReuse }) {
           Operation
           <select value={operation} onChange={(event) => setOperation(event.target.value)}>
             <option value="">All operations</option>
-            {['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP'].map((value) => (
-              <option key={value}>{value}</option>
-            ))}
+            {['SELECT', 'INSERT', 'REPLACE', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP'].map(
+              (value) => (
+                <option key={value}>{value}</option>
+              ),
+            )}
           </select>
         </label>
-        <button className="btn">Search</button>
+        <button className="btn" disabled={!target}>
+          Search
+        </button>
       </form>
       <p className="history-meta">
         {target === id
           ? 'Current session · History is saved on this computer.'
-          : 'Earlier session · Review saved results or prepare a request in your current session.'}
+          : id
+            ? `Saved session · Reused requests will be prepared in ${workbench.session.database}.`
+            : 'Saved results stay available without opening a database. Choose a database to reuse requests.'}
       </p>
       <div aria-live="polite">
-        {error && <p className="err">{error}</p>}
+        {(error || sessionsError) && (
+          <div role="alert">
+            <p className="err">{error || sessionsError}</p>
+            <button className="btn" onClick={() => setRevision((value) => value + 1)}>
+              Try again
+            </button>
+          </div>
+        )}
         {requests === null ? (
           <p className="muted">Loading history…</p>
-        ) : !requests.length ? (
+        ) : error || (!target && sessionsError) ? null : !requests.length ? (
           <p className="muted">No saved requests match these filters.</p>
         ) : (
           requests.map((request) => (
@@ -112,17 +158,19 @@ export default function HistoryPage({ workbench, onReuse }) {
                       predecessors={request.commands.slice(0, index)}
                       onDecide={decide}
                       busy={workbench.workingCommands.has(command.command_id)}
-                      actionable={target === id}
+                      actionable={Boolean(id && target === id)}
                     />
                   </div>
                 </details>
               ))}
               <button
                 className="btn"
-                disabled={workbench.pending || workbench.busy}
+                disabled={
+                  !id || workbench.pending || workbench.busy || workbench.workingCommands.size > 0
+                }
                 onClick={() => onReuse(request)}
               >
-                Use request
+                {target === id ? 'Use request' : 'Use in current database'}
               </button>
             </article>
           ))

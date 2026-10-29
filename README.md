@@ -10,6 +10,7 @@ Ask your database questions in plain English. Use a SQLite file or connect Postg
 - Ask questions using Gemini or use Keywords mode without an API key.
 - Browse tables and columns, and review SQL before confirming changes.
 - Sort, copy, or export results as CSV, and revisit saved requests in History.
+- Open Account and saved History even when no database is connected.
 
 ![Workspace showing a request, its SQL translation, and matching customers](docs/images/workspace.jpg)
 
@@ -24,10 +25,14 @@ git clone https://github.com/blueraymusic/Data-Genie.git
 cd Data-Genie
 npm install
 npm run build
-python3 -B server.py
+npm start
 ```
 
 Open [localhost:8000](http://localhost:8000), sign up, and choose a database.
+
+`npm start` uses the project's `.venv` when available, so PostgreSQL runs with the connector packages installed there. `npm run dev` starts the frontend only; keep the server running too.
+
+If port 8000 is busy, run `npm start -- 8001`.
 
 For live frontend updates, leave the Python server running and start Vite in another terminal:
 
@@ -51,7 +56,7 @@ With Python 3.10+, install the optional connector in a virtual environment:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-postgres.txt
-python3 -B server.py
+npm start
 ```
 
 Restart the server with that environment, then choose **Databases → PostgreSQL**. Paste your connection URL, choose a schema, and test it. Connections start read-only. Enable **Allow changes after I confirm them** to review and confirm edits to the live database. Credentials are encrypted locally.

@@ -7,8 +7,8 @@ export function HomeHistory() {
     <section className="sec wrap" id="record" aria-labelledby="rec-h">
       <h2 id="rec-h">On the record</h2>
       <p className="lede">
-        Every request is kept with the SQL it produced and its result. Search it, filter it, and
-        open any result again.
+        Find your saved requests, the SQL they produced, and the results you saw. Search, filter,
+        and open earlier results.
       </p>
       <div className="hist" aria-label="Sample history">
         <div className="hist-top" role="group" aria-label="Quick filters">

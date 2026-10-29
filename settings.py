@@ -27,7 +27,7 @@ def _local_values():
 
 def value(name, default=""):
     """Environment variables take priority, so deployments do not need .env files."""
-    return os.environ.get(name) or _local_values().get(name, default)
+    return os.environ[name] if name in os.environ else _local_values().get(name, default)
 
 
 def gemini_settings():

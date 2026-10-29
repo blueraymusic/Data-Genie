@@ -20,7 +20,13 @@ export function Router({ children }) {
   useEffect(() => {
     if (location.hash)
       requestAnimationFrame(() => {
-        const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+        let id;
+        try {
+          id = decodeURIComponent(location.hash.slice(1));
+        } catch {
+          id = location.hash.slice(1);
+        }
+        const target = document.getElementById(id);
         target?.scrollIntoView();
         if (target?.hasAttribute('tabindex')) target.focus({ preventScroll: true });
       });

@@ -13,6 +13,7 @@ function ProtectedPages() {
     { pathname, navigate } = useRouter();
   useEffect(() => {
     if (!loading && !user && !['/signin', '/signup'].includes(pathname)) navigate('/signin', true);
+    if (!loading && user && ['/signin', '/signup'].includes(pathname)) navigate('/databases', true);
   }, [loading, user, pathname, navigate]);
   if (loading)
     return (

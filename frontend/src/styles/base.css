@@ -12,6 +12,16 @@ body {
   font: 14px/1.5 var(--sans);
   -webkit-font-smoothing: antialiased;
 }
+.eyebrow {
+  color: var(--ink-soft);
+  font: 500 11px/18px var(--sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+::selection {
+  background: var(--lapis-wash);
+  color: var(--ink);
+}
 button,
 input,
 select,

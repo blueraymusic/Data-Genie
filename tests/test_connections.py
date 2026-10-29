@@ -6,11 +6,32 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 from decimal import Decimal
 from datetime import date
 
-from connections import CredentialVault, PostgresConnector, connection_config
+from connections import CredentialVault, PostgresConnector, connection_config, ConnectionFailure
 from connections.postgres import _value
+
+
+class ConnectionSupportTests(unittest.TestCase):
+    def test_missing_optional_drivers_explain_how_to_restart_with_the_project_environment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            vault = CredentialVault(Path(directory) / "repository.sqlite3")
+            for module in ("psycopg", "cryptography.fernet", "sqlglot"):
+                with self.subTest(module=module), patch.dict("sys.modules", {module:None}):
+                    with self.assertRaises(ConnectionFailure) as raised:
+                        if module == "psycopg":
+                            with PostgresConnector({}).connection():
+                                self.fail("A missing driver cannot open a connection")
+                        elif module == "cryptography.fernet":
+                            vault.encrypt({"password":"fixture-password"})
+                        else:
+                            PostgresConnector({}).prepare("SELECT * FROM customers")
+                    self.assertEqual(raised.exception.code,"postgres_support_missing")
+                    self.assertEqual(raised.exception.recovery,"restart_server")
+                    self.assertIn("npm start",str(raised.exception))
+            self.assertFalse(vault.key_path.exists())
 
 
 class ConnectionConfigTests(unittest.TestCase):

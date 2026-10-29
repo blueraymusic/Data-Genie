@@ -6,6 +6,14 @@ Data Genie supports local SQLite files and live PostgreSQL databases, including 
 
 Install `requirements-postgres.txt` in a Python 3.10+ virtual environment and restart the app with that environment's Python. Choose **PostgreSQL** on the Databases page, paste a URL containing the username and password, and choose a schema (usually `public`). **Test connection** checks access without saving credentials or changing data. **Connect PostgreSQL** saves the connection for your account.
 
+Use `npm start` to run the server with the project's `.venv` when it exists. Starting `server.py` with another Python may leave PostgreSQL support unavailable even though the packages are installed in `.venv`.
+
+## Reopen and switch
+
+**Change** in the sidebar or **Databases** in the main navigation shows saved SQLite databases and PostgreSQL connections. The current database is marked **Current**. Choose **Open** beside another one to switch; the previous session ends only after the new database opens successfully.
+
+Data Genie saves PostgreSQL connection settings, not a running PostgreSQL server. If the server is offline, the saved connection stays listed and you can start the database and choose **Try again**, or open another database. A missing encryption key or connection record offers **Enter connection details** to add a fresh connection. Existing History stays saved. Resolve any pending change before switching databases.
+
 Remote hosts use certificate-verified SSL by default. Provider URLs can specify `sslmode=require` or `sslmode=verify-full`; SSL can be disabled only for loopback hosts. `channel_binding` is preserved, including the `require` value supplied by [Neon's connection strings](https://neon.com/blog/postgres-needs-better-connection-security-defaults). `sslrootcert=system` enables full verification with system certificates. File-based libpq options and arbitrary connection parameters are not accepted.
 
 ## Live changes and exports

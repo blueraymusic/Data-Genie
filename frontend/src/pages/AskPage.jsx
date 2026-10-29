@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { Translation } from '../components/CommandResult';
 import { quoteIdentifier } from '../lib/api';
 import { requestProblem } from '../lib/requestValidation';
+import { Icon } from '../components/Icon';
 export default function AskPage({ workbench, selected, mode, draft, setDraft, onNewTable }) {
   const textarea = useRef(null),
     feed = useRef(null),
@@ -91,10 +92,11 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
           </p>
         )}
         <div className="chips">
-          {examples.map((example) => (
+          {examples.map((example, index) => (
             <button
               type="button"
               key={example}
+              aria-label={example}
               disabled={workbench.busy || workbench.pending}
               onClick={() => {
                 setDraft(example);
@@ -102,7 +104,20 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
                 textarea.current?.focus();
               }}
             >
-              {example}
+              <Icon
+                name={
+                  selected ? ['table', 'layers', 'database'][index] : ['database', 'plus'][index]
+                }
+              />
+              <span>
+                <strong>
+                  {selected
+                    ? ['Preview rows', 'Count records', 'Explore columns'][index]
+                    : ['Explore the structure', 'Create a table'][index]}
+                </strong>
+                <span>{example}</span>
+              </span>
+              <Icon name="arrow" className="ic suggestion-arrow" />
             </button>
           ))}
         </div>
@@ -203,6 +218,7 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
             disabled={workbench.busy || workbench.pending || !draft.trim()}
           >
             {workbench.busy ? 'Writing…' : 'Ask'}
+            {!workbench.busy && <Icon name="send" />}
           </button>
         </form>
         {validation && (

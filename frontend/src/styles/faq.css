@@ -120,13 +120,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
+  min-height: 44px;
   padding: 9px 17px;
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 8px;
   transition: background 0.15s;
 }
 .faq-page .primary {
@@ -210,10 +210,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 48px;
+  min-height: 54px;
   padding: 0 14px;
   border: 1px solid var(--rule);
-  border-radius: 6px;
+  border-radius: 10px;
   background: var(--paper);
 }
 .faq-page .search:focus-within {
@@ -234,7 +234,7 @@
   color: var(--ink);
   background: transparent;
   outline: none;
-  font-size: 13px;
+  font-size: 15px;
 }
 .faq-page .search input::placeholder {
   color: var(--ink-soft);
@@ -273,6 +273,10 @@
 }
 .faq-page .faq-group {
   margin-top: 44px;
+  padding: 24px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--paper);
 }
 .faq-page .faq-group:first-child {
   margin-top: 0;
@@ -287,7 +291,7 @@
   border-top: 1px solid var(--rule);
 }
 .faq-page details:last-child {
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 0;
 }
 .faq-page summary {
   display: flex;
@@ -295,6 +299,7 @@
   justify-content: space-between;
   gap: 20px;
   min-height: 64px;
+  font-size: 15px;
   padding: 18px 0;
   list-style: none;
   cursor: pointer;
@@ -334,7 +339,7 @@
   max-width: 66ch;
   padding: 0 28px 22px 0;
   color: var(--ink-soft);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.75;
 }
 .faq-page .answer p {
@@ -405,6 +410,12 @@
   }
 }
 @media (max-width: 700px) {
+  .faq-page .faq-group {
+    padding: 18px;
+  }
+  .faq-page .search input {
+    font-size: 16px;
+  }
   .faq-page .wrap {
     padding-inline: 20px;
   }
