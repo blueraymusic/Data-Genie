@@ -21,6 +21,9 @@ stages:
     jobs:
       - job: TestAndPackage
         steps:
+          - checkout: none
+          - script: git clone --branch dev --single-branch --depth 1 https://github.com/blueraymusic/Data-Genie.git "$(Build.SourcesDirectory)/source"
+            displayName: Get the current dev branch from GitHub
           - task: NodeTool@0
             inputs: { versionSpec: '22.x' }
           - task: UsePythonVersion@0
@@ -33,8 +36,11 @@ stages:
               npm run build
               python -B -m unittest
               python scripts/package_cloud.py --output "$(Build.ArtifactStagingDirectory)/data-genie.zip"
+              cp scripts/configure_cloud_firewall.py scripts/verify_cloud.py "$(Build.ArtifactStagingDirectory)/"
+              git rev-parse HEAD > "$(Build.ArtifactStagingDirectory)/commit.txt"
+            workingDirectory: $(Build.SourcesDirectory)/source
             displayName: Test and build the application
-          - publish: $(Build.ArtifactStagingDirectory)/data-genie.zip
+          - publish: $(Build.ArtifactStagingDirectory)
             artifact: application
 
   - stage: Deploy
@@ -46,7 +52,7 @@ stages:
           runOnce:
             deploy:
               steps:
-                - checkout: self
+                - checkout: none
                 - download: current
                   artifact: application
                 - task: AzureCLI@2
@@ -56,10 +62,10 @@ stages:
                     scriptLocation: inlineScript
                     inlineScript: |
                       set -eu
-                      python3 scripts/configure_cloud_firewall.py
+                      python3 "$(Pipeline.Workspace)/application/configure_cloud_firewall.py" --check
                       az webapp deploy --resource-group "$GENIE_RESOURCE_GROUP" --name "$GENIE_APP_NAME" --src-path "$(Pipeline.Workspace)/application/data-genie.zip" --type zip --clean true --restart true --only-show-errors
                       hostname=$(az webapp show --resource-group "$GENIE_RESOURCE_GROUP" --name "$GENIE_APP_NAME" --query defaultHostName --output tsv)
-                      python3 scripts/verify_cloud.py "https://$hostname"
+                      python3 "$(Pipeline.Workspace)/application/verify_cloud.py" "https://$hostname"
                   env:
                     GENIE_RESOURCE_GROUP: ${{ parameters.resourceGroup }}
                     GENIE_APP_NAME: ${{ parameters.appName }}

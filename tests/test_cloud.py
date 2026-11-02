@@ -217,7 +217,8 @@ class HostingTests(unittest.TestCase):
 class DeploymentFirewallTests(unittest.TestCase):
     def test_custom_sql_server_is_used_for_validation_and_firewall_rules(self):
         replies = [
-            json.dumps({"serverFarmId": "/plans/fixture", "possibleOutboundIpAddresses": "192.0.2.5"}),
+            json.dumps({"serverFarmId": "/plans/fixture", "outboundIpAddresses": "192.0.2.5",
+                        "possibleOutboundIpAddresses": "192.0.2.5,192.0.2.99"}),
             json.dumps({"sku": {"name": "F1"}}),
             json.dumps("genie-custom-sql.database.windows.net"),
             json.dumps({"useFreeLimit": True, "freeLimitExhaustionBehavior": "AutoPause"}),
@@ -230,6 +231,7 @@ class DeploymentFirewallTests(unittest.TestCase):
         self.assertEqual(len(sql_calls), 2)
         for arguments in sql_calls:
             self.assertEqual(arguments[arguments.index("--server") + 1], "genie-custom-sql")
+        self.assertNotIn("192.0.2.99", str(command.call_args_list))
         settings_arguments = command.call_args_list[2].args
         self.assertEqual(settings_arguments[settings_arguments.index("--query") + 1],
                          "[?name=='GENIE_SQL_HOST'].value | [0]")
@@ -240,3 +242,32 @@ class DeploymentFirewallTests(unittest.TestCase):
                     patch("scripts.configure_cloud_firewall.azure", return_value=json.dumps(host)), \
                     self.assertRaises(SystemExit):
                 configured_sql_server("fixture", "genie")
+
+    def test_ci_checks_rules_without_permission_to_modify_them(self):
+        replies = [
+            json.dumps({"serverFarmId": "/plans/fixture", "outboundIpAddresses": "192.0.2.5"}),
+            json.dumps({"sku": {"name": "F1"}}),
+            json.dumps("genie-custom-sql.database.windows.net"),
+            json.dumps({"useFreeLimit": True, "freeLimitExhaustionBehavior": "AutoPause"}),
+            json.dumps([{"startIpAddress": "192.0.2.5", "endIpAddress": "192.0.2.5"}]),
+        ]
+        with patch.dict("os.environ", {"GENIE_RESOURCE_GROUP": "fixture", "GENIE_APP_NAME": "genie"}), \
+                patch("scripts.configure_cloud_firewall.azure", side_effect=replies) as command:
+            configure_firewall(check_only=True)
+        self.assertFalse(any("create" in call.args or "delete" in call.args for call in command.call_args_list))
+
+    def test_ci_refuses_missing_rules_and_broad_azure_service_access(self):
+        for rules in ([], [{"startIpAddress": "0.0.0.0", "endIpAddress": "0.0.0.0"}],
+                      [{"startIpAddress": "192.0.2.1", "endIpAddress": "192.0.2.255"}]):
+            replies = [
+                json.dumps({"serverFarmId": "/plans/fixture", "outboundIpAddresses": "192.0.2.5"}),
+                json.dumps({"sku": {"name": "F1"}}),
+                json.dumps("genie-custom-sql.database.windows.net"),
+                json.dumps({"useFreeLimit": True, "freeLimitExhaustionBehavior": "AutoPause"}),
+                json.dumps(rules),
+            ]
+            with self.subTest(rules=rules), \
+                    patch.dict("os.environ", {"GENIE_RESOURCE_GROUP": "fixture", "GENIE_APP_NAME": "genie"}), \
+                    patch("scripts.configure_cloud_firewall.azure", side_effect=replies), \
+                    self.assertRaises(SystemExit):
+                configure_firewall(check_only=True)

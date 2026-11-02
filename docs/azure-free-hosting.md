@@ -62,7 +62,7 @@ Optional **Terraform-category variables**:
 
 Confirm the plan contains only the F1 service plan, SQL logical server, free SQL database, web app, and generated secrets. The database uses the ARM API through AzAPI because AzureRM's database resource does not expose the free-limit safeguards. The API must report both safeguards back. The database has deletion protection.
 
-The SQL server initially permits **no client IPs**. The pipeline adds only the web app's possible egress IPs after the app exists. It never enables the broad "Allow Azure services" rule. No VNet or paid private endpoint is created.
+The SQL server initially permits **no client IPs**. After reviewing network access, an administrator runs `GENIE_RESOURCE_GROUP=data_genie GENIE_APP_NAME=data-genie-blueray321 python scripts/configure_cloud_firewall.py` to allow only the web app's current egress IPs. These can be shared Azure addresses; SQL still requires verified TLS and the private database credentials. The script never enables the broad "Allow Azure services" rule. No VNet or paid private endpoint is created.
 
 In Azure Quotas, check the actual **F1 VMs** entry. The **Total Regional VMs** counter is informational and its zero value alone does not show whether F1 can be created. Provider validation can pass while an actual deployment still fails on capacity. For `ProvisioningDisabled`, try another subscription-policy-allowed region. If a failed SQL creation reserved a name in the original region, set `sql_server_name` to a new globally unique name before replanning. Inspect the plan for any replacement of an existing database; do not remove its deletion protection.
 
@@ -70,16 +70,18 @@ In Azure Quotas, check the actual **F1 VMs** entry. The **Total Regional VMs** c
 
 Open your project at `https://dev.azure.com/YOUR-ORGANIZATION/YOUR-PROJECT`. This is a separate service from the Azure portal. If you have only created a DevOps organization, create a project before setting up its pipeline.
 
-Create a workload-identity Azure Resource Manager service connection named `data-genie-azure`, scoped to `data_genie`. Authorize only this pipeline. Creating this connection grants access; review its scope. This is a separate trust from Terraform's OIDC trust.
+Create a separate deployment managed identity with **Reader on `data_genie`** and **Website Contributor only on the Data Genie web app**. It can deploy code and read the app's settings, but cannot change the hosting plan, SQL firewall, or Terraform identity. Create a workload-identity Azure Resource Manager service connection named `data-genie-azure`, scoped to `data_genie`, using this identity. Authorize only this pipeline. Creating this connection grants access; review its scope. This is a separate trust from Terraform's OIDC trust.
 
-Create an environment named `data-genie-free`, then import [azure-pipelines.yml](../azure/azure-pipelines.yml) from the repository. The pipeline is **manual only**. Microsoft-hosted free parallelism may need to be requested for a new DevOps organization; if no free grant is available, the job should remain queued rather than purchasing capacity.
+Create an environment named `data-genie-free`, then import [azure-pipelines.yml](../azure/azure-pipelines.yml) into the project's Azure Repos repository and create a pipeline from that file. The pipeline is **manual only**. It clones the public GitHub `dev` branch for each build, records the exact commit, and deploys that tested artifact. GitHub remains the source of truth; no GitHub account permissions or duplicate application-source pushes are needed. Copy changes to the pipeline definition itself into Azure Repos when updating it.
+
+Microsoft-hosted free parallelism may need to be requested for a new DevOps organization; if no free grant is available, the job should remain queued rather than purchasing capacity.
 
 After Terraform has created the infrastructure, run the pipeline with the same app name. It:
 
 1. Runs the frontend and backend checks and builds React.
 2. Creates an allowlisted ZIP with app code, runtime dependencies, and built assets.
 3. Verifies F1, `useFreeLimit=true`, and `AutoPause` in Azure before deployment.
-4. Adds the app's SQL egress firewall rules and deploys using the service connection.
+4. Checks the existing SQL firewall rules without changing network access, then deploys using the service connection. A changed egress address needs administrator review before the pipeline can continue.
 5. Verifies HTTPS, built frontend assets, and the cloud-backed anonymous session endpoint.
 
 The ZIP does **not** contain `.env`, local accounts/databases, keys, Git history, or the laptop's development packages. This deploys a fresh hosted installation. Existing desktop accounts and data remain on the desktop; they are not uploaded automatically. Sign up at the new URL and upload only the database files you want to move.

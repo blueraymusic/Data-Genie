@@ -24,7 +24,7 @@ def configured_sql_server(group, name):
     return server
 
 
-def main():
+def main(check_only=False):
     group, name = os.environ["GENIE_RESOURCE_GROUP"], os.environ["GENIE_APP_NAME"]
     app = json.loads(azure("webapp", "show", "--resource-group", group, "--name", name))
     # Block deployment if someone has changed the infrastructure to a paid plan.
@@ -37,9 +37,20 @@ def main():
     if database.get("useFreeLimit") is not True or database.get("freeLimitExhaustionBehavior") != "AutoPause":
         raise SystemExit("The database must confirm useFreeLimit=true and AutoPause before deployment.")
     addresses = sorted({str(ipaddress.IPv4Address(value.strip()))
-                        for value in app["possibleOutboundIpAddresses"].split(",") if value.strip()})
+                        for value in app.get("outboundIpAddresses", "").split(",") if value.strip()})
     if not addresses:
         raise SystemExit("No web-app egress addresses were returned.")
+    if check_only:
+        rules = json.loads(azure("sql", "server", "firewall-rule", "list",
+                                 "--resource-group", group, "--server", server))
+        if any(rule["startIpAddress"] != rule["endIpAddress"] or rule["startIpAddress"] == "0.0.0.0"
+               for rule in rules):
+            raise SystemExit("SQL must not allow address ranges or the broad Allow Azure services rule.")
+        allowed = {rule["startIpAddress"] for rule in rules}
+        if set(addresses) - allowed:
+            raise SystemExit("The app's current egress addresses need reviewed SQL firewall rules before deployment.")
+        print("Free-tier safeguards and current web-app egress rules verified.")
+        return
     for address in addresses:
         azure("sql", "server", "firewall-rule", "create", "--resource-group", group,
               "--server", server, "--name", "genie-web-" + address.replace(".", "-"),
@@ -48,4 +59,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true", help="Verify existing rules without changing SQL network access.")
+    main(check_only=parser.parse_args().check)
