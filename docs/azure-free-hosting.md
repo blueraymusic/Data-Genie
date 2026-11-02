@@ -8,7 +8,7 @@ Azure for Students includes credit, but using that credit was not authorized for
 
 ## 1. Connect Terraform to Azure
 
-A Terraform login is not an Azure credential. Use an Entra application with OIDC trust for this workspace. An SSH key is not needed.
+A Terraform login is not an Azure credential. Use an Entra application or user-assigned managed identity with OIDC trust for this workspace. An SSH key is not needed.
 
 Open the HCP workspace's **Overview** and follow its project link to find the exact HCP project name. `Data-Genie` is the workspace name; the project name can be different. An Azure portal deployment-history link does not identify either an HCP project or an Azure DevOps project.
 
@@ -21,6 +21,8 @@ python scripts/setup_terraform_azure.py --subscription "YOUR SUBSCRIPTION ID" --
 ```
 
 Use the exact project name shown for the workspace, including spaces and capitalization. After reviewing the printed permissions, running with `--apply` creates an application, service principal, a Contributor assignment **only on this resource group**, and separate `plan`/`apply` federated trusts. It creates no client secret. Review the script before granting these permissions. University tenants can require an administrator to create or approve this identity.
+
+If app registration is disabled by the university tenant, add `--managed-identity` to the preview and apply commands. This explicitly creates a user-assigned managed identity **inside `data_genie`**, using Azure resource permissions. Managed identities have no additional charge. The Contributor scope, exact two Terraform subjects, environment variables, and absence of client secrets stay the same. This does not change the tenant's app-registration policy. Do not grant a subscription-wide role to resolve an error.
 
 In **Terraform → Data-Genie → Variables**, add these under **Environment variables**:
 
