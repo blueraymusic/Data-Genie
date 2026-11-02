@@ -58,7 +58,8 @@ resource "azapi_resource" "free_state" {
   location  = local.location
   tags      = local.tags
   body = {
-    sku = { name = "GP_S_Gen5_2", tier = "GeneralPurpose", family = "Gen5", capacity = 2 }
+    # Match ARM's canonical SKU name; the maximum vCore count is capacity.
+    sku = { name = "GP_S_Gen5", tier = "GeneralPurpose", family = "Gen5", capacity = 2 }
     properties = {
       useFreeLimit                     = true
       freeLimitExhaustionBehavior      = "AutoPause"

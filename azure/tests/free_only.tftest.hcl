@@ -38,6 +38,10 @@ run "free_only_plan" {
     error_message = "SQL must opt into the free offer and stop at its limits."
   }
   assert {
+    condition     = azapi_resource.free_state.body.sku.name == "GP_S_Gen5" && azapi_resource.free_state.body.sku.tier == "GeneralPurpose" && azapi_resource.free_state.body.sku.family == "Gen5" && azapi_resource.free_state.body.sku.capacity == 2
+    error_message = "SQL must use the canonical serverless SKU with a separate two-vCore maximum."
+  }
+  assert {
     condition     = azurerm_linux_web_app.app.site_config[0].always_on == false
     error_message = "Always On is unavailable in F1 and must stay disabled."
   }
