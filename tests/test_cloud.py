@@ -7,10 +7,10 @@ import unittest
 from unittest.mock import patch
 import zipfile
 
-import cloud_state
-import settings
-import wsgi
-from connections.network import public_address
+from backend import cloud_state
+from backend import settings
+from backend import wsgi
+from backend.connections.network import public_address
 from scripts.package_cloud import package
 
 
@@ -116,7 +116,7 @@ class CloudStateTests(unittest.TestCase):
             cloud_state.snapshot(self.root)
 
     def test_hosted_account_and_confirmed_table_survive_a_worker_restart(self):
-        import workbench
+        from backend import workbench
         with patch.multiple(workbench, REPOSITORY_PATH=self.root/"repository.sqlite3",
                             DEFAULT_DB_PATH=self.root/"demo.sqlite3", SHOP_DB_PATH=self.root/"shop.sqlite3",
                             DATABASE_DIRECTORY=self.root/"databases", UPLOAD_DIRECTORY=self.root/"uploads"):
@@ -207,7 +207,7 @@ class HostingTests(unittest.TestCase):
             archive = package(Path(temporary)/"app.zip")
             with zipfile.ZipFile(archive) as bundle:
                 names = bundle.namelist()
-                self.assertIn("wsgi.py", names)
-                self.assertTrue(any(name.startswith("dist/assets/") for name in names))
+                self.assertIn("backend/wsgi.py", names)
+                self.assertTrue(any(name.startswith("frontend/dist/assets/") for name in names))
                 self.assertFalse(any(name.startswith(("db/", ".git/", ".env")) or name.endswith((".sqlite3", ".key")) for name in names))
-                self.assertEqual(bundle.read("requirements.txt"), b"-r requirements-cloud.txt\n-r requirements-postgres.txt\n")
+                self.assertEqual(bundle.read("requirements.txt"), b"-r azure/requirements.txt\n-r backend/requirements-postgres.txt\n")

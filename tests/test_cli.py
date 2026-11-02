@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import cli
+from backend import cli
 
 
 class ConsoleTests(unittest.TestCase):

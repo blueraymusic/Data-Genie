@@ -2,7 +2,7 @@
 
 import re
 
-from sql_tools import quote_identifier, tokens
+from .sql_tools import quote_identifier, tokens
 
 
 IDENTIFIER = r"[A-Za-z_][A-Za-z_0-9]*"

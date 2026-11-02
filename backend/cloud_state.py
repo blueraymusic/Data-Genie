@@ -15,7 +15,7 @@ import threading
 import tempfile
 import zipfile
 
-import settings
+from . import settings
 
 
 class StateUnavailable(RuntimeError):
@@ -97,7 +97,7 @@ def restore(root, payload):
         destination.write_bytes(content)
         destination.chmod(0o600)
     (root / ".cloud-scratch").touch(mode=0o600, exist_ok=True)
-    import workbench
+    from . import workbench
     workbench._repositories.clear()
 
 

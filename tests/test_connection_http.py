@@ -4,8 +4,8 @@ import unittest
 import importlib.util
 from unittest.mock import patch
 from tests.test_http import HttpHarness
-import workbench
-from connections import ConnectionFailure
+from backend import workbench
+from backend.connections import ConnectionFailure
 
 
 class ConnectionHttpTests(HttpHarness, unittest.TestCase):
@@ -32,7 +32,7 @@ class ConnectionHttpTests(HttpHarness, unittest.TestCase):
         self.assertIsNone(workbench.get_repository().get_session(target["session_id"])["ended_at"])
 
     def test_switch_checks_ownership_of_the_current_session_too(self):
-        import authentication
+        from backend import authentication
         repository = workbench.get_repository()
         other = authentication.Accounts(repository).register("Other", "Reader", "other@example.test", "another long fixture password")
         other_session = workbench.start_session("Other", "Reader", "other@example.test", path=workbench.DEFAULT_DB_PATH, account_id=other["account_id"])

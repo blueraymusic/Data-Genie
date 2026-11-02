@@ -42,7 +42,7 @@ If you already have a scoped service principal that uses a secret, an alternativ
 ## 2. Configure the workspace
 
 - Connect the workspace to this repository's `dev` branch.
-- Set **Terraform Working Directory** to `infra/azure`.
+- Set **Terraform Working Directory** to `azure`.
 - Keep **Auto apply disabled**. Run a plan and inspect it first.
 - Use Terraform 1.9 or later, below 2.0.
 - The subscription owner must register `Microsoft.Web` and `Microsoft.Sql` resource providers. The app identity cannot register subscription-wide providers with only resource-group permissions.
@@ -67,7 +67,7 @@ Open your project at `https://dev.azure.com/YOUR-ORGANIZATION/YOUR-PROJECT`. Thi
 
 Create a workload-identity Azure Resource Manager service connection named `data-genie-azure`, scoped to `data_genie`. Authorize only this pipeline. Creating this connection grants access; review its scope. This is a separate trust from Terraform's OIDC trust.
 
-Create an environment named `data-genie-free`, then import [azure-pipelines.yml](../azure-pipelines.yml) from the repository. The pipeline is **manual only**. Microsoft-hosted free parallelism may need to be requested for a new DevOps organization; if no free grant is available, the job should remain queued rather than purchasing capacity.
+Create an environment named `data-genie-free`, then import [azure-pipelines.yml](../azure/azure-pipelines.yml) from the repository. The pipeline is **manual only**. Microsoft-hosted free parallelism may need to be requested for a new DevOps organization; if no free grant is available, the job should remain queued rather than purchasing capacity.
 
 After Terraform has created the infrastructure, run the pipeline with the same app name. It:
 
@@ -81,7 +81,7 @@ The ZIP does **not** contain `.env`, local accounts/databases, keys, Git history
 
 ## Storage and free-tier limits
 
-App Service's shared `/home` mount cannot safely provide the SQLite locking this app needs. Hosted SQLite runs in `/tmp/data-genie` instead. `cloud_state.py` stores bounded snapshots in the free Azure SQL database, locks the state during an API request, and commits it before releasing the response. A replacement worker restores it before handling account/data requests. A storage error never silently falls back to an empty ephemeral database.
+App Service's shared `/home` mount cannot safely provide the SQLite locking this app needs. Hosted SQLite runs in `/tmp/data-genie` instead. `backend/cloud_state.py` stores bounded snapshots in the free Azure SQL database, locks the state during an API request, and commits it before releasing the response. A replacement worker restores it before handling account/data requests. A storage error never silently falls back to an empty ephemeral database.
 
 This adapter serializes requests and limits the whole installation to **64 MiB of expanded app state and 256 files**, including accounts, history, and uploaded databases. It is intended for a small student demo. Larger workloads need a relational repository/object-storage redesign and a separate capacity/cost decision. External PostgreSQL changes and app-history storage are separate transactions; after a connection/storage error, inspect History and the external database before repeating a change.
 

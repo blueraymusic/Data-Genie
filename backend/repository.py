@@ -16,7 +16,7 @@ import sqlite3
 import threading
 import uuid
 
-from sql_tools import main_verb, tokens
+from .sql_tools import main_verb, tokens
 
 
 class RepositoryError(ValueError):

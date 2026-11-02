@@ -5,12 +5,12 @@ from datetime import date, datetime, time
 from decimal import Decimal
 import ipaddress
 import logging
-import settings
+from .. import settings
 from .network import public_address
 from urllib.parse import parse_qsl, unquote, urlsplit
 from uuid import UUID
 
-from sql_tools import json_value, tokens, main_verb, unique_columns
+from ..sql_tools import json_value, tokens, main_verb, unique_columns
 from .errors import ConnectionFailure, missing_postgres_support
 
 

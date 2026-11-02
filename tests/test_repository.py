@@ -8,7 +8,7 @@ import sqlite3
 import tempfile
 import unittest
 
-from repository import Repository, RepositoryError
+from backend.repository import Repository, RepositoryError
 
 
 @contextmanager

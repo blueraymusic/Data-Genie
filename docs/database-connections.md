@@ -4,9 +4,9 @@ Data Genie supports local SQLite files and live PostgreSQL databases, including 
 
 ## Connect
 
-Install `requirements-postgres.txt` in a Python 3.10+ virtual environment and restart the app with that environment's Python. Choose **PostgreSQL** on the Databases page, paste a URL containing the username and password, and choose a schema (usually `public`). **Test connection** checks access without saving credentials or changing data. **Connect PostgreSQL** saves the connection for your account.
+Install `backend/requirements-postgres.txt` in a Python 3.10+ virtual environment and restart the app with that environment's Python. Choose **PostgreSQL** on the Databases page, paste a URL containing the username and password, and choose a schema (usually `public`). **Test connection** checks access without saving credentials or changing data. **Connect PostgreSQL** saves the connection for your account.
 
-Use `npm start` to run the server with the project's `.venv` when it exists. Starting `server.py` with another Python may leave PostgreSQL support unavailable even though the packages are installed in `.venv`.
+Use `npm start` to run the server with the project's `.venv` when it exists. Running `python -m backend.server` with another Python may leave PostgreSQL support unavailable even though the packages are installed in `.venv`.
 
 ## Reopen and switch
 

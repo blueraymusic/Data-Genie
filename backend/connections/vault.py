@@ -5,7 +5,7 @@ import os
 import threading
 from pathlib import Path
 from .errors import ConnectionFailure, missing_postgres_support
-import settings
+from .. import settings
 
 
 class CredentialVault:

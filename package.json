@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "start": "python3 -B scripts/start_server.py",
-    "dev": "vite --host 127.0.0.1",
-    "build": "vite build",
-    "test": "vitest run",
-    "format": "prettier --write frontend/src frontend/index.html vite.config.js"
+    "dev": "vite --config frontend/vite.config.js --host 127.0.0.1",
+    "build": "vite build --config frontend/vite.config.js",
+    "test": "vitest run --config frontend/vite.config.js",
+    "format": "prettier --write frontend/src frontend/index.html frontend/vite.config.js"
   },
   "dependencies": {
     "react": "19.3.1",

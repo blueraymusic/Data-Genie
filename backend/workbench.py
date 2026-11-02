@@ -13,19 +13,19 @@ import threading
 import time
 import uuid
 
-import keywords
-import gemini_provider
-from request_validation import RequestClarification, validate_request, awaiting_answer
-from request_context import contextual_read, recovery_choices
-from conversation import followup_plan, query_scope, conversation_context, describe_read, pending_task
-import settings
-from connections import PostgresConnector, connection_config, CredentialVault, ConnectionFailure
-from database_files import create_database_file, database_filename
-from repository import Repository, RepositoryError
-from sql_tools import execute, quote_identifier, row_dict, statement_details, validate_sql
+from . import keywords
+from . import gemini_provider
+from .request_validation import RequestClarification, validate_request, awaiting_answer
+from .request_context import contextual_read, recovery_choices
+from .conversation import followup_plan, query_scope, conversation_context, describe_read, pending_task
+from . import settings
+from .connections import PostgresConnector, connection_config, CredentialVault, ConnectionFailure
+from .database_files import create_database_file, database_filename
+from .repository import Repository, RepositoryError
+from .sql_tools import execute, quote_identifier, row_dict, statement_details, validate_sql
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB_PATH = settings.data_directory() / "genie_demo.sqlite3"
 REPOSITORY_PATH = settings.data_directory() / "data_genie_repository.sqlite3"
 UPLOAD_DIRECTORY = settings.data_directory() / "uploads"

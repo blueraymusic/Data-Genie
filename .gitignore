@@ -26,3 +26,7 @@ dist/
 
 # Local QA screenshots
 docs/screenshots/
+
+# Private recovery copies
+backup/*
+!backup/README.md

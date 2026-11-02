@@ -6,8 +6,8 @@ import unittest
 from urllib.error import HTTPError, URLError
 from unittest.mock import patch
 
-import gemini_provider
-from request_validation import RequestClarification
+from backend import gemini_provider
+from backend.request_validation import RequestClarification
 
 
 def model_response(payload):

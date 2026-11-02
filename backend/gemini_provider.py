@@ -5,8 +5,8 @@ import random
 import time
 from urllib import error, request
 
-from request_validation import RequestClarification, validate_request, awaiting_answer
-from conversation import pending_task
+from .request_validation import RequestClarification, validate_request, awaiting_answer
+from .conversation import pending_task
 
 
 API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models"

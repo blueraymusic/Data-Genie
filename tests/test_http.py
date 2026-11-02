@@ -10,9 +10,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import server
-import workbench
-import authentication
+from backend import server
+from backend import workbench
+from backend import authentication
 
 
 class Socket:

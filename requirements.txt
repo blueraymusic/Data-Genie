@@ -1,4 +1,4 @@
-# Data Genie runtime, not a freeze of the development laptop.
-# Local SQLite mode needs only Python; cloud and PostgreSQL use these packages.
--r requirements-postgres.txt
--r requirements-cloud.txt
+# Runtime dependencies for PostgreSQL and cloud hosting.
+# Local SQLite mode needs only Python.
+-r backend/requirements-postgres.txt
+-r azure/requirements.txt

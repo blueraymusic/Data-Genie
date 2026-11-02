@@ -6,7 +6,7 @@ import sqlite3
 import tempfile
 import unittest
 
-import workbench as server
+from backend import workbench as server
 
 
 class TemporaryDatabase(unittest.TestCase):

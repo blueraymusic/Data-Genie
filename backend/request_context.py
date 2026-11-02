@@ -2,9 +2,9 @@
 
 import re
 
-import keywords
-from request_validation import RequestClarification
-from sql_tools import quote_identifier
+from . import keywords
+from .request_validation import RequestClarification
+from .sql_tools import quote_identifier
 
 
 def contextual_read(question, tables, schema, selected_table=None):

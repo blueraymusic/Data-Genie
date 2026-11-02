@@ -7,8 +7,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import workbench as app
-from repository import Repository
+from backend import workbench as app
+from backend.repository import Repository
 
 
 class WorkbenchTests(unittest.TestCase):

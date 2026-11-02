@@ -15,6 +15,6 @@ class ConnectionFailure(ValueError):
 def missing_postgres_support():
     return ConnectionFailure(
         "This server's Python is missing PostgreSQL support. Restart Data Genie with npm start "
-        "to use its project environment, or install requirements-postgres.txt in this Python environment.",
+        "to use its project environment, or install backend/requirements-postgres.txt in this Python environment.",
         "postgres_support_missing", "restart_server",
     )

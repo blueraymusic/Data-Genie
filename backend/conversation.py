@@ -2,9 +2,9 @@
 
 import re
 
-import keywords
-from request_validation import RequestClarification
-from sql_tools import quote_identifier, tokens
+from . import keywords
+from .request_validation import RequestClarification
+from .sql_tools import quote_identifier, tokens
 
 
 def previous_read(turns):

@@ -16,28 +16,29 @@ import sys
 import tempfile
 import errno
 
-import workbench
-import settings
-import authentication
-from connections import ConnectionFailure
+from . import workbench
+from . import settings
+from . import authentication
+from .connections import ConnectionFailure
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 MAX_JSON_BYTES = 36 * 1024 * 1024
 STATIC_FILES = {
-    "/": ("dist/index.html", "text/html; charset=utf-8"),
-    "/index.html": ("dist/index.html", "text/html; charset=utf-8"),
-    "/faq": ("dist/index.html", "text/html; charset=utf-8"),
-    "/faq.html": ("dist/index.html", "text/html; charset=utf-8"),
-    "/app": ("dist/index.html", "text/html; charset=utf-8"),
-    "/dashboard.html": ("dist/index.html", "text/html; charset=utf-8"),
-    "/signin": ("dist/index.html", "text/html; charset=utf-8"),
-    "/signup": ("dist/index.html", "text/html; charset=utf-8"),
-    "/databases": ("dist/index.html", "text/html; charset=utf-8"),
-    "/history": ("dist/index.html", "text/html; charset=utf-8"),
-    "/account": ("dist/index.html", "text/html; charset=utf-8"),
-    "/static/design.css": ("static/design.css", "text/css; charset=utf-8"),
-    "/static/favicon.svg": ("static/favicon.svg", "image/svg+xml"),
+    "/favicon.svg": ("frontend/public/favicon.svg", "image/svg+xml"),
+    "/": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/index.html": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/faq": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/faq.html": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/app": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/dashboard.html": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/signin": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/signup": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/databases": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/history": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/account": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/static/design.css": ("frontend/src/styles/design.css", "text/css; charset=utf-8"),
+    "/static/favicon.svg": ("frontend/public/favicon.svg", "image/svg+xml"),
 }
 
 
@@ -136,8 +137,8 @@ class Handler(BaseHTTPRequestHandler):
                 filename = unquote(parsed.path[len("/assets/"):])
                 if not re.fullmatch(r"[A-Za-z0-9_.-]+\.(?:js|css|svg|png|jpg|webp|woff2)", filename):
                     return self.json({"error": "Not found."}, 404)
-                asset = (ROOT / "dist" / "assets" / filename).resolve()
-                if asset.parent != (ROOT / "dist" / "assets").resolve() or not asset.is_file():
+                asset = (ROOT / "frontend" / "dist" / "assets" / filename).resolve()
+                if asset.parent != (ROOT / "frontend" / "dist" / "assets").resolve() or not asset.is_file():
                     return self.json({"error": "Not found."}, 404)
                 return self.send_body(asset.read_bytes(), mimetypes.guess_type(asset.name)[0] or "application/octet-stream")
             if parsed.path in STATIC_FILES:
@@ -323,7 +324,7 @@ def main():
     except ValueError:
         raise SystemExit("Choose a port between 1 and 65535, for example: npm start -- 8001") from None
     workbench.get_repository()._initialize()
-    if not (ROOT / "dist" / "index.html").is_file():
+    if not (ROOT / "frontend" / "dist" / "index.html").is_file():
         raise SystemExit("Build the React frontend first: npm install && npm run build")
     workbench.ensure_demo_database()
     try:

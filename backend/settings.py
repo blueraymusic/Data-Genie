@@ -5,7 +5,7 @@ import os
 from urllib.parse import urlsplit
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 ENV_PATH = ROOT / ".env"
 DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
 

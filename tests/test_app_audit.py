@@ -7,10 +7,10 @@ import unittest
 from unittest.mock import patch
 
 from tests.test_http import HttpHarness
-import server
-import workbench
-import authentication
-import settings
+from backend import server
+from backend import workbench
+from backend import authentication
+from backend import settings
 from scripts import start_server
 
 

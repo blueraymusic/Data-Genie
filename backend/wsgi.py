@@ -4,9 +4,9 @@ from http import HTTPStatus
 from io import BytesIO
 from urllib.parse import quote
 
-from server import Handler
-import cloud_state
-import settings
+from .server import Handler
+from . import cloud_state
+from . import settings
 
 
 class Request(Handler):

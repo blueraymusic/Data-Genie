@@ -16,6 +16,19 @@ Ask your database questions in plain English. Use a SQLite file or connect Postg
 
 Built with React, Vite, Python, and SQLite. Screenshots use sample data.
 
+## Folders
+
+```text
+frontend/   React pages, components, styles, and Vite configuration
+backend/    Python services, database connectors, and server
+azure/      Terraform, deployment pipeline, and cloud requirements
+tests/      Python tests; React tests live beside the frontend
+scripts/    Local startup, demo data, and deployment helpers
+docs/       Guides, design notes, and screenshots
+backup/     Private local recovery copies, excluded from Git
+db/         Local accounts, history, and working databases, excluded from Git
+```
+
 ## Run locally
 
 You'll need Python 3.9+ and Node.js 22.12+.
@@ -55,7 +68,7 @@ With Python 3.10+, install the optional connector in a virtual environment:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements-postgres.txt
+pip install -r backend/requirements-postgres.txt
 npm start
 ```
 

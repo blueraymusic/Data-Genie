@@ -83,7 +83,7 @@ resource "azurerm_linux_web_app" "app" {
     always_on           = false
     ftps_state          = "Disabled"
     minimum_tls_version = "1.2"
-    app_command_line    = "python -m gunicorn -c gunicorn.conf.py wsgi:application"
+    app_command_line    = "python -m gunicorn -c azure/gunicorn.conf.py backend.wsgi:application"
     application_stack { python_version = "3.12" }
   }
   app_settings = {

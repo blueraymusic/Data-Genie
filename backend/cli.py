@@ -7,7 +7,7 @@ import shlex
 import sqlite3
 import sys
 
-import workbench
+from . import workbench
 
 
 HELP = """Type a supported request, or use a command:

@@ -10,8 +10,8 @@ from unittest.mock import patch
 from decimal import Decimal
 from datetime import date
 
-from connections import CredentialVault, PostgresConnector, connection_config, ConnectionFailure
-from connections.postgres import _value
+from backend.connections import CredentialVault, PostgresConnector, connection_config, ConnectionFailure
+from backend.connections.postgres import _value
 
 
 class ConnectionSupportTests(unittest.TestCase):

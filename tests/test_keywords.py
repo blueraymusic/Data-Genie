@@ -2,7 +2,7 @@
 
 import unittest
 
-import keywords
+from backend import keywords
 
 
 class KeywordPlanTests(unittest.TestCase):

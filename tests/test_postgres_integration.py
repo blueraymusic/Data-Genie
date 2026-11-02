@@ -12,8 +12,8 @@ import unittest
 import uuid
 from unittest.mock import patch
 
-import authentication
-import workbench
+from backend import authentication
+from backend import workbench
 
 
 @unittest.skipUnless(os.environ.get("GENIE_TEST_POSTGRES") == "1", "Opt in to the disposable PostgreSQL integration suite")

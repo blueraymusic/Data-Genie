@@ -5,9 +5,9 @@ import unittest
 import sqlite3
 import time
 
-import authentication
-import workbench
-from repository import Repository
+from backend import authentication
+from backend import workbench
+from backend.repository import Repository
 from tests.test_http import HttpHarness
 
 
