@@ -9,7 +9,7 @@ import unittest
 from backend import workbench as server
 
 
-class TemporaryDatabase(unittest.TestCase):
+class DatabaseFixture(unittest.TestCase):
     def setUp(self):
         descriptor, path = tempfile.mkstemp(suffix=".sqlite3")
         os.close(descriptor)
@@ -28,6 +28,8 @@ class TemporaryDatabase(unittest.TestCase):
         server.ACTIVE_DB_NAME = self.original_name
         self.path.unlink(missing_ok=True)
 
+
+class TemporaryDatabase(DatabaseFixture):
     def test_schema_preview_and_mutation(self):
         self.assertEqual(server.visible_tables(), ["inventory"])
         plan = server.keyword_plan("show inventory data")
@@ -61,7 +63,7 @@ class SqlValidation(unittest.TestCase):
             server.validate_sql("SELECT 1; SELECT 2")
 
 
-class KeywordInterpreter(unittest.TestCase):
+class KeywordInterpreter(DatabaseFixture):
     def test_keyword_errors_are_clear(self):
         with self.assertRaises(server.KeywordError):
             server.keyword_plan("analyze a made up table")
