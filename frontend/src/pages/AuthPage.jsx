@@ -4,10 +4,11 @@ import { useRouter, Link } from '../lib/router';
 import { AuthShell } from '../components/AuthShell';
 export default function AuthPage() {
   const { pathname, navigate } = useRouter(),
-    { authenticate, error: authError } = useAuth();
+    { authenticate, refresh, error: authError, connectionError } = useAuth();
   const signup = pathname === '/signup';
   const [show, setShow] = useState(false),
     [busy, setBusy] = useState(false),
+    [retrying, setRetrying] = useState(false),
     [error, setError] = useState('');
   useEffect(() => {
     document.title = (signup ? 'Sign up' : 'Log in') + ' | Data Genie';
@@ -16,6 +17,7 @@ export default function AuthPage() {
   }, [signup]);
   async function submit(event) {
     event.preventDefault();
+    if (busy || retrying) return;
     const form = event.currentTarget,
       values = Object.fromEntries(new FormData(form));
     setError('');
@@ -32,6 +34,17 @@ export default function AuthPage() {
       setError(error.message);
     } finally {
       setBusy(false);
+    }
+  }
+  async function retryConnection() {
+    if (busy || retrying) return;
+    setRetrying(true);
+    try {
+      await refresh();
+    } catch {
+      // AuthProvider retains the latest read failure. Never replay a form submission.
+    } finally {
+      setRetrying(false);
     }
   }
   return (
@@ -110,7 +123,7 @@ export default function AuthPage() {
             ? 'Use 15 to 128 characters. A long, unique passphrase works well.'
             : 'Your account belongs to this Data Genie installation.'}
         </p>
-        <button className="btn pri start-button" disabled={busy}>
+        <button className="btn pri start-button" disabled={busy || retrying}>
           {busy
             ? signup
               ? 'Creating your account…'
@@ -122,6 +135,16 @@ export default function AuthPage() {
         <p className="err" role="status">
           {error || authError}
         </p>
+        {connectionError && (
+          <button
+            className="btn sec"
+            type="button"
+            onClick={retryConnection}
+            disabled={busy || retrying}
+          >
+            {retrying ? 'Checking connection…' : 'Retry connection'}
+          </button>
+        )}
       </form>
     </AuthShell>
   );

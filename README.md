@@ -2,6 +2,8 @@
 
 Ask your database questions in plain English. Use a SQLite file or connect PostgreSQL, see the SQL and results, then ask a follow-up. Reads run immediately; changes always wait for your confirmation.
 
+[Open Data Genie](https://data-genie-blueray321.azurewebsites.net/) · [Log in](https://data-genie-blueray321.azurewebsites.net/signin) · [Sign up](https://data-genie-blueray321.azurewebsites.net/signup) · [FAQ](https://data-genie-blueray321.azurewebsites.net/faq)
+
 ![Data Genie homepage in light mode](docs/images/homepage.jpg)
 
 ## The workspace
@@ -34,14 +36,14 @@ db/         Local accounts, history, and working databases, excluded from Git
 You'll need Python 3.9+ and Node.js 22.12+.
 
 ```bash
-git clone https://github.com/blueraymusic/Data-Genie.git
+git clone --branch dev https://github.com/blueraymusic/Data-Genie.git
 cd Data-Genie
 npm install
 npm run build
 npm start
 ```
 
-Open [localhost:8000](http://localhost:8000), sign up, and choose a database.
+For local development, open the address printed by `npm start`, sign up, and choose a database.
 
 `npm start` uses the project's `.venv` when available, so PostgreSQL runs with the connector packages installed there. `npm run dev` starts the frontend only; keep the server running too.
 
@@ -76,7 +78,7 @@ Restart the server with that environment, then choose **Databases → PostgreSQL
 
 Confirmed edits are saved in PostgreSQL directly; no download or upload is needed. CSV downloads are copies of result rows. This is a direct PostgreSQL connector; an MCP client or server is not included yet.
 
-See the [FAQ](http://localhost:8000/faq) for common questions, or [database connections](docs/database-connections.md) for setup and testing.
+See the [FAQ](https://data-genie-blueray321.azurewebsites.net/faq) for common questions, or [database connections](docs/database-connections.md) for setup and testing.
 
 For a local test database, run `.venv/bin/python scripts/postgres_demo.py start`. It creates sample customers, products, and orders on port 55432. The connection URL is saved privately in `db/postgres-demo/connection.txt`.
 

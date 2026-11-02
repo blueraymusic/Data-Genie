@@ -73,11 +73,61 @@ class CloudStateTests(unittest.TestCase):
         with cloud_state.transaction():
             (self.root / "account.sqlite3").write_bytes(b"before")
         self.store.fail_commit = True
-        with self.assertRaises(cloud_state.StateUnavailable) as failure:
+        with self.assertLogs("backend.cloud_state", level="ERROR") as logged, \
+                self.assertRaises(cloud_state.StateUnavailable) as failure:
             with cloud_state.transaction():
                 (self.root / "account.sqlite3").write_bytes(b"after")
         self.assertNotIn("private connection", str(failure.exception))
+        self.assertFalse(failure.exception.retry_safe)
+        self.assertIn("Check History", str(failure.exception))
+        self.assertIn("stage=commit", logged.output[0])
+        self.assertNotIn("private connection", logged.output[0])
         self.assertEqual((self.root / "account.sqlite3").read_bytes(), b"before")
+
+    def test_connection_failure_does_not_run_user_work_and_can_be_retried(self):
+        with patch.object(cloud_state, "connect", side_effect=OSError("private password detail")), \
+                self.assertLogs("backend.cloud_state", level="ERROR") as logged, \
+                self.assertRaises(cloud_state.StateUnavailable) as failure:
+            with cloud_state.transaction():
+                self.fail("A failed connection must not run user work.")
+        self.assertTrue(failure.exception.retry_safe)
+        self.assertIn("No request was run", str(failure.exception))
+        self.assertNotIn("paused", str(failure.exception))
+        self.assertIn("stage=connect", logged.output[0])
+        self.assertIn("error_types=OSError", logged.output[0])
+        self.assertNotIn("private password", logged.output[0])
+
+    def test_load_failure_logs_numeric_sql_code_without_erasing_cached_state(self):
+        class FixtureSqlError(Exception):
+            msg_no = 40613
+            number = "private non-numeric value"
+        cloud_state.scratch_root(self.root)
+        cached = self.root / "account.sqlite3"
+        cached.write_bytes(b"previous cached workspace")
+        with patch.object(self.store, "fetchone", side_effect=FixtureSqlError("private SQL text")), \
+                self.assertLogs("backend.cloud_state", level="ERROR") as logged, \
+                self.assertRaises(cloud_state.StateUnavailable) as failure:
+            with cloud_state.transaction():
+                self.fail("An unavailable saved workspace must not run user work.")
+        self.assertTrue(failure.exception.retry_safe)
+        self.assertEqual(cached.read_bytes(), b"previous cached workspace")
+        self.assertIn("stage=load", logged.output[0])
+        self.assertIn("sql_codes=40613", logged.output[0])
+        self.assertNotIn("private", logged.output[0])
+
+    def test_request_failure_is_not_replayed_and_remains_uncertain(self):
+        attempts = []
+        with self.assertLogs("backend.cloud_state", level="ERROR") as logged, \
+                self.assertRaises(cloud_state.StateUnavailable) as failure:
+            with cloud_state.transaction():
+                attempts.append("external database edit")
+                raise OSError("private remote database details")
+        self.assertEqual(attempts, ["external database edit"])
+        self.assertFalse(failure.exception.retry_safe)
+        self.assertIn("could not confirm", str(failure.exception))
+        self.assertIn("Check History", str(failure.exception))
+        self.assertIn("stage=request", logged.output[0])
+        self.assertNotIn("private", logged.output[0])
 
     def test_quota_failure_preserves_committed_data(self):
         with cloud_state.transaction():
@@ -168,6 +218,16 @@ class HostingTests(unittest.TestCase):
             response = self.request()
         self.assertEqual(response["status"], "200 OK")
         self.assertIn("max-age", response["headers"]["Strict-Transport-Security"])
+
+    def test_unknown_non_api_paths_are_not_found_without_account_or_sql_access(self):
+        with patch.dict("os.environ", {"GENIE_PUBLIC_URL": "https://genie.example.test"}), \
+                patch.object(wsgi.Request, "accounts", side_effect=AssertionError("unknown routes must not access accounts")), \
+                patch.object(cloud_state, "connect", side_effect=AssertionError("unknown routes must not connect")):
+            for path in ("/does-not-exist", "/.env", "/.git/config", "/backend/settings.py"):
+                with self.subTest(path=path):
+                    response = self.request(path)
+                    self.assertEqual(response["status"], "404 Not Found")
+                    self.assertEqual(json.loads(response["body"]), {"error": "Not found."})
 
     def test_foreign_host_and_cross_origin_requests_do_not_touch_cloud_sql(self):
         with patch.dict("os.environ", {"GENIE_PUBLIC_URL": "https://genie.example.test"}), patch.object(cloud_state, "connect", side_effect=AssertionError("rejected requests must not connect")):

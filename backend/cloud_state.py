@@ -10,6 +10,7 @@ from io import BytesIO
 from pathlib import PurePosixPath
 from pathlib import Path
 import hashlib
+import logging
 import shutil
 import threading
 import tempfile
@@ -19,7 +20,9 @@ from . import settings
 
 
 class StateUnavailable(RuntimeError):
-    pass
+    def __init__(self, message, *, retry_safe=False):
+        super().__init__(message)
+        self.retry_safe = retry_safe
 
 
 class StateLimit(StateUnavailable):
@@ -31,6 +34,24 @@ MAX_STATE_FILES = 256
 _lock = threading.RLock()
 _version = None
 _store_identity = None
+
+
+def log_failure(stage, work_started, error):
+    """Keep SQL diagnostics useful without recording credentials or user data."""
+    types, codes, seen = [], set(), set()
+    current = error
+    while current is not None and id(current) not in seen and len(types) < 4:
+        seen.add(id(current))
+        types.append(type(current).__name__)
+        for name in ("msg_no", "number"):
+            code = getattr(current, name, None)
+            if type(code) is int and code > 0:
+                codes.add(code)
+        current = current.__cause__ or current.__context__
+    logging.getLogger(__name__).error(
+        "Cloud state failure stage=%s work_started=%s error_types=%s sql_codes=%s",
+        stage, work_started, ",".join(types), ",".join(str(code) for code in sorted(codes)) or "none",
+    )
 
 
 def scratch_root(root):
@@ -138,37 +159,50 @@ def transaction():
         connection = None
         previous = None
         changed = False
+        loaded = False
+        work_started = False
+        stage = "connect"
         try:
             connection = connect()
+            stage = "prepare"
             cursor = connection.cursor()
             cursor.execute("IF OBJECT_ID(N'dbo.data_genie_state', N'U') IS NULL "
                            "CREATE TABLE dbo.data_genie_state (id int NOT NULL PRIMARY KEY CHECK(id=1), "
                            "revision bigint NOT NULL, payload varbinary(max) NULL)")
+            stage = "load"
             cursor.execute("SELECT revision,payload FROM dbo.data_genie_state WITH (UPDLOCK,HOLDLOCK) WHERE id=1")
             row = cursor.fetchone()
             revision, previous = (row[0], bytes(row[1]) if row[1] is not None else None) if row else (0, None)
+            loaded = True
             if row is None:
                 cursor.execute("INSERT INTO dbo.data_genie_state(id,revision,payload) VALUES(1,0,NULL)")
+            stage = "restore"
             if _version != revision or _store_identity != identity:
                 restore(root, previous)
                 _version, _store_identity = revision, identity
             # Compare file contents rather than ZIP timestamps.
             before = fingerprint(root)
+            stage = "request"
+            work_started = True
             yield
+            stage = "snapshot"
             current = snapshot(root)
             changed = before != fingerprint(root)
             if changed:
+                stage = "persist"
                 cursor.execute("UPDATE dbo.data_genie_state SET revision=revision+1,payload=%s WHERE id=1", (binary_payload(current),))
+            stage = "commit"
             connection.commit()
             _version = revision + int(changed)
         except StateUnavailable:
-            if previous is not None or connection is not None:
+            if loaded and work_started:
                 restore(root, previous)
             _version = None
             if connection is not None:
                 connection.rollback()
             raise
-        except Exception:
+        except Exception as error:
+            log_failure(stage, work_started, error)
             _version = None
             if connection is not None:
                 try:
@@ -177,9 +211,12 @@ def transaction():
                     pass
                 # Discard scratch state. A fresh transaction reloads the committed
                 # revision, including the case where commit acknowledgement was lost.
-                restore(root, previous)
-            raise StateUnavailable("Cloud storage is unavailable or its free allowance is paused. "
-                                   "Check History before retrying a change.") from None
+                if loaded and work_started:
+                    restore(root, previous)
+            message = ("Cloud storage is temporarily unavailable. No request was run. Try again in a moment."
+                       if not work_started else
+                       "Data Genie could not confirm that the result was saved. Check History before retrying a change.")
+            raise StateUnavailable(message, retry_safe=not work_started) from None
         finally:
             if connection is not None:
                 connection.close()

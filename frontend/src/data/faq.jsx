@@ -495,7 +495,7 @@ export const faqGroups = [
       {
         question: 'How are my account and password stored?',
         search:
-          'Your name, email, password hash, and login records are stored in this Data Genie installation, separate from the databases you query. Passwords are salted and hashed; the app does not store the original password.Log in to access your own databases and history. You can change your password in Account & preferences. Other browser logins are signed out when you do.Login expires after 30 minutes of inactivity or 12 hours in total. There is no email-based password recovery in this version. History from before accounts were introduced stays on disk and is not automatically assigned by matching an email.',
+          'Your name, email, password hash, and login records are stored in this Data Genie installation, separate from the databases you query. Passwords are salted and hashed; the app does not store the original password. Log in to access your own databases and history. You can change your password in Account & preferences. Other browser logins are signed out when you do. Login expires after 30 minutes of inactivity or 12 hours in total. There is no email-based password recovery in this version. History from before accounts were introduced stays on disk and is not automatically assigned by matching an email.',
         answer: (
           <>
             <p>

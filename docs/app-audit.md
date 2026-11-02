@@ -1,5 +1,7 @@
 # App audit — October 28, 2026
 
+This is a historical audit of the local application on October 28. Test totals and exclusions below describe that audit, not the current hosted release. For current setup, use the [README](../README.md), [Azure hosting guide](azure-free-hosting.md), and [hosted FAQ](https://data-genie-blueray321.azurewebsites.net/faq). The public app is [Data Genie](https://data-genie-blueray321.azurewebsites.net/).
+
 Reviewed the React pages, account and session flows, database switching, SQL execution, history, results, exports, startup scripts, and public help text. Checks use isolated data rather than the user's databases.
 
 ## Fixed
@@ -19,7 +21,7 @@ Reviewed the React pages, account and session flows, database switching, SQL exe
 - Explicitly empty environment variables take precedence over `.env`, so an empty AI key actually disables the local-file key.
 - Public help text reflects live PostgreSQL edits, saved snapshots, and the scope of History.
 
-## Verification
+## Verification at the time of this audit
 
 215 backend tests and 45 frontend tests pass, including account, SQL confirmation, conversation, pagination, and real PostgreSQL integration checks. The production frontend build passes. The npm advisory scan reported no known vulnerabilities in production or development packages.
 

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { Confirmation, Translation, ResultOutput } from './components/CommandResult';
@@ -110,6 +110,111 @@ afterEach(() => {
 });
 
 describe('React pages and account flow', () => {
+  it.each(['/signin', '/signup'])(
+    'retries an initial connection error on %s with only a GET and preserves form drafts',
+    async (path) => {
+      history.replaceState({}, '', path);
+      let reads = 0,
+        finishCheck;
+      fetch.mockImplementation(() =>
+        ++reads === 1
+          ? response({ error: 'Cloud storage is starting. Please try again.' }, 503)
+          : new Promise((resolve) => {
+              finishCheck = resolve;
+            }),
+      );
+      const events = userEvent.setup();
+      render(<App />);
+      await screen.findByText('Cloud storage is starting. Please try again.');
+      const email = screen.getByRole('textbox', { name: 'Email', exact: true }),
+        password = screen.getByLabelText('Password', { exact: true });
+      await events.type(email, user.email);
+      await events.type(password, 'a long test passphrase');
+      if (path === '/signup') {
+        await events.type(screen.getByRole('textbox', { name: 'First name', exact: true }), 'Test');
+        await events.type(
+          screen.getByRole('textbox', { name: 'Last name', exact: true }),
+          'Reader',
+        );
+        await events.type(
+          screen.getByLabelText('Confirm password', { exact: true }),
+          'a long test passphrase',
+        );
+      }
+      await events.click(screen.getByRole('button', { name: 'Retry connection', exact: true }));
+      expect(screen.getByRole('button', { name: 'Checking connection…' }).disabled).toBe(true);
+      expect(email.value).toBe(user.email);
+      await act(async () => {
+        finishCheck(await response({ user: null }));
+      });
+      expect(screen.queryByText('Cloud storage is starting. Please try again.')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Retry connection', exact: true })).toBeNull();
+      expect(screen.getByRole('textbox', { name: 'Email', exact: true })).toBe(email);
+      expect(email.value).toBe(user.email);
+      expect(password.value).toBe('a long test passphrase');
+      if (path === '/signup') {
+        expect(screen.getByRole('textbox', { name: 'First name', exact: true }).value).toBe('Test');
+        expect(screen.getByRole('textbox', { name: 'Last name', exact: true }).value).toBe(
+          'Reader',
+        );
+        expect(screen.getByLabelText('Confirm password', { exact: true }).value).toBe(
+          'a long test passphrase',
+        );
+      }
+      expect(fetch.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
+        ['/api/auth/session', 'GET'],
+        ['/api/auth/session', 'GET'],
+      ]);
+    },
+  );
+
+  it('keeps the latest connection error when a read-only retry also fails', async () => {
+    history.replaceState({}, '', '/signin');
+    let reads = 0;
+    fetch.mockImplementation(() =>
+      response(
+        { error: ++reads === 1 ? 'Initial storage error' : 'Storage is still starting' },
+        503,
+      ),
+    );
+    const events = userEvent.setup();
+    render(<App />);
+    await screen.findByText('Initial storage error');
+    await events.type(screen.getByRole('textbox', { name: 'Email', exact: true }), user.email);
+    await events.click(screen.getByRole('button', { name: 'Retry connection', exact: true }));
+    await screen.findByText('Storage is still starting');
+    expect(screen.queryByText('Initial storage error')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Retry connection', exact: true }).disabled).toBe(
+      false,
+    );
+    expect(screen.getByRole('textbox', { name: 'Email', exact: true }).value).toBe(user.email);
+    expect(fetch.mock.calls.map(([, options]) => options.method)).toEqual(['GET', 'GET']);
+  });
+
+  it('clears a stale connection error on login and never automatically replays a failed POST', async () => {
+    history.replaceState({}, '', '/signin');
+    fetch.mockImplementation((path) =>
+      path === '/api/auth/session'
+        ? response({ error: 'Initial storage error' }, 503)
+        : response({ error: 'Email or password is incorrect.' }, 401),
+    );
+    const events = userEvent.setup();
+    render(<App />);
+    await screen.findByText('Initial storage error');
+    await events.type(screen.getByRole('textbox', { name: 'Email', exact: true }), user.email);
+    await events.type(screen.getByLabelText('Password', { exact: true }), 'a long test passphrase');
+    await events.click(screen.getByRole('button', { name: 'Log in', exact: true }));
+    await screen.findByText('Email or password is incorrect.');
+    expect(screen.queryByText('Initial storage error')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Retry connection', exact: true })).toBeNull();
+    expect(screen.getByLabelText('Password', { exact: true }).value).toBe('a long test passphrase');
+    await events.click(screen.getByRole('button', { name: 'Show password', exact: true }));
+    expect(fetch.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
+      ['/api/auth/session', 'GET'],
+      ['/api/auth/login', 'POST'],
+    ]);
+  });
+
   it('switches to a saved PostgreSQL database from Change and marks the current database', async () => {
     const remote = switchingFixture();
     const events = userEvent.setup();

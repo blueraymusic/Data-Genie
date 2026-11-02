@@ -144,6 +144,8 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path in STATIC_FILES:
                 name, content_type = STATIC_FILES[parsed.path]
                 return self.send_body((ROOT / name).read_bytes(), content_type)
+            if not parsed.path.startswith("/api/"):
+                return self.json({"error": "Not found."}, 404)
             if parsed.path == "/api/auth/session":
                 try:
                     user = self.account()
