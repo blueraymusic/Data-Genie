@@ -21,7 +21,7 @@ export async function api(path, { method = 'GET', body, sessionId, signal } = {}
   } catch (error) {
     if (error.name === 'AbortError') throw error;
     const failure = new Error(
-      'Could not reach Data Genie. Start its server with npm start, then try again. Check History before retrying a change.',
+      'Could not reach Data Genie. Check your connection and try again. For a local installation, start the server with npm start. Check History before retrying a change.',
     );
     failure.code = 'app_unavailable';
     failure.recovery = 'restart_server';

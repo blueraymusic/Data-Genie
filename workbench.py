@@ -26,11 +26,11 @@ from sql_tools import execute, quote_identifier, row_dict, statement_details, va
 
 
 ROOT = Path(__file__).resolve().parent
-DEFAULT_DB_PATH = ROOT / "db" / "genie_demo.sqlite3"
-REPOSITORY_PATH = ROOT / "db" / "data_genie_repository.sqlite3"
-UPLOAD_DIRECTORY = ROOT / "db" / "uploads"
-DATABASE_DIRECTORY = ROOT / "db" / "databases"
-SHOP_DB_PATH = ROOT / "db" / "shop_sample.sqlite3"
+DEFAULT_DB_PATH = settings.data_directory() / "genie_demo.sqlite3"
+REPOSITORY_PATH = settings.data_directory() / "data_genie_repository.sqlite3"
+UPLOAD_DIRECTORY = settings.data_directory() / "uploads"
+DATABASE_DIRECTORY = settings.data_directory() / "databases"
+SHOP_DB_PATH = settings.data_directory() / "shop_sample.sqlite3"
 MAX_DATABASE_BYTES = 25 * 1024 * 1024
 SQLITE_QUERY_TIMEOUT = 5
 # Fallbacks support low-level helpers in tests and scripts without a session.

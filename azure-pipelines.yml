@@ -1,0 +1,65 @@
+# Manual runs only. HCP Terraform owns infrastructure; this pipeline deploys code.
+trigger: none
+pr: none
+
+parameters:
+  - name: azureServiceConnection
+    type: string
+    default: data-genie-azure
+  - name: appName
+    type: string
+    default: data-genie-blueray321
+  - name: resourceGroup
+    type: string
+    default: data_genie
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: Build
+    jobs:
+      - job: TestAndPackage
+        steps:
+          - task: NodeTool@0
+            inputs: { versionSpec: '22.x' }
+          - task: UsePythonVersion@0
+            inputs: { versionSpec: '3.12' }
+          - script: |
+              set -eu
+              python -m pip install -r requirements-cloud.txt -r requirements-postgres.txt
+              npm ci
+              npm test
+              npm run build
+              python -B -m unittest
+              python scripts/package_cloud.py --output "$(Build.ArtifactStagingDirectory)/data-genie.zip"
+            displayName: Test and build the application
+          - publish: $(Build.ArtifactStagingDirectory)/data-genie.zip
+            artifact: application
+
+  - stage: Deploy
+    dependsOn: Build
+    jobs:
+      - deployment: DeployFreeApp
+        environment: data-genie-free
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - download: current
+                  artifact: application
+                - task: AzureCLI@2
+                  inputs:
+                    azureSubscription: ${{ parameters.azureServiceConnection }}
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -eu
+                      python3 scripts/configure_cloud_firewall.py
+                      az webapp deploy --resource-group "$GENIE_RESOURCE_GROUP" --name "$GENIE_APP_NAME" --src-path "$(Pipeline.Workspace)/application/data-genie.zip" --type zip --clean true --restart true --only-show-errors
+                      hostname=$(az webapp show --resource-group "$GENIE_RESOURCE_GROUP" --name "$GENIE_APP_NAME" --query defaultHostName --output tsv)
+                      python3 scripts/verify_cloud.py "https://$hostname"
+                  env:
+                    GENIE_RESOURCE_GROUP: ${{ parameters.resourceGroup }}
+                    GENIE_APP_NAME: ${{ parameters.appName }}

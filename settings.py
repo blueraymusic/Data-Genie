@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import os
+from urllib.parse import urlsplit
 
 
 ROOT = Path(__file__).resolve().parent
@@ -44,3 +45,23 @@ def public_ai_settings():
         "provider": "Gemini" if config["api_key"] else None,
         "model": config["model"] if config["api_key"] else None,
     }
+
+
+def public_url():
+    """An explicit HTTPS origin enables hosted operation; local stays local."""
+    raw = value("GENIE_PUBLIC_URL").strip().rstrip("/")
+    if not raw and value("GENIE_CLOUD_STATE") == "azure_sql":
+        hostname = os.environ.get("WEBSITE_HOSTNAME", "").strip()
+        if hostname.endswith(".azurewebsites.net") and "/" not in hostname and ":" not in hostname:
+            raw = "https://" + hostname
+    if not raw:
+        return ""
+    parsed = urlsplit(raw)
+    if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
+            or parsed.path or parsed.query or parsed.fragment):
+        raise ValueError("GENIE_PUBLIC_URL must be an HTTPS origin without a path.")
+    return raw
+
+
+def data_directory():
+    return Path(value("GENIE_DATA_DIR").strip() or str(ROOT / "db")).expanduser().resolve()

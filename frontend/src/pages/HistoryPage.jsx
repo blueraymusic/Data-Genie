@@ -119,7 +119,7 @@ export default function HistoryPage({ workbench, onReuse }) {
       </form>
       <p className="history-meta">
         {target === id
-          ? 'Current session · History is saved on this computer.'
+          ? 'Current session · History is saved with this Data Genie installation.'
           : id
             ? `Saved session · Reused requests will be prepared in ${workbench.session.database}.`
             : 'Saved results stay available without opening a database. Choose a database to reuse requests.'}

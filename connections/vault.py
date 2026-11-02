@@ -5,6 +5,7 @@ import os
 import threading
 from pathlib import Path
 from .errors import ConnectionFailure, missing_postgres_support
+import settings
 
 
 class CredentialVault:
@@ -21,6 +22,13 @@ class CredentialVault:
             from cryptography.fernet import Fernet
         except ImportError:
             raise missing_postgres_support() from None
+        configured = settings.value("GENIE_CONNECTION_KEY").strip()
+        if configured:
+            try:
+                return Fernet(configured.encode("ascii"))
+            except (ValueError, UnicodeError):
+                raise ConnectionFailure("The configured connection encryption key is invalid.",
+                                        "connection_key_invalid", "reconnect", 503) from None
         self.key_path.parent.mkdir(parents=True, exist_ok=True)
         if not create and not self.key_path.exists():
             raise ConnectionFailure("The saved connection key is missing. Restore it or enter the connection details again.",

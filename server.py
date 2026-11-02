@@ -77,7 +77,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def local_host(self):
         try:
-            return urlparse("//" + self.headers.get("Host", "")).hostname in {"127.0.0.1", "localhost", "::1"}
+            host = self.headers.get("Host", "")
+            public = settings.public_url()
+            if public:
+                return host.lower() == urlparse(public).netloc.lower()
+            return urlparse("//" + host).hostname in {"127.0.0.1", "localhost", "::1"}
         except ValueError:
             return False
 
@@ -95,6 +99,8 @@ class Handler(BaseHTTPRequestHandler):
     def set_login_cookie(self, token):
         self.response_cookie = (f"{authentication.COOKIE_NAME}={token}; Path=/; HttpOnly; SameSite=Strict; "
                                 f"Max-Age={authentication.LOGIN_LIFETIME if token else 0}")
+        if settings.public_url():
+            self.response_cookie += "; Secure"
 
     def require_csrf(self):
         expected = authentication.csrf_token(self.login_token())
@@ -124,6 +130,8 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query)
         try:
+            if parsed.path == "/healthz":
+                return self.json({"status": "ok"})
             if parsed.path.startswith("/assets/"):
                 filename = unquote(parsed.path[len("/assets/"):])
                 if not re.fullmatch(r"[A-Za-z0-9_.-]+\.(?:js|css|svg|png|jpg|webp|woff2)", filename):
@@ -197,7 +205,8 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         origin = self.headers.get("Origin")
         host = self.headers.get("Host", "")
-        if self.headers.get("Sec-Fetch-Site") == "cross-site" or (origin and (urlparse(origin).netloc != host or urlparse(origin).scheme != "http")):
+        expected = settings.public_url() or ("http://" + host)
+        if self.headers.get("Sec-Fetch-Site") == "cross-site" or (origin and origin != expected):
             return self.json({"error": "Cross-origin requests are blocked."}, 403)
         try:
             if parsed.path in {"/api/auth/register", "/api/auth/login"}:

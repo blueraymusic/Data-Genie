@@ -67,6 +67,10 @@ See the [FAQ](http://localhost:8000/faq) for common questions, or [database conn
 
 For a local test database, run `.venv/bin/python scripts/postgres_demo.py start`. It creates sample customers, products, and orders on port 55432. The connection URL is saved privately in `db/postgres-demo/connection.txt`.
 
+## Host on Azure
+
+The [free-tier deployment guide](docs/azure-free-hosting.md) covers the Terraform variables, Azure DevOps pipeline, and storage limits. Hosting uses F1 and Azure SQL's free offer; it pauses at free limits rather than upgrading to paid services. Existing local accounts and databases are not uploaded automatically.
+
 ## Checks
 
 ```bash
@@ -74,4 +78,4 @@ npm test
 python3 -B -m unittest
 ```
 
-Accounts and history are stored locally, with hashed passwords. Local databases and API keys are excluded from Git. See [SECURITY.md](SECURITY.md) for security details.
+Accounts and history stay with the Data Genie installation, with hashed passwords. Local databases and API keys are excluded from Git. See [SECURITY.md](SECURITY.md) for security details.

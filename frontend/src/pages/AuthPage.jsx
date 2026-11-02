@@ -108,7 +108,7 @@ export default function AuthPage() {
         <p className="identity-note" id="passwordHelp">
           {signup
             ? 'Use 15 to 128 characters. A long, unique passphrase works well.'
-            : 'Your account is stored on this computer.'}
+            : 'Your account belongs to this Data Genie installation.'}
         </p>
         <button className="btn pri start-button" disabled={busy}>
           {busy

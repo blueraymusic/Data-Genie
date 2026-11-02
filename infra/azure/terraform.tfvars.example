@@ -1,0 +1,5 @@
+# Enter these as Terraform-category workspace variables if overriding defaults.
+resource_group_name = "data_genie"
+app_name            = "data-genie-blueray321"
+# location = "eastus2" # Only if the existing region cannot provide both free offers.
+# Keep Gemini disabled unless you separately confirm its API's free-tier terms.

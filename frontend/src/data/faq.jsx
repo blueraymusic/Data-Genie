@@ -114,6 +114,11 @@ export const faqGroups = [
               one, including standard PostgreSQL connections from Supabase and Neon.
             </p>
             <p>
+              A hosted Data Genie installation requires a public PostgreSQL address and verified
+              TLS. Private and loopback addresses are blocked. Use the local installation to connect
+              to a database running on your laptop.
+            </p>
+            <p>
               <strong>Test connection</strong> checks access without changing data or saving the
               credentials. <strong>Connect PostgreSQL</strong> saves the connection for your
               account. Install the optional Python connector dependencies using the README first.
@@ -197,14 +202,14 @@ export const faqGroups = [
         answer: (
           <>
             <p>
-              Saved PostgreSQL connection settings are encrypted in the local application repository
-              and belong to your account. A separate local encryption key is needed to reopen them.
-              Saved connection URLs and passwords are not included in AI context. Values you type
-              into a request are included.
+              Saved PostgreSQL connection settings are encrypted in the application repository where
+              Data Genie runs and belong to your account. A separate encryption key is needed to
+              reopen them. Saved connection URLs and passwords are not included in AI context.
+              Values you type into a request are included.
             </p>
             <p>
-              Query results are saved locally in History. If you back up or move the app, keep both
-              the repository and its key to restore saved connections.
+              Query results are saved in History where the app runs. If you back up or move the app,
+              keep both the repository and its key to restore saved connections.
             </p>
           </>
         ),
@@ -412,8 +417,8 @@ export const faqGroups = [
           <>
             <p>
               Your request, translated SQL, status, and available result are saved in a separate
-              local application database. You can search requests, filter by SQL operation, and look
-              back through your sessions.
+              application database where Data Genie runs. You can search requests, filter by SQL
+              operation, and look back through your sessions.
             </p>
             <p>
               Saved results contain up to 500 rows and are snapshots, rather than a live view of
@@ -469,9 +474,9 @@ export const faqGroups = [
         answer: (
           <>
             <p>
-              Your name, email, password hash, and login records are stored in the app’s local
-              SQLite repository, separate from the databases you query. Passwords are salted and
-              hashed; the app does not store the original password.
+              Your name, email, password hash, and login records are stored where Data Genie runs,
+              separate from the databases you query. Passwords are salted and hashed; the app does
+              not store the original password.
             </p>
             <p>
               Log in to access your own databases and history. You can change your password in{' '}
@@ -480,7 +485,7 @@ export const faqGroups = [
             </p>
             <p>
               Login expires after 30 minutes of inactivity or 12 hours in total. There is no
-              email-based password recovery in this local version. History from before accounts were
+              email-based password recovery in this version. History from before accounts were
               introduced stays on disk and is not automatically assigned by matching an email.
             </p>
           </>

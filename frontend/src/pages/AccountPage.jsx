@@ -46,9 +46,7 @@ export default function AccountPage({ workbench, mode, setMode }) {
         <p>
           <span>Appearance</span>
           <button className="btn" onClick={toggle}>
-            <strong style= {{ textTransform: 'capitalize' }}>
-              {theme} 
-            </strong>
+            <strong style={{ textTransform: 'capitalize' }}>{theme}</strong>
           </button>
         </p>
         {workbench.session && (
@@ -151,8 +149,8 @@ export default function AccountPage({ workbench, mode, setMode }) {
         </p>
       </form>
       <p className="small muted">
-        Accounts and history are stored locally. Changing your password signs out other browser
-        logins.
+        Accounts and history are saved where Data Genie runs. Changing your password signs out other
+        browser logins.
       </p>
     </section>
   );

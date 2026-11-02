@@ -5,6 +5,8 @@ from datetime import date, datetime, time
 from decimal import Decimal
 import ipaddress
 import logging
+import settings
+from .network import public_address
 from urllib.parse import parse_qsl, unquote, urlsplit
 from uuid import UUID
 
@@ -136,6 +138,10 @@ class PostgresConnector:
             raise missing_postgres_support() from None
         parameters = {key: self.config[key] for key in ("host", "port", "user", "password", "dbname", "sslmode")}
         parameters["channel_binding"] = self.config.get("channel_binding", "prefer")
+        if settings.public_url():
+            if self.config["sslmode"] != "verify-full":
+                raise ValueError("Hosted PostgreSQL connections require sslmode=verify-full.")
+            parameters["hostaddr"] = public_address(parameters["host"], parameters["port"])
         if self.config["sslmode"] == "verify-full":
             parameters["sslrootcert"] = "system"
         try:

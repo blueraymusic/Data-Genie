@@ -1,0 +1,213 @@
+"""Cloud boundaries: durable recovery, HTTPS, private-network blocking and packaging."""
+from io import BytesIO
+from pathlib import Path
+import tempfile
+import json
+import unittest
+from unittest.mock import patch
+import zipfile
+
+import cloud_state
+import settings
+import wsgi
+from connections.network import public_address
+from scripts.package_cloud import package
+
+
+class FakeStore:
+    revision = 0
+    payload = None
+    pending = None
+    fail_commit = False
+
+    def cursor(self): return self
+    def execute(self, sql, params=()):
+        if sql.startswith("UPDATE"):
+            self.pending = params[0]
+    def fetchone(self): return self.revision, self.payload
+    def commit(self):
+        if self.fail_commit:
+            raise OSError("private connection detail must not be exposed")
+        if self.pending is not None:
+            self.payload = self.pending
+            self.pending = None
+            self.revision += 1
+    def rollback(self): self.pending = None
+    def close(self): pass
+
+
+class CloudStateTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="genie-cloud-test-")
+        self.root = Path(self.temp.name) / "data-genie"
+        self.environment = patch.dict("os.environ", {
+            "GENIE_DATA_DIR": str(self.root), "GENIE_PUBLIC_URL": "https://genie.example.test",
+            "GENIE_CONNECTION_KEY": "fixture-key-not-used-to-encrypt",
+        })
+        self.environment.start()
+        self.store = FakeStore()
+        cloud_state._version = None
+        self.connection = patch.object(cloud_state, "connect", return_value=self.store)
+        self.connection.start()
+
+    def tearDown(self):
+        self.connection.stop()
+        self.environment.stop()
+        cloud_state._version = None
+        self.temp.cleanup()
+
+    def test_committed_data_recovers_after_scratch_disk_is_lost(self):
+        with cloud_state.transaction():
+            (self.root / "account.sqlite3").write_bytes(b"saved account and history")
+        (self.root / "account.sqlite3").unlink()
+        cloud_state._version = None  # A replacement worker has no local cache.
+        with cloud_state.transaction():
+            self.assertEqual((self.root / "account.sqlite3").read_bytes(), b"saved account and history")
+
+    def test_unacknowledged_write_is_rolled_back_and_error_is_sanitized(self):
+        with cloud_state.transaction():
+            (self.root / "account.sqlite3").write_bytes(b"before")
+        self.store.fail_commit = True
+        with self.assertRaises(cloud_state.StateUnavailable) as failure:
+            with cloud_state.transaction():
+                (self.root / "account.sqlite3").write_bytes(b"after")
+        self.assertNotIn("private connection", str(failure.exception))
+        self.assertEqual((self.root / "account.sqlite3").read_bytes(), b"before")
+
+    def test_quota_failure_preserves_committed_data(self):
+        with cloud_state.transaction():
+            (self.root / "account.sqlite3").write_bytes(b"before")
+        with patch.object(cloud_state, "MAX_STATE_BYTES", 1024), self.assertRaises(cloud_state.StateLimit):
+            with cloud_state.transaction():
+                (self.root / "large.sqlite3").write_bytes(b"x" * 2048)
+        self.assertFalse((self.root / "large.sqlite3").exists())
+        self.assertEqual((self.root / "account.sqlite3").read_bytes(), b"before")
+
+    def test_read_without_changes_does_not_rewrite_cloud_snapshot(self):
+        with cloud_state.transaction():
+            (self.root / "account.sqlite3").write_bytes(b"before")
+        revision = self.store.revision
+        with cloud_state.transaction():
+            self.assertEqual((self.root / "account.sqlite3").read_bytes(), b"before")
+        self.assertEqual(self.store.revision, revision)
+
+    def test_invalid_archive_cannot_escape_or_remove_existing_state(self):
+        cloud_state.scratch_root(self.root)
+        (self.root / "keep").write_bytes(b"safe")
+        malicious = BytesIO()
+        with zipfile.ZipFile(malicious, "w") as archive:
+            archive.writestr("../escape", "bad")
+        with self.assertRaises(cloud_state.StateUnavailable):
+            cloud_state.restore(self.root, malicious.getvalue())
+        self.assertEqual((self.root / "keep").read_bytes(), b"safe")
+        self.assertFalse((self.root.parent / "escape").exists())
+
+    def test_unmarked_directory_is_never_overwritten(self):
+        self.root.mkdir()
+        (self.root / "private.txt").write_text("user data")
+        with self.assertRaises(cloud_state.StateUnavailable):
+            cloud_state.restore(self.root, None)
+        self.assertEqual((self.root / "private.txt").read_text(), "user data")
+
+    def test_rejects_symlink_in_snapshot(self):
+        cloud_state.scratch_root(self.root)
+        (self.root / "escape").symlink_to(self.root.parent)
+        with self.assertRaises(cloud_state.StateLimit):
+            cloud_state.snapshot(self.root)
+
+    def test_hosted_account_and_confirmed_table_survive_a_worker_restart(self):
+        import workbench
+        with patch.multiple(workbench, REPOSITORY_PATH=self.root/"repository.sqlite3",
+                            DEFAULT_DB_PATH=self.root/"demo.sqlite3", SHOP_DB_PATH=self.root/"shop.sqlite3",
+                            DATABASE_DIRECTORY=self.root/"databases", UPLOAD_DIRECTORY=self.root/"uploads"):
+            cookie = csrf = ""
+            def request(method, path, payload=None, session=None):
+                nonlocal cookie, csrf
+                body = json.dumps(payload).encode() if payload is not None else b""
+                environ = {"REQUEST_METHOD":method,"PATH_INFO":path,"HTTP_HOST":"genie.example.test",
+                           "HTTP_ORIGIN":"https://genie.example.test","CONTENT_TYPE":"application/json",
+                           "CONTENT_LENGTH":str(len(body)),"wsgi.input":BytesIO(body),"HTTP_COOKIE":cookie,
+                           "HTTP_X_CSRF_TOKEN":csrf,"REMOTE_ADDR":"192.0.2.1"}
+                if session: environ["HTTP_X_SESSION_ID"] = session
+                response = {}
+                def start(status, headers): response.update(status=status,headers=dict(headers))
+                result = json.loads(b"".join(wsgi.application(environ,start)))
+                self.assertTrue(response["status"].startswith(("200","201")),(response["status"],result))
+                if "Set-Cookie" in response["headers"]:
+                    self.assertIn("Secure",response["headers"]["Set-Cookie"])
+                    cookie = response["headers"]["Set-Cookie"].split(";",1)[0]
+                csrf = result.get("csrf_token",csrf)
+                return result
+            request("POST","/api/auth/register",{"first_name":"Cloud","last_name":"Fixture","email":"cloud@example.test","password":"a long cloud fixture password"})
+            session = request("POST","/api/sessions",{"database_mode":"create","database_name":"cloud","starter":False})["session_id"]
+            pending = request("POST","/api/query",{"sql":"CREATE TABLE tasks(id INTEGER PRIMARY KEY,title TEXT)"},session)
+            request("POST","/api/commands/confirm",{"command_id":pending["command_id"],"confirmation_token":pending["confirmation_token"]},session)
+            cloud_state.restore(self.root,None)
+            cloud_state._version = None
+            restored = request("GET","/api/schema",session=session)
+            self.assertEqual([table["name"] for table in restored["tables"]],["tasks"])
+
+
+class HostingTests(unittest.TestCase):
+    def request(self, path="/healthz", host="genie.example.test", method="GET", origin=None):
+        environ = {"REQUEST_METHOD": method, "PATH_INFO": path, "QUERY_STRING": "",
+                   "HTTP_HOST": host, "REMOTE_ADDR": "192.0.2.1", "wsgi.input": BytesIO()}
+        if origin: environ["HTTP_ORIGIN"] = origin
+        response = {}
+        def start(status, headers): response.update(status=status, headers=dict(headers))
+        response["body"] = b"".join(wsgi.application(environ, start))
+        return response
+
+    def test_https_liveness_does_not_wake_or_require_sql(self):
+        with patch.dict("os.environ", {"GENIE_PUBLIC_URL": "https://genie.example.test"}), patch.object(cloud_state, "connect", side_effect=AssertionError("liveness must not connect")):
+            response = self.request()
+        self.assertEqual(response["status"], "200 OK")
+        self.assertIn("max-age", response["headers"]["Strict-Transport-Security"])
+
+    def test_foreign_host_and_cross_origin_requests_do_not_touch_cloud_sql(self):
+        with patch.dict("os.environ", {"GENIE_PUBLIC_URL": "https://genie.example.test"}), patch.object(cloud_state, "connect", side_effect=AssertionError("rejected requests must not connect")):
+            self.assertEqual(self.request("/api/status", host="evil.example.test")["status"], "403 Forbidden")
+            self.assertEqual(self.request("/api/auth/login", method="POST", origin="http://genie.example.test")["status"], "403 Forbidden")
+
+    def test_cloud_cookies_are_secure_and_default_host_is_discovered(self):
+        with patch.dict("os.environ", {"GENIE_PUBLIC_URL":"", "GENIE_CLOUD_STATE":"azure_sql", "WEBSITE_HOSTNAME":"genie.azurewebsites.net"}):
+            self.assertEqual(settings.public_url(), "https://genie.azurewebsites.net")
+            request = wsgi.Request({"wsgi.input": BytesIO()})
+            request.set_login_cookie("fixture-token")
+            self.assertIn("; Secure", request.response_cookie)
+            self.assertIn("HttpOnly", request.response_cookie)
+
+    def test_invalid_cloud_origin_fails_closed(self):
+        with patch.dict("os.environ", {"GENIE_PUBLIC_URL":"http://genie.example.test"}):
+            self.assertEqual(self.request()["status"], "500 Internal Server Error")
+
+    def test_cloud_runtime_never_falls_back_to_local_data(self):
+        with patch.dict("os.environ", {"GENIE_PUBLIC_URL":"", "GENIE_CLOUD_STATE":"azure_sql", "WEBSITE_HOSTNAME":""}):
+            self.assertEqual(self.request("/api/auth/session")["status"], "503 Service Unavailable")
+
+    def test_unavailable_cloud_storage_returns_retry_safe_error(self):
+        with patch.dict("os.environ", {"GENIE_PUBLIC_URL":"https://genie.example.test"}), patch.object(cloud_state, "transaction", side_effect=cloud_state.StateUnavailable("Check History before retrying a change.")):
+            response = self.request("/api/auth/session")
+        self.assertEqual(response["status"], "503 Service Unavailable")
+        self.assertIn(b"Check History", response["body"])
+
+    def test_public_connector_blocks_metadata_and_dns_rebinding(self):
+        for address in ("localhost", "127.0.0.1", "169.254.169.254", "10.0.0.1", "::1", "fd00::1"):
+            with self.subTest(address=address), self.assertRaises(ValueError):
+                public_address(address, 5432)
+        with patch("socket.getaddrinfo", return_value=[(2,1,6,"",("8.8.8.8",5432)),(2,1,6,"",("10.0.0.1",5432))]), self.assertRaises(ValueError):
+            public_address("mixed.example.test",5432)
+
+    def test_public_connector_pins_the_checked_address(self):
+        with patch("socket.getaddrinfo", return_value=[(2,1,6,"",("8.8.8.8",5432))]):
+            self.assertEqual(public_address("public.example.test",5432), "8.8.8.8")
+
+    def test_deployment_bundle_excludes_local_credentials_and_databases(self):
+        with tempfile.TemporaryDirectory(prefix="genie-package-test-") as temporary:
+            archive = package(Path(temporary)/"app.zip")
+            with zipfile.ZipFile(archive) as bundle:
+                names = bundle.namelist()
+                self.assertIn("wsgi.py", names)
+                self.assertTrue(any(name.startswith("dist/assets/") for name in names))
+                self.assertFalse(any(name.startswith(("db/", ".git/", ".env")) or name.endswith((".sqlite3", ".key")) for name in names))
+                self.assertEqual(bundle.read("requirements.txt"), b"-r requirements-cloud.txt\n-r requirements-postgres.txt\n")
