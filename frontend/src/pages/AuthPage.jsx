@@ -39,7 +39,7 @@ export default function AuthPage() {
       title={signup ? 'Make room for your next question.' : 'Welcome back.'}
       lead={
         signup
-          ? 'Create a local account for your databases and history.'
+          ? 'Create an account for your databases and history.'
           : 'Log in to your databases and saved history.'
       }
     >

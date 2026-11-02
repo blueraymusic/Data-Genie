@@ -16,7 +16,7 @@ export default function HomePage() {
   const steps = [
     [
       'Choose your database',
-      'Upload a SQLite file, connect PostgreSQL, create a local database, or try the sample. Data Genie reads its structure.',
+      'Upload a SQLite file, connect PostgreSQL, create a SQLite database, or try the sample. Data Genie reads its structure.',
     ],
     ['Ask in plain English', 'Type what you want to find, add, change or total up. No SQL needed.'],
     ['Review the SQL', 'See the SQL behind your request. Changes always wait for your OK first.'],

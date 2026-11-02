@@ -84,7 +84,7 @@ export function PostgresConnectionFields({ value, onChange, disabled }) {
         database. No download or upload is needed to save them.
       </p>
       <p className="small muted">
-        Remote connections use SSL, and credentials are encrypted on this computer.
+        Remote connections use SSL, and credentials are encrypted in this Data Genie installation.
       </p>
       <button
         className="btn"

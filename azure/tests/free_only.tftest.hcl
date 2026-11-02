@@ -30,8 +30,8 @@ mock_provider "random" {}
 run "free_only_plan" {
   command = plan
   assert {
-    condition     = azurerm_service_plan.free.sku_name == "F1"
-    error_message = "The web app must never use a paid service-plan SKU."
+    condition     = azurerm_service_plan.hosting.sku_name == "F1"
+    error_message = "The default hosting tier must remain free."
   }
   assert {
     condition     = azapi_resource.free_state.body.properties.useFreeLimit == true && azapi_resource.free_state.body.properties.freeLimitExhaustionBehavior == "AutoPause"
@@ -62,4 +62,23 @@ run "invalid_sql_server_name" {
   command = plan
   variables { sql_server_name = "Invalid/Server" }
   expect_failures = [var.sql_server_name]
+}
+
+run "budgeted_student_credit_hosting" {
+  command = plan
+  variables { app_service_sku = "B1" }
+  assert {
+    condition     = azurerm_service_plan.hosting.sku_name == "B1" && azurerm_service_plan.hosting.os_type == "Linux" && azurerm_service_plan.hosting.worker_count == 1
+    error_message = "The credit option must stay on a single Linux B1 instance."
+  }
+  assert {
+    condition     = azapi_resource.free_state.body.properties.useFreeLimit == true && azapi_resource.free_state.body.properties.freeLimitExhaustionBehavior == "AutoPause"
+    error_message = "Using credit for hosting must not enable SQL overages."
+  }
+}
+
+run "larger_paid_tier_rejected" {
+  command = plan
+  variables { app_service_sku = "P1v3" }
+  expect_failures = [var.app_service_sku]
 }

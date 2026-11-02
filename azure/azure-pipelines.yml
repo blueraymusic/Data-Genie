@@ -12,6 +12,10 @@ parameters:
   - name: resourceGroup
     type: string
     default: data_genie
+  - name: appServiceSku
+    type: string
+    default: F1
+    values: [F1, B1]
 
 pool:
   vmImage: ubuntu-latest
@@ -46,8 +50,8 @@ stages:
   - stage: Deploy
     dependsOn: Build
     jobs:
-      - deployment: DeployFreeApp
-        environment: data-genie-free
+      - deployment: DeployApp
+        environment: data-genie
         strategy:
           runOnce:
             deploy:
@@ -69,3 +73,4 @@ stages:
                   env:
                     GENIE_RESOURCE_GROUP: ${{ parameters.resourceGroup }}
                     GENIE_APP_NAME: ${{ parameters.appName }}
+                    GENIE_APP_SERVICE_SKU: ${{ parameters.appServiceSku }}

@@ -13,3 +13,7 @@ output "resource_group_name" {
 output "sql_server_name" {
   value = azurerm_mssql_server.state.name
 }
+
+output "app_service_sku" {
+  value = azurerm_service_plan.hosting.sku_name
+}

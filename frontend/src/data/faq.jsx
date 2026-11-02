@@ -42,13 +42,13 @@ export const faqGroups = [
       {
         question: 'How do I get my first database?',
         search:
-          'Choose Sign up to create a local account, or Log in if you already have one. Then create a new SQLite database, upload a SQLite file, connect PostgreSQL, or try the sample. A new SQLite database starts empty unless you select the example notes table. Use + New table beside Tables to add your own table, or describe it in the request bar.',
+          'Choose Sign up to create an account, or Log in if you already have one. Then create a new SQLite database, upload a SQLite file, connect PostgreSQL, or try the sample. A new SQLite database starts empty unless you select the example notes table. Use + New table beside Tables to add your own table, or describe it in the request bar.',
         answer: (
           <>
             <p>
-              Choose <strong>Sign up</strong> to create a local account, or <strong>Log in</strong>{' '}
-              if you already have one. Then create a new SQLite database, upload a SQLite file,
-              connect PostgreSQL, or try the sample.
+              Choose <strong>Sign up</strong> to create an account, or <strong>Log in</strong> if
+              you already have one. Then create a new SQLite database, upload a SQLite file, connect
+              PostgreSQL, or try the sample.
             </p>
             <p>
               A new SQLite database starts empty unless you select the example notes table. Use{' '}
@@ -105,7 +105,7 @@ export const faqGroups = [
       {
         question: 'How do I connect PostgreSQL?',
         search:
-          'Connect a local or hosted PostgreSQL database, including standard Supabase and Neon connections. In Databases choose PostgreSQL, paste the connection URL and choose a schema, usually public. Test connection checks access without changing data or saving credentials. Connect PostgreSQL saves the connection for your account. Install the optional Python connector dependencies using the README first.',
+          'Connect a local or hosted PostgreSQL database, including standard Supabase and Neon connections. In Databases choose PostgreSQL, paste the connection URL and choose a schema, usually public. Test connection checks access without changing data or saving credentials. Connect PostgreSQL saves the connection for your account. For a local installation, install the optional connector dependencies in the README first. The hosted site includes the connector.',
         answer: (
           <>
             <p>
@@ -121,7 +121,8 @@ export const faqGroups = [
             <p>
               <strong>Test connection</strong> checks access without changing data or saving the
               credentials. <strong>Connect PostgreSQL</strong> saves the connection for your
-              account. Install the optional Python connector dependencies using the README first.
+              account. For a local installation, install the optional connector dependencies in the
+              README first. The hosted site includes the connector.
             </p>
           </>
         ),
@@ -198,7 +199,7 @@ export const faqGroups = [
       {
         question: 'Where are my connection details stored?',
         search:
-          'Saved PostgreSQL connection settings are encrypted in the local application repository and belong to your account. A separate local encryption key is needed to reopen them. Saved connection URLs and passwords are not included in AI context; values you type in requests are sent. Query results are stored locally in History. Keep both the repository and its key if you back up or move the app.',
+          'Saved PostgreSQL connection settings are encrypted in the application repository where Data Genie runs and belong to your account. A separate encryption key is needed to reopen them. Saved connection URLs and passwords are not included in AI context; values you type in requests are sent. Query results are stored in History where Data Genie runs. Keep both the repository and its key if you back up or move the app.',
         answer: (
           <>
             <p>
@@ -290,11 +291,11 @@ export const faqGroups = [
       {
         question: 'Can I use Data Genie without AI?',
         search:
-          'Yes. Choose Keywords in Account & preferences. This local mode supports specific commands such as \u201ccount customers\u201d and \u201cshow sales where amount > 50\u201d. It does not send the request to an AI provider.Gemini AI mode supports more flexible phrasing. If the AI service is unavailable, you can switch to Keywords; the app does not silently change modes.',
+          'Yes. Choose Keywords in Account & preferences. Keywords mode supports specific commands such as \u201ccount customers\u201d and \u201cshow sales where amount > 50\u201d. It does not send the request to an AI provider.Gemini AI mode supports more flexible phrasing. If the AI service is unavailable, you can switch to Keywords; the app does not silently change modes.',
         answer: (
           <>
             <p>
-              Yes. Choose <strong>Keywords</strong> in Account &amp; preferences. This local mode
+              Yes. Choose <strong>Keywords</strong> in Account &amp; preferences. Keywords mode
               supports specific commands such as “count customers” and “show sales where amount &gt;
               50”. It does not send the request to an AI provider.
             </p>
@@ -410,9 +411,33 @@ export const faqGroups = [
     title: 'History & sessions',
     items: [
       {
+        question: 'Where is my data stored on the hosted site?',
+        search:
+          'The hosted Azure installation stores accounts, history, uploaded SQLite working copies and encrypted PostgreSQL connection settings on the server, with durable state in Azure SQL. Your laptop installation is separate: sign up on the hosted site and upload only the SQLite files you want to move. The small hosted installation supports 64 MiB of total application state and 256 files. SQL pauses when its free allowance is exhausted.',
+        answer: (
+          <>
+            <p>
+              On the hosted site, accounts, History, SQLite working copies and encrypted connection
+              settings are stored on the server, with durable state in Azure SQL. They are not
+              stored only in your browser or on your laptop.
+            </p>
+            <p>
+              A laptop installation has separate accounts and data. Sign up on the hosted site and
+              upload only the SQLite files you want to move. PostgreSQL connections continue to work
+              directly on the connected database.
+            </p>
+            <p>
+              This small deployment supports 64 MiB of total application state and 256 files across
+              all accounts. Azure SQL pauses if its free allowance is exhausted. Keep downloaded
+              copies of important SQLite databases.
+            </p>
+          </>
+        ),
+      },
+      {
         question: 'What is saved in History?',
         search:
-          'Your request, translated SQL, status, and available result are saved locally. Search requests, filter by SQL operation and revisit SQLite and PostgreSQL sessions without a live database connection. Saved results contain up to 500 rows and are snapshots. Structure-only inspections stay in the conversation but are not stored in History. Run requests again for current data.',
+          'Your request, translated SQL, status, and available result are saved where Data Genie runs. Search requests, filter by SQL operation and revisit SQLite and PostgreSQL sessions without a live database connection. Saved results contain up to 500 rows and are snapshots. Structure-only inspections stay in the conversation but are not stored in History. Run requests again for current data.',
         answer: (
           <>
             <p>
@@ -470,7 +495,7 @@ export const faqGroups = [
       {
         question: 'How are my account and password stored?',
         search:
-          'Your name, email, password hash, and login records are stored in the app\u2019s local SQLite repository, separate from the databases you query. Passwords are salted and hashed; the app does not store the original password.Log in to access your own databases and history. You can change your password in Account & preferences. Other browser logins are signed out when you do.Login expires after 30 minutes of inactivity or 12 hours in total. There is no email-based password recovery in this local version. History from before accounts were introduced stays on disk and is not automatically assigned by matching an email.',
+          'Your name, email, password hash, and login records are stored in this Data Genie installation, separate from the databases you query. Passwords are salted and hashed; the app does not store the original password.Log in to access your own databases and history. You can change your password in Account & preferences. Other browser logins are signed out when you do.Login expires after 30 minutes of inactivity or 12 hours in total. There is no email-based password recovery in this version. History from before accounts were introduced stays on disk and is not automatically assigned by matching an email.',
         answer: (
           <>
             <p>

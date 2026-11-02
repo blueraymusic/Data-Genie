@@ -215,11 +215,34 @@ class HostingTests(unittest.TestCase):
 
 
 class DeploymentFirewallTests(unittest.TestCase):
+    def test_only_the_reviewed_linux_tier_and_instance_count_are_accepted(self):
+        for expected, actual, linux, count in (("F1", "B1", True, 1), ("B1", "B1", False, 1),
+                                                ("B1", "B1", True, 2), ("P1v3", "P1v3", True, 1)):
+            replies = [json.dumps({"serverFarmId": "/plans/fixture"}),
+                       json.dumps({"sku": {"name": actual, "capacity": count}, "reserved": linux})]
+            with self.subTest(expected=expected, actual=actual, linux=linux, count=count), \
+                    patch.dict("os.environ", {"GENIE_RESOURCE_GROUP": "fixture", "GENIE_APP_NAME": "genie", "GENIE_APP_SERVICE_SKU": expected}), \
+                    patch("scripts.configure_cloud_firewall.azure", side_effect=replies), \
+                    self.assertRaises(SystemExit):
+                configure_firewall(check_only=True)
+
+    def test_budgeted_b1_accepts_free_sql_and_existing_network_rules(self):
+        replies = [
+            json.dumps({"serverFarmId": "/plans/fixture", "outboundIpAddresses": "192.0.2.5"}),
+            json.dumps({"sku": {"name": "B1", "capacity": 1}, "reserved": True}),
+            json.dumps("genie-custom-sql.database.windows.net"),
+            json.dumps({"useFreeLimit": True, "freeLimitExhaustionBehavior": "AutoPause"}),
+            json.dumps([{"startIpAddress": "192.0.2.5", "endIpAddress": "192.0.2.5"}]),
+        ]
+        with patch.dict("os.environ", {"GENIE_RESOURCE_GROUP": "fixture", "GENIE_APP_NAME": "genie", "GENIE_APP_SERVICE_SKU": "B1"}), \
+                patch("scripts.configure_cloud_firewall.azure", side_effect=replies):
+            configure_firewall(check_only=True)
+
     def test_custom_sql_server_is_used_for_validation_and_firewall_rules(self):
         replies = [
             json.dumps({"serverFarmId": "/plans/fixture", "outboundIpAddresses": "192.0.2.5",
                         "possibleOutboundIpAddresses": "192.0.2.5,192.0.2.99"}),
-            json.dumps({"sku": {"name": "F1"}}),
+            json.dumps({"sku": {"name": "F1", "capacity": 1}, "reserved": True}),
             json.dumps("genie-custom-sql.database.windows.net"),
             json.dumps({"useFreeLimit": True, "freeLimitExhaustionBehavior": "AutoPause"}),
             "{}",
@@ -246,7 +269,7 @@ class DeploymentFirewallTests(unittest.TestCase):
     def test_ci_checks_rules_without_permission_to_modify_them(self):
         replies = [
             json.dumps({"serverFarmId": "/plans/fixture", "outboundIpAddresses": "192.0.2.5"}),
-            json.dumps({"sku": {"name": "F1"}}),
+            json.dumps({"sku": {"name": "F1", "capacity": 1}, "reserved": True}),
             json.dumps("genie-custom-sql.database.windows.net"),
             json.dumps({"useFreeLimit": True, "freeLimitExhaustionBehavior": "AutoPause"}),
             json.dumps([{"startIpAddress": "192.0.2.5", "endIpAddress": "192.0.2.5"}]),
@@ -261,7 +284,7 @@ class DeploymentFirewallTests(unittest.TestCase):
                       [{"startIpAddress": "192.0.2.1", "endIpAddress": "192.0.2.255"}]):
             replies = [
                 json.dumps({"serverFarmId": "/plans/fixture", "outboundIpAddresses": "192.0.2.5"}),
-                json.dumps({"sku": {"name": "F1"}}),
+                json.dumps({"sku": {"name": "F1", "capacity": 1}, "reserved": True}),
                 json.dumps("genie-custom-sql.database.windows.net"),
                 json.dumps({"useFreeLimit": True, "freeLimitExhaustionBehavior": "AutoPause"}),
                 json.dumps(rules),

@@ -32,7 +32,8 @@ export default function DatabasesPage({ workbench, onOpened }) {
         <div className="drop">
           <h2>Bring your data</h2>
           <p>
-            Upload a SQLite file, start a local database, or connect a live PostgreSQL database.
+            Upload a SQLite file, start an empty SQLite database, or connect a live PostgreSQL
+            database.
           </p>
           <p className="small muted">
             SQLite uploads use a copy you can download. PostgreSQL works on your connected database;

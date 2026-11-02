@@ -17,7 +17,17 @@ variable "app_name" {
 variable "location" {
   type        = string
   default     = ""
-  description = "Optional region override if both free offers are unavailable in the group's region. Never upgrades the SKU."
+  description = "Optional region override when the selected hosting tier or SQL free offer is unavailable in the group's region. Never upgrades the SKU."
+}
+
+variable "app_service_sku" {
+  type        = string
+  default     = "F1"
+  description = "F1 is free. Select Linux B1 explicitly to use student credit; one instance only. SQL retains its free-offer safeguards."
+  validation {
+    condition     = contains(["F1", "B1"], var.app_service_sku)
+    error_message = "Only F1 or the explicitly budgeted Linux B1 hosting tier is allowed."
+  }
 }
 
 variable "sql_server_name" {

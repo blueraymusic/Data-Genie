@@ -1,4 +1,4 @@
-"""A single small worker fits the Azure F1 development allowance."""
+"""A single small worker keeps the student deployment's memory use bounded."""
 import os
 
 bind = "0.0.0.0:" + os.environ.get("PORT", "8000")

@@ -4,7 +4,7 @@ data "azurerm_resource_group" "existing" {
 
 locals {
   location = var.location != "" ? var.location : data.azurerm_resource_group.existing.location
-  tags     = { project = "Data-Genie", environment = "student-free" }
+  tags     = { project = "Data-Genie", environment = "student", hosting_sku = var.app_service_sku }
 }
 
 resource "random_password" "sql" {
@@ -21,12 +21,19 @@ resource "random_password" "connection_key" {
   special = true
 }
 
-resource "azurerm_service_plan" "free" {
+moved {
+  from = azurerm_service_plan.free
+  to   = azurerm_service_plan.hosting
+}
+
+resource "azurerm_service_plan" "hosting" {
+  # Keep the existing Azure name so selecting B1 upgrades this plan in place.
   name                = "${var.app_name}-free"
   resource_group_name = data.azurerm_resource_group.existing.name
   location            = local.location
   os_type             = "Linux"
-  sku_name            = "F1"
+  sku_name            = var.app_service_sku
+  worker_count        = 1
   tags                = local.tags
 }
 
@@ -76,7 +83,7 @@ resource "azurerm_linux_web_app" "app" {
   name                                           = var.app_name
   resource_group_name                            = data.azurerm_resource_group.existing.name
   location                                       = local.location
-  service_plan_id                                = azurerm_service_plan.free.id
+  service_plan_id                                = azurerm_service_plan.hosting.id
   https_only                                     = true
   ftp_publish_basic_authentication_enabled       = false
   webdeploy_publish_basic_authentication_enabled = false
@@ -103,5 +110,5 @@ resource "azurerm_linux_web_app" "app" {
 }
 
 # SQL starts with no public firewall rules. The deployment script reads the web
-# app's actual possible egress IPs after creation and permits only those IPs.
+# app's current egress IPs after creation and permits only those IPs.
 # They are unknown during the first plan, so a Terraform for_each cannot use them.

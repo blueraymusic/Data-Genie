@@ -1,6 +1,7 @@
 # Enter these as Terraform-category workspace variables if overriding defaults.
 resource_group_name = "data_genie"
 app_name            = "data-genie-blueray321"
+# app_service_sku = "B1" # Paid Linux hosting, only after reviewing the student-credit budget.
 # location = "eastus2" # Only if the existing region cannot provide both free offers.
 # sql_server_name = "your-unique-genie-sql" # Optional override for a reserved name.
 # Keep Gemini disabled unless you separately confirm its API's free-tier terms.

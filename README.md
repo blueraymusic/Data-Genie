@@ -82,7 +82,7 @@ For a local test database, run `.venv/bin/python scripts/postgres_demo.py start`
 
 ## Host on Azure
 
-The [free-tier deployment guide](docs/azure-free-hosting.md) covers the Terraform variables, Azure DevOps pipeline, and storage limits. Hosting uses F1 and Azure SQL's free offer; it pauses at free limits rather than upgrading to paid services. Existing local accounts and databases are not uploaded automatically.
+The [Azure deployment guide](docs/azure-free-hosting.md) covers the Terraform variables, Azure DevOps pipeline, and storage limits. Hosting supports free F1 or one budgeted Linux B1 instance using student credit. Azure SQL stays on its free offer and pauses at its limits. Existing local accounts and databases are not uploaded automatically.
 
 ## Checks
 

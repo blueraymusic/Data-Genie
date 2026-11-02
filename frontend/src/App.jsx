@@ -17,7 +17,7 @@ function ProtectedPages() {
   }, [loading, user, pathname, navigate]);
   if (loading)
     return (
-      <AuthShell title="A moment, please." lead="Checking your local login.">
+      <AuthShell title="A moment, please." lead="Checking your login.">
         <p role="status">Loading…</p>
       </AuthShell>
     );

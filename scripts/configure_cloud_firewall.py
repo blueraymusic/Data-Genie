@@ -27,10 +27,13 @@ def configured_sql_server(group, name):
 def main(check_only=False):
     group, name = os.environ["GENIE_RESOURCE_GROUP"], os.environ["GENIE_APP_NAME"]
     app = json.loads(azure("webapp", "show", "--resource-group", group, "--name", name))
-    # Block deployment if someone has changed the infrastructure to a paid plan.
+    # Match the reviewed tier and OS; Windows B1 has a different price.
     plan = json.loads(azure("appservice", "plan", "show", "--ids", app["serverFarmId"]))
-    if plan.get("sku", {}).get("name") != "F1":
-        raise SystemExit("Deployment requires the F1 free plan.")
+    expected_sku = os.environ.get("GENIE_APP_SERVICE_SKU", "F1")
+    if expected_sku not in {"F1", "B1"} or plan.get("sku", {}).get("name") != expected_sku or plan.get("reserved") is not True:
+        raise SystemExit("Deployment requires the explicitly selected Linux F1 or single-instance B1 plan.")
+    if expected_sku == "B1" and plan.get("sku", {}).get("capacity") != 1:
+        raise SystemExit("The budgeted B1 plan must have exactly one instance.")
     server = configured_sql_server(group, name)
     database = json.loads(azure("sql", "db", "show", "--resource-group", group,
                                 "--server", server, "--name", "data-genie-state"))
@@ -49,13 +52,13 @@ def main(check_only=False):
         allowed = {rule["startIpAddress"] for rule in rules}
         if set(addresses) - allowed:
             raise SystemExit("The app's current egress addresses need reviewed SQL firewall rules before deployment.")
-        print("Free-tier safeguards and current web-app egress rules verified.")
+        print("Hosting budget, SQL free-offer safeguards and current egress rules verified.")
         return
     for address in addresses:
         azure("sql", "server", "firewall-rule", "create", "--resource-group", group,
               "--server", server, "--name", "genie-web-" + address.replace(".", "-"),
               "--start-ip-address", address, "--end-ip-address", address)
-    print("Free-tier safeguards verified; web-app egress rules configured.")
+    print("Hosting budget and SQL free-offer safeguards verified; web-app egress rules configured.")
 
 
 if __name__ == "__main__":
