@@ -37,6 +37,8 @@ In **Terraform → Data-Genie → Variables**, add these under **Environment var
 
 Do not set `ARM_CLIENT_SECRET` when using this OIDC setup. Do not create `tfc_azure_dynamic_credentials` manually; HCP Terraform supplies it. Terraform generates the SQL password and connection-encryption key. They are sensitive values in the private Terraform state and Azure app settings: restrict workspace/state access and preserve the key when restoring the app.
 
+To supply Gemini as an **environment variable**, use `TF_VAR_gemini_api_key` and enable **Sensitive**. Terraform maps it to the application's `GEMINI_API_KEY`. Use either this environment variable or the Terraform-category `gemini_api_key`, not both.
+
 If you already have a scoped service principal that uses a secret, an alternative is `ARM_SUBSCRIPTION_ID`, `ARM_TENANT_ID`, `ARM_CLIENT_ID`, and **sensitive** `ARM_CLIENT_SECRET`. Do not combine this with the OIDC variables. Never put secrets in Git or chat.
 
 ## 2. Configure the workspace

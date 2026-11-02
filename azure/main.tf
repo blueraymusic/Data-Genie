@@ -16,8 +16,9 @@ resource "random_password" "sql" {
   override_special = "!#$%&*+-=?_"
 }
 
-resource "random_id" "connection_key" {
-  byte_length = 32
+resource "random_password" "connection_key" {
+  length  = 64
+  special = true
 }
 
 resource "azurerm_service_plan" "free" {
@@ -90,7 +91,7 @@ resource "azurerm_linux_web_app" "app" {
     SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
     GENIE_CLOUD_STATE              = "azure_sql"
     GENIE_DATA_DIR                 = "/tmp/data-genie"
-    GENIE_CONNECTION_KEY           = replace(replace(random_id.connection_key.b64_std, "+", "-"), "/", "_")
+    GENIE_CONNECTION_KEY           = replace(replace(base64sha256(random_password.connection_key.result), "+", "-"), "/", "_")
     GENIE_SQL_HOST                 = azurerm_mssql_server.state.fully_qualified_domain_name
     GENIE_SQL_DATABASE             = azapi_resource.free_state.name
     GENIE_SQL_USER                 = azurerm_mssql_server.state.administrator_login
