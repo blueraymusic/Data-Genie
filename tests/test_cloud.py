@@ -50,8 +50,12 @@ class CloudStateTests(unittest.TestCase):
         cloud_state._version = None
         self.connection = patch.object(cloud_state, "connect", return_value=self.store)
         self.connection.start()
+        # Keep storage/rollback tests runnable without optional Azure packages.
+        self.binary = patch.object(cloud_state, "binary_payload", side_effect=lambda payload: payload)
+        self.binary.start()
 
     def tearDown(self):
+        self.binary.stop()
         self.connection.stop()
         self.environment.stop()
         cloud_state._version = None

@@ -117,6 +117,13 @@ def connect():
     )
 
 
+def binary_payload(payload):
+    # Plain bytes are inferred as text by python-tds. ZIP snapshots must be
+    # explicitly binary, including snapshots larger than 8,000 bytes.
+    from pytds import Binary
+    return Binary(payload)
+
+
 @contextmanager
 def transaction():
     """Keep the acknowledged state durable, or fail without silently going ephemeral."""
@@ -151,7 +158,7 @@ def transaction():
             current = snapshot(root)
             changed = before != fingerprint(root)
             if changed:
-                cursor.execute("UPDATE dbo.data_genie_state SET revision=revision+1,payload=%s WHERE id=1", (current,))
+                cursor.execute("UPDATE dbo.data_genie_state SET revision=revision+1,payload=%s WHERE id=1", (binary_payload(current),))
             connection.commit()
             _version = revision + int(changed)
         except StateUnavailable:
