@@ -8,7 +8,7 @@ from scripts import setup_terraform_azure as setup
 
 
 class IdentitySetupTests(unittest.TestCase):
-    arguments = ["setup", "--subscription", "fixture-subscription", "--terraform-project", "Blueray", "--managed-identity"]
+    arguments = ["setup", "--subscription", "fixture-subscription", "--terraform-project", "Blueray", "--managed-identity", "--location", "northcentralus"]
 
     def test_preview_does_not_invoke_azure(self):
         with patch("sys.argv", self.arguments), patch.object(setup, "az") as azure, patch.object(setup.subprocess, "run") as run, redirect_stdout(StringIO()):
@@ -28,6 +28,8 @@ class IdentitySetupTests(unittest.TestCase):
             setup.main()
         calls = [call.args for call in azure.call_args_list]
         self.assertFalse(any(args[0] == "ad" for args in calls))
+        creation = next(args for args in calls if args[:2] == ("identity", "create"))
+        self.assertEqual(creation[creation.index("--location") + 1], "northcentralus")
         roles = [args for args in calls if args[:3] == ("role", "assignment", "create")]
         self.assertEqual(len(roles), 1)
         self.assertEqual(roles[0][roles[0].index("--scope") + 1], scope)

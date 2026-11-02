@@ -19,6 +19,7 @@ def main():
     parser.add_argument("--terraform-project", required=True, help="Exact project name shown in HCP Terraform")
     parser.add_argument("--subscription", required=True, help="Your Azure subscription ID")
     parser.add_argument("--resource-group", default="data_genie")
+    parser.add_argument("--location", help="Allowed Azure region for the managed identity; defaults to the group's region")
     parser.add_argument("--managed-identity", action="store_true",
                         help="Create a user-assigned identity in the resource group instead of an Entra app")
     parser.add_argument("--apply", action="store_true")
@@ -26,6 +27,8 @@ def main():
     scope = f"/subscriptions/{args.subscription}/resourceGroups/{args.resource_group}"
     print("Identity: data-genie-terraform; Contributor scope:", scope)
     print("Identity type:", "user-assigned managed identity" if args.managed_identity else "Entra application")
+    if args.location:
+        print("Identity region:", args.location)
     for phase in ("plan", "apply"):
         print("OIDC subject:", f"organization:blueray321:project:{args.terraform_project}:workspace:Data-Genie:run_phase:{phase}")
     if not args.apply:
@@ -39,7 +42,9 @@ def main():
         matches = az("identity", "list", "--resource-group", args.resource_group)
         if any(item["name"] == name for item in matches):
             raise SystemExit("This managed identity already exists. Inspect it before reusing or changing its access.")
-        identity = az("identity", "create", "--name", name, "--resource-group", args.resource_group)
+        location = args.location or group["location"]
+        identity = az("identity", "create", "--name", name, "--resource-group", args.resource_group,
+                      "--location", location)
         client_id, principal_id = identity["clientId"], identity["principalId"]
     else:
         matches = az("ad", "app", "list", "--display-name", name)

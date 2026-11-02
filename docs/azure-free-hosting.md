@@ -24,6 +24,8 @@ Use the exact project name shown for the workspace, including spaces and capital
 
 If app registration is disabled by the university tenant, add `--managed-identity` to the preview and apply commands. This explicitly creates a user-assigned managed identity **inside `data_genie`**, using Azure resource permissions. Managed identities have no additional charge. The Contributor scope, exact two Terraform subjects, environment variables, and absence of client secrets stay the same. This does not change the tenant's app-registration policy. Do not grant a subscription-wide role to resolve an error.
 
+Azure for Students can restrict resource locations even when a resource group exists in another region. Inspect `az policy assignment list --scope /subscriptions/YOUR-SUBSCRIPTION-ID` for `listOfAllowedLocations`. Pass an allowed region using `--location REGION` for the managed identity and set the Terraform-category variable `location` to an allowed region supporting both free offers. Do not remove the subscription policy or upgrade the SKU to resolve a location error.
+
 In **Terraform → Data-Genie → Variables**, add these under **Environment variables**:
 
 | Key | Value | Sensitive? |
