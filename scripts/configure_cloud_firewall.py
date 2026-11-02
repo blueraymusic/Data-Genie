@@ -30,9 +30,17 @@ def main(check_only=False):
     # Match the reviewed tier and OS; Windows B1 has a different price.
     plan = json.loads(azure("appservice", "plan", "show", "--ids", app["serverFarmId"]))
     expected_sku = os.environ.get("GENIE_APP_SERVICE_SKU", "F1")
-    if expected_sku not in {"F1", "B1"} or plan.get("sku", {}).get("name") != expected_sku or plan.get("reserved") is not True:
+    if not isinstance(plan, dict) or not isinstance(plan.get("sku"), dict) or not isinstance(plan.get("properties", {}), dict):
+        raise SystemExit("Azure did not return a usable hosting plan for validation.")
+    sku = plan["sku"]
+    # Azure CLI can return raw ARM properties or its older flattened shape.
+    # A null flattened field can accompany the raw ARM shape; require an
+    # explicit true flag and reject any non-null conflicting or malformed flag.
+    reserved_flags = [owner["reserved"] for owner in (plan, plan.get("properties", {}))
+                      if "reserved" in owner and owner["reserved"] is not None]
+    if expected_sku not in {"F1", "B1"} or sku.get("name") != expected_sku or not reserved_flags or any(value is not True for value in reserved_flags):
         raise SystemExit("Deployment requires the explicitly selected Linux F1 or single-instance B1 plan.")
-    if expected_sku == "B1" and plan.get("sku", {}).get("capacity") != 1:
+    if expected_sku == "B1" and (type(sku.get("capacity")) is not int or sku["capacity"] != 1):
         raise SystemExit("The budgeted B1 plan must have exactly one instance.")
     server = configured_sql_server(group, name)
     database = json.loads(azure("sql", "db", "show", "--resource-group", group,

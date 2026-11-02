@@ -217,7 +217,8 @@ class HostingTests(unittest.TestCase):
 class DeploymentFirewallTests(unittest.TestCase):
     def test_only_the_reviewed_linux_tier_and_instance_count_are_accepted(self):
         for expected, actual, linux, count in (("F1", "B1", True, 1), ("B1", "B1", False, 1),
-                                                ("B1", "B1", True, 2), ("P1v3", "P1v3", True, 1)):
+                                                ("B1", "B1", True, 2), ("B1", "B1", True, True),
+                                                ("B1", "B1", True, "1"), ("P1v3", "P1v3", True, 1)):
             replies = [json.dumps({"serverFarmId": "/plans/fixture"}),
                        json.dumps({"sku": {"name": actual, "capacity": count}, "reserved": linux})]
             with self.subTest(expected=expected, actual=actual, linux=linux, count=count), \
@@ -225,6 +226,47 @@ class DeploymentFirewallTests(unittest.TestCase):
                     patch("scripts.configure_cloud_firewall.azure", side_effect=replies), \
                     self.assertRaises(SystemExit):
                 configure_firewall(check_only=True)
+
+    def test_raw_arm_linux_f1_and_b1_plans_accept_existing_network_rules(self):
+        for tier, flattened in (("F1", {}), ("B1", {}), ("B1", {"reserved": None})):
+            replies = [
+                json.dumps({"serverFarmId": "/plans/fixture", "outboundIpAddresses": "192.0.2.5"}),
+                json.dumps({"id": "/plans/fixture", "kind": "linux", "properties": {"reserved": True}, **flattened,
+                            "sku": {"name": tier, "capacity": 1}}),
+                json.dumps("genie-custom-sql.database.windows.net"),
+                json.dumps({"useFreeLimit": True, "freeLimitExhaustionBehavior": "AutoPause"}),
+                json.dumps([{"startIpAddress": "192.0.2.5", "endIpAddress": "192.0.2.5"}]),
+            ]
+            with self.subTest(tier=tier, flattened=flattened), \
+                    patch.dict("os.environ", {"GENIE_RESOURCE_GROUP": "fixture", "GENIE_APP_NAME": "genie", "GENIE_APP_SERVICE_SKU": tier}), \
+                    patch("scripts.configure_cloud_firewall.azure", side_effect=replies) as command:
+                configure_firewall(check_only=True)
+            self.assertFalse(any("create" in call.args or "delete" in call.args for call in command.call_args_list))
+
+    def test_missing_malformed_and_windows_os_flags_fail_before_sql_access(self):
+        invalid_plans = [
+            {"properties": {}},
+            {"kind": "windows", "properties": {"reserved": False}},
+            {"properties": {"reserved": None}},
+            {"properties": {"reserved": "true"}},
+            {"properties": {"reserved": 1}},
+            {"properties": {"reserved": True}, "reserved": False},
+            {"properties": {"reserved": False}, "reserved": True},
+            {"properties": None, "reserved": True},
+            {"properties": [], "reserved": True},
+            {"reserved": "true"},
+            {"properties": {"reserved": True}, "sku": None},
+            [],
+        ]
+        for invalid in invalid_plans:
+            plan = {"sku": {"name": "B1", "capacity": 1}, **invalid} if isinstance(invalid, dict) else invalid
+            replies = [json.dumps({"serverFarmId": "/plans/fixture"}), json.dumps(plan)]
+            with self.subTest(plan=plan), \
+                    patch.dict("os.environ", {"GENIE_RESOURCE_GROUP": "fixture", "GENIE_APP_NAME": "genie", "GENIE_APP_SERVICE_SKU": "B1"}), \
+                    patch("scripts.configure_cloud_firewall.azure", side_effect=replies) as command, \
+                    self.assertRaises(SystemExit):
+                configure_firewall(check_only=True)
+            self.assertEqual(command.call_count, 2)
 
     def test_budgeted_b1_accepts_free_sql_and_existing_network_rules(self):
         replies = [
