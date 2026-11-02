@@ -104,9 +104,11 @@ def restore(root, payload):
 def connect():
     import certifi
     import pytds
+    from .cloud_tls import install_hostname_verifier
     host = settings.value("GENIE_SQL_HOST").strip()
     if not host.endswith(".database.windows.net") or "/" in host or ":" in host:
         raise StateUnavailable("Configure the Azure SQL server hostname.")
+    install_hostname_verifier()
     return pytds.connect(
         server=host, database=settings.value("GENIE_SQL_DATABASE"),
         user=settings.value("GENIE_SQL_USER"), password=settings.value("GENIE_SQL_PASSWORD"),
