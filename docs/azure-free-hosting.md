@@ -2,6 +2,10 @@
 
 Target: HCP Terraform organization `blueray321`, project `Blueray`, workspace `Data-Genie`, and the existing Azure resource group `data_genie`.
 
+The configured deployment uses **France Central**, app `data-genie-blueray321`, one **Linux B1** instance, and SQL server `data-genie-blueray321-fr-sql` / database `data-genie-state`. The site is [data-genie-blueray321.azurewebsites.net](https://data-genie-blueray321.azurewebsites.net/). The [manual deployment pipeline](https://dev.azure.com/as4dc/blueray/_build?definitionId=1) is in `as4dc/blueray`; select `appServiceSku=B1` when running it.
+
+The workspace already has the four OIDC environment variables listed below and sensitive `TF_VAR_gemini_api_key`. Its Terraform-category values are `location=francecentral`, `app_service_sku=B1`, and `sql_server_name=data-genie-blueray321-fr-sql`. No client secret or additional Gemini variable is needed. Future hosting changes still require a reviewed plan.
+
 This is a small development/demo deployment. Hosting defaults to **App Service Linux F1**, with **Azure SQL's free offer** for durable state. An explicitly selected **single Linux B1 instance** can use student credit when F1 cannot run the app. It does not create a VM, registry, Key Vault or paid logging workspace. There is no automatic tier upgrade or paid SQL fallback.
 
 Azure for Students credit is separate from free-service allowances. Keep the student spending limit enabled. Select the Terraform variable `app_service_sku=B1` only after reviewing its cost. The SQL resource explicitly requests `useFreeLimit=true` and `freeLimitExhaustionBehavior=AutoPause`. Reaching free limits can make the site unavailable; do not switch to `BillOverUsage` to keep it online.
@@ -99,7 +103,7 @@ Uploaded SQLite files use working copies. Hosted PostgreSQL requires a public ho
 
 Azure F1 has a daily CPU allowance and cold starts; SQL can take time to resume. `/healthz` checks liveness without waking SQL. The deployment script checks `/api/auth/session` to verify durable storage separately. This configuration does not promise continuous availability or an SLA. SQL’s free offer and AutoPause must remain enabled. Hosting is restricted to F1 or one explicitly selected Linux B1 instance; do not enable SQL overages or a larger hosting tier.
 
-Accounts, history, and working data live where the app is hosted, with password hashing and HTTPS cookies. SQL transport verifies the server's TLS certificate. Azure SQL backs up its state; the Terraform-managed connection key must also be retained to unlock saved PostgreSQL connections after recovery. A snapshot must be treated as private user data.
+Accounts, history, and working data live where the app is hosted, with password hashing and HTTPS cookies. SQL transport verifies the server's certificate chain and hostname. The current python-tds release needs the small `backend/cloud_tls.py` compatibility adapter for pyOpenSSL 26; keep `service-identity` installed and hostname verification enabled. Durable ZIP snapshots are bound as `pytds.Binary`, not text. Azure SQL backs up its state; the Terraform-managed connection key must also be retained to unlock saved PostgreSQL connections after recovery. A snapshot must be treated as private user data.
 
 ## References
 
