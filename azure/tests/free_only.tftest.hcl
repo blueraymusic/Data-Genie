@@ -48,3 +48,18 @@ run "invalid_azure_name" {
   variables { app_name = "Invalid Name" }
   expect_failures = [var.app_name]
 }
+
+run "custom_sql_server" {
+  command = plan
+  variables { sql_server_name = "genie-custom-state-sql" }
+  assert {
+    condition     = azurerm_mssql_server.state.name == "genie-custom-state-sql"
+    error_message = "A reserved SQL server name must be replaceable without renaming the web app."
+  }
+}
+
+run "invalid_sql_server_name" {
+  command = plan
+  variables { sql_server_name = "Invalid/Server" }
+  expect_failures = [var.sql_server_name]
+}

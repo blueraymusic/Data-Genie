@@ -20,6 +20,16 @@ variable "location" {
   description = "Optional region override if both free offers are unavailable in the group's region. Never upgrades the SKU."
 }
 
+variable "sql_server_name" {
+  type        = string
+  default     = ""
+  description = "Optional globally unique SQL server name, for example when a failed regional deployment reserved the original name."
+  validation {
+    condition     = var.sql_server_name == "" || can(regex("^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$", var.sql_server_name))
+    error_message = "Use 3–63 lowercase letters, numbers or hyphens, without a leading or trailing hyphen."
+  }
+}
+
 variable "gemini_api_key" {
   type        = string
   default     = ""

@@ -12,6 +12,7 @@ from backend import settings
 from backend import wsgi
 from backend.connections.network import public_address
 from scripts.package_cloud import package
+from scripts.configure_cloud_firewall import configured_sql_server, main as configure_firewall
 
 
 class FakeStore:
@@ -211,3 +212,31 @@ class HostingTests(unittest.TestCase):
                 self.assertTrue(any(name.startswith("frontend/dist/assets/") for name in names))
                 self.assertFalse(any(name.startswith(("db/", ".git/", ".env")) or name.endswith((".sqlite3", ".key")) for name in names))
                 self.assertEqual(bundle.read("requirements.txt"), b"-r azure/requirements.txt\n-r backend/requirements-postgres.txt\n")
+
+
+class DeploymentFirewallTests(unittest.TestCase):
+    def test_custom_sql_server_is_used_for_validation_and_firewall_rules(self):
+        replies = [
+            json.dumps({"serverFarmId": "/plans/fixture", "possibleOutboundIpAddresses": "192.0.2.5"}),
+            json.dumps({"sku": {"name": "F1"}}),
+            json.dumps("genie-custom-sql.database.windows.net"),
+            json.dumps({"useFreeLimit": True, "freeLimitExhaustionBehavior": "AutoPause"}),
+            "{}",
+        ]
+        with patch.dict("os.environ", {"GENIE_RESOURCE_GROUP": "fixture", "GENIE_APP_NAME": "genie"}), \
+                patch("scripts.configure_cloud_firewall.azure", side_effect=replies) as command:
+            configure_firewall()
+        sql_calls = [call.args for call in command.call_args_list if call.args[0] == "sql"]
+        self.assertEqual(len(sql_calls), 2)
+        for arguments in sql_calls:
+            self.assertEqual(arguments[arguments.index("--server") + 1], "genie-custom-sql")
+        settings_arguments = command.call_args_list[2].args
+        self.assertEqual(settings_arguments[settings_arguments.index("--query") + 1],
+                         "[?name=='GENIE_SQL_HOST'].value | [0]")
+
+    def test_missing_or_invalid_configured_host_fails_without_guessing_a_server(self):
+        for host in (None, "", "not-azure.example.test", "bad/name.database.windows.net"):
+            with self.subTest(host=host), \
+                    patch("scripts.configure_cloud_firewall.azure", return_value=json.dumps(host)), \
+                    self.assertRaises(SystemExit):
+                configured_sql_server("fixture", "genie")

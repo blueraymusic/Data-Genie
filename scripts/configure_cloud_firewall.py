@@ -2,11 +2,26 @@
 import ipaddress
 import json
 import os
+import re
 import subprocess
 
 
 def azure(*arguments):
     return subprocess.check_output(["az", *arguments, "--output", "json", "--only-show-errors"], text=True)
+
+
+def configured_sql_server(group, name):
+    # Query only the host setting, never the app's API keys or SQL password.
+    host = json.loads(azure("webapp", "config", "appsettings", "list",
+                            "--resource-group", group, "--name", name,
+                            "--query", "[?name=='GENIE_SQL_HOST'].value | [0]"))
+    suffix = ".database.windows.net"
+    if not isinstance(host, str) or not host.endswith(suffix):
+        raise SystemExit("The web app must have a valid GENIE_SQL_HOST setting.")
+    server = host[:-len(suffix)]
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,61}[a-z0-9]", server):
+        raise SystemExit("The configured Azure SQL server name is invalid.")
+    return server
 
 
 def main():
@@ -16,8 +31,9 @@ def main():
     plan = json.loads(azure("appservice", "plan", "show", "--ids", app["serverFarmId"]))
     if plan.get("sku", {}).get("name") != "F1":
         raise SystemExit("Deployment requires the F1 free plan.")
+    server = configured_sql_server(group, name)
     database = json.loads(azure("sql", "db", "show", "--resource-group", group,
-                                "--server", name + "-sql", "--name", "data-genie-state"))
+                                "--server", server, "--name", "data-genie-state"))
     if database.get("useFreeLimit") is not True or database.get("freeLimitExhaustionBehavior") != "AutoPause":
         raise SystemExit("The database must confirm useFreeLimit=true and AutoPause before deployment.")
     addresses = sorted({str(ipaddress.IPv4Address(value.strip()))
@@ -26,7 +42,7 @@ def main():
         raise SystemExit("No web-app egress addresses were returned.")
     for address in addresses:
         azure("sql", "server", "firewall-rule", "create", "--resource-group", group,
-              "--server", name + "-sql", "--name", "genie-web-" + address.replace(".", "-"),
+              "--server", server, "--name", "genie-web-" + address.replace(".", "-"),
               "--start-ip-address", address, "--end-ip-address", address)
     print("Free-tier safeguards verified; web-app egress rules configured.")
 

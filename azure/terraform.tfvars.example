@@ -2,4 +2,5 @@
 resource_group_name = "data_genie"
 app_name            = "data-genie-blueray321"
 # location = "eastus2" # Only if the existing region cannot provide both free offers.
+# sql_server_name = "your-unique-genie-sql" # Optional override for a reserved name.
 # Keep Gemini disabled unless you separately confirm its API's free-tier terms.

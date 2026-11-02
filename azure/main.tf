@@ -31,7 +31,7 @@ resource "azurerm_service_plan" "free" {
 }
 
 resource "azurerm_mssql_server" "state" {
-  name                          = "${var.app_name}-sql"
+  name                          = var.sql_server_name != "" ? var.sql_server_name : "${var.app_name}-sql"
   resource_group_name           = data.azurerm_resource_group.existing.name
   location                      = local.location
   version                       = "12.0"

@@ -9,3 +9,7 @@ output "app_name" {
 output "resource_group_name" {
   value = data.azurerm_resource_group.existing.name
 }
+
+output "sql_server_name" {
+  value = azurerm_mssql_server.state.name
+}

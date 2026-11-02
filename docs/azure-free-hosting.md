@@ -4,7 +4,7 @@ Target: HCP Terraform organization `blueray321`, project `Blueray`, workspace `D
 
 This is a small development/demo deployment. It uses **App Service Linux F1** and **Azure SQL's free offer**. It does not create a VM, registry, Key Vault, paid logging workspace, or paid app-service tier. There is no automatic upgrade. If a region, subscription, quota, or policy cannot provide these offers, deployment must fail.
 
-Azure for Students includes credit, but using that credit was not authorized for this deployment. Keep the student spending limit enabled. The SQL resource explicitly requests `useFreeLimit=true` and `freeLimitExhaustionBehavior=AutoPause`. Reaching free limits can make the site unavailable; do not switch to `BillOverUsage` to keep it online.
+Azure for Students credit is separate from free-service allowances. Keep the student spending limit enabled. This configuration uses the free offers; a credit-funded paid tier needs an explicit configuration change and a cost review. The SQL resource explicitly requests `useFreeLimit=true` and `freeLimitExhaustionBehavior=AutoPause`. Reaching free limits can make the site unavailable; do not switch to `BillOverUsage` to keep it online.
 
 ## 1. Connect Terraform to Azure
 
@@ -56,12 +56,15 @@ Optional **Terraform-category variables**:
 | `resource_group_name` | `data_genie` | Existing group; it is not recreated or owned by this configuration. |
 | `app_name` | `data-genie-blueray321` | Must be globally available; also use this value in the deployment pipeline. |
 | `location` | Existing group's region | Override only if another allowed region offers both free services. |
+| `sql_server_name` | App name plus `-sql` | Optional globally unique name if an earlier failed deployment reserved the original name in another region. Deployment reads this server from the app's configured SQL host. |
 | `gemini_api_key` | Empty | Sensitive. Keywords mode is the default; AI billing/free quotas are separate. |
 | `gemini_model` | `gemini-3.5-flash-lite` | Only used when a key is supplied. |
 
 Confirm the plan contains only the F1 service plan, SQL logical server, free SQL database, web app, and generated secrets. The database uses the ARM API through AzAPI because AzureRM's database resource does not expose the free-limit safeguards. The API must report both safeguards back. The database has deletion protection.
 
 The SQL server initially permits **no client IPs**. The pipeline adds only the web app's possible egress IPs after the app exists. It never enables the broad "Allow Azure services" rule. No VNet or paid private endpoint is created.
+
+In Azure Quotas, check the actual **F1 VMs** entry. The **Total Regional VMs** counter is informational and its zero value alone does not show whether F1 can be created. Provider validation can pass while an actual deployment still fails on capacity. For `ProvisioningDisabled`, try another subscription-policy-allowed region. If a failed SQL creation reserved a name in the original region, set `sql_server_name` to a new globally unique name before replanning. Inspect the plan for any replacement of an existing database; do not remove its deletion protection.
 
 ## 3. Deploy with Azure DevOps
 
