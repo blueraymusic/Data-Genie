@@ -146,3 +146,5 @@ The deployment pipeline verifies the configured public origin, including fronten
 ```sh
 python scripts/verify_cloud.py https://data-genie.space
 ```
+
+Finish Terraform applies and app-setting or logging changes before starting a code deployment. Those changes can restart Azure's containers and interrupt the remote build. The pipeline waits for publishing with a ten-minute timeout, then uses the public-origin checks above instead of Azure CLI's Linux startup tracker, which can continue polling after the app is already healthy.
