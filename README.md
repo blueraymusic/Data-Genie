@@ -9,11 +9,13 @@ Ask your database questions in plain English. Use a SQLite file or connect Postg
 ## The workspace
 
 - Upload a SQLite file, connect PostgreSQL, create an empty database, or explore the sample.
-- Ask questions using Gemini, or write SQL without an API key. The SQL tab includes examples.
+- Ask questions using Data Genie AI, or write SQL without an API key. The SQL tab includes examples.
 - Add, rename, or delete tables and columns in Structure, with a SQL preview before each change.
 - Sort, copy, or export results as CSV, and revisit saved requests in History.
 - Keep writing from the bottom editor; browse recent requests in small batches and search the full History by page.
 - Open Account and saved History even when no database is connected.
+
+See the [workspace guide](docs/user-guide.md) for examples, table editing, and History navigation.
 
 ![Workspace showing a request, its SQL translation, and matching customers](docs/images/workspace.jpg)
 
@@ -58,11 +60,11 @@ npm run dev
 
 Open the URL Vite prints. It forwards API requests to the Python server.
 
-## Optional Gemini setup
+## Optional AI setup
 
 Copy `.env.example` to `.env` and add your `GEMINI_API_KEY`. The model is configured with `GEMINI_MODEL` in the same file. Without a key, use the SQL tab or the forms in Structure. Neither sends requests to AI.
 
-Gemini receives the database structure and recent conversation context, including request text, SQL, and clarifications. Result rows are not sent to the model.
+Data Genie sends the configured AI service your database structure and recent conversation context, including request text, SQL, and clarifications. Result rows are not sent to the model.
 
 ## Connect PostgreSQL
 

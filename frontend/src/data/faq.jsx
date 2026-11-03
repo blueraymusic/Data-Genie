@@ -24,11 +24,11 @@ export const faqGroups = [
       {
         question: 'Do I need to know SQL?',
         search:
-          'No. In Gemini AI mode, start with a request such as \u201cshow all customers from Missouri\u201d. The generated SQL appears beside your words so you can see how the request was interpreted. The Structure tab shows the tables and columns available in your database. Naming them in your request helps make your intent clear.',
+          'No. In Data Genie AI mode, start with a request such as \u201cshow all customers from Missouri\u201d. The generated SQL appears beside your words so you can see how the request was interpreted. The Structure tab shows the tables and columns available in your database. Naming them in your request helps make your intent clear.',
         answer: (
           <>
             <p>
-              No. In Gemini AI mode, start with a request such as “show all customers from
+              No. In Data Genie AI mode, start with a request such as “show all customers from
               Missouri”. The generated SQL appears beside your words so you can see how the request
               was interpreted.
             </p>
@@ -269,16 +269,17 @@ export const faqGroups = [
         ),
       },
       {
-        question: 'What does Gemini receive about my database?',
+        question: 'What does Data Genie AI receive about my database?',
         search:
-          'Gemini receives your request, the database structure, and up to eight recent turns from this conversation. Context includes your messages, assistant replies, clarification questions, SQL, execution status, and brief result summaries. Table rows, other conversations, file paths, and profile details are not sent. Values typed into a request are included. New conversation clears the context for future requests.',
+          'Data Genie sends the configured AI service your request, the database structure, and up to eight recent turns from this conversation. Context includes your messages, assistant replies, clarification questions, SQL, execution status, and brief result summaries. Table rows, other conversations, file paths, and profile details are not sent. Values typed into a request are included. New conversation clears the context for future requests.',
         answer: (
           <>
             <p>
-              Gemini receives your request and the database structure: table and column names, data
-              types, and relevant key and constraint information. It also receives up to eight
-              recent turns from this conversation, including your messages, assistant replies,
-              clarification questions, SQL, execution status, and brief result summaries.
+              Data Genie sends the configured AI service your request and the database structure:
+              table and column names, data types, and relevant key and constraint information. It
+              also receives up to eight recent turns from this conversation, including your
+              messages, assistant replies, clarification questions, SQL, execution status, and brief
+              result summaries.
             </p>
             <p>
               Table rows, other conversations, file paths, and profile details are not sent. Values

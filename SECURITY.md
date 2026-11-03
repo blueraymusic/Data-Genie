@@ -17,7 +17,7 @@ If private reporting is unavailable, open an issue asking for a private contact 
 - The application repository contains private data and is not encrypted as a whole by Data Genie. Saved PostgreSQL connection settings are separately encrypted with Fernet. Keep the repository and its encryption key private and preserve both for recovery.
 - Review generated SQL before confirming a database change.
 - PostgreSQL connections are read-only by default. If you enable changes, confirmed edits affect the connected database directly and must also be allowed by its database user.
-- Gemini receives the database structure and recent request, SQL, and clarification context. Saved connection credentials and result rows are not included. Values you type into requests are sent to the model.
+- When you use Ask, Data Genie sends the configured AI service your database structure and recent request, SQL, and clarification context. Saved connection credentials and result rows are not included. Values you type into requests are sent to the model.
 
 ## Local setup
 
@@ -34,7 +34,7 @@ Hosted SQLite executes on dedicated temporary scratch disk. Private account, His
 
 This serialized adapter is for a small student demo, with 64 MiB of total application state and 256 files across all accounts. The selected hosting tier is one Linux B1 instance; SQL retains its free offer and AutoPause. Review persistence and cost before increasing capacity.
 
-Terraform state and Azure app settings contain the generated SQL password and connection-encryption key. Gemini is supplied through sensitive `TF_VAR_gemini_api_key` in HCP Terraform and `GEMINI_API_KEY` in the app. Restrict access to the workspace, state, and app settings; preserve the encryption key when restoring the installation.
+Terraform state and Azure app settings contain the generated SQL password and connection-encryption key. The AI key is supplied through sensitive `TF_VAR_gemini_api_key` in HCP Terraform and `GEMINI_API_KEY` in the app. Restrict access to the workspace, state, and app settings; preserve the encryption key when restoring the installation.
 
 The Terraform identity has Contributor only on `data_genie`. The separate DevOps identity has Reader on that resource group and Website Contributor only on this app, with federation limited to its deployment service connection. That identity can deploy code and read app settings, which gives application-level access to data and credentials. Authorize the service connection only for this pipeline. SQL firewall rules permit only the app's reviewed outbound addresses, with TLS and database authentication still required.
 

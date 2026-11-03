@@ -363,7 +363,7 @@ describe('SQL workspace', () => {
     expect(within(input.form).getByRole('button', { name: 'Ask', exact: true }).disabled).toBe(
       true,
     );
-    expect(screen.getByText(/Gemini AI is unavailable/)).toBeTruthy();
+    expect(screen.getByText(/Data Genie AI is unavailable/)).toBeTruthy();
     await events.click(screen.getByRole('link', { name: 'Open SQL', exact: true }));
     expect(
       (await screen.findByRole('textbox', { name: 'SQL statement', exact: true })).disabled,
@@ -371,7 +371,7 @@ describe('SQL workspace', () => {
     expect(fetch.mock.calls.some(([path]) => path === '/api/ask')).toBe(false);
   });
 
-  it('uses Gemini on Ask even when SQL is the saved default and keeps both drafts across tabs', async () => {
+  it('uses Data Genie AI on Ask even when SQL is the saved default and keeps both drafts across tabs', async () => {
     const base = setup({ path: '/app?view=ask' });
     localStorage.setItem('dg-request-mode:7', 'sql');
     fetch.mockImplementation((path, options) =>
@@ -427,7 +427,7 @@ describe('SQL workspace', () => {
       within(mode)
         .getAllByRole('option')
         .map((option) => option.textContent),
-    ).toEqual(['Gemini AI', 'SQL']);
+    ).toEqual(['Data Genie AI', 'SQL']);
     expect(screen.getByText(/Local SQLite works offline while Data Genie is running/)).toBeTruthy();
     await events.selectOptions(mode, 'gemini');
     expect(localStorage.getItem('dg-request-mode:7')).toBe('gemini');

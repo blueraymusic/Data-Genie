@@ -63,17 +63,18 @@ export default function AccountPage({ workbench, mode, setMode }) {
                 aria-describedby="requestModeHelp"
               >
                 <option value="gemini" disabled={!workbench.session.ai?.enabled}>
-                  Gemini AI
+                  Data Genie AI
                 </option>
                 <option value="sql">SQL</option>
               </select>
             </p>
             <p id="requestModeHelp" className="small muted">
-              Gemini AI accepts plain English. SQL runs statements directly without an AI service or
-              AI key. Local SQLite works offline while Data Genie is running; PostgreSQL still needs
-              its database connection. Your choice applies when you next open a database.
+              Data Genie AI accepts plain English. SQL runs statements directly without an AI
+              service or AI key. Local SQLite works offline while Data Genie is running; PostgreSQL
+              still needs its database connection. Your choice applies when you next open a
+              database.
               {!workbench.session.ai?.enabled &&
-                ' Gemini is unavailable, so new sessions open in SQL.'}
+                ' Data Genie AI is unavailable, so new sessions open in SQL.'}
             </p>
             {workbench.session.source === 'postgresql' ? (
               <p>

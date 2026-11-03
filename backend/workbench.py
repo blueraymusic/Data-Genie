@@ -562,7 +562,7 @@ def submit_request(session_id, text, raw_sql=False, interpreter="keywords", sele
         raise ValueError("A request is required.")
     interpreter = "keywords" if raw_sql else str(interpreter or "keywords").lower()
     if interpreter not in {"keywords", "gemini"}:
-        raise ValueError("Choose Keywords or Gemini AI.")
+        raise ValueError("Choose a supported request mode.")
     with session_scope(session_id) as session, _lock(_path()):
         # Structural inspection is function 2; it does not create history records.
         if not raw_sql and keywords.wants_table_inventory(text):

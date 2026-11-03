@@ -43,9 +43,11 @@ To edit, add a connection with **Allow changes after I confirm them** checked. T
 
 ## Work with data
 
+Use **Ask** for Data Genie AI, **SQL** for explicit statements, and **Structure** for manual table and column controls. The SQL editor stays at the bottom; recent requests use small batches, and [History](https://data-genie-blueray321.azurewebsites.net/history) searches the full saved record by page. See the [workspace guide](user-guide.md) for examples and keyboard shortcuts.
+
 - Schema discovery includes readable tables and views, columns, primary keys, unique/check constraints, and foreign keys. Each connection uses one schema.
 - Schema row counts are estimates and display `~`; query results and explicit counts come from actual reads.
-- The same [Workspace](https://data-genie-blueray321.azurewebsites.net/app), Structure, [History](https://data-genie-blueray321.azurewebsites.net/history), sorting, CSV export, and follow-up flows work with either provider. Gemini receives the correct SQL dialect and schema, without saved database credentials or result rows. Values typed into requests are part of the AI context.
+- The same [Workspace](https://data-genie-blueray321.azurewebsites.net/app), Structure, [History](https://data-genie-blueray321.azurewebsites.net/history), sorting, CSV export, and follow-up flows work with either provider. Data Genie sends the configured AI service the correct SQL dialect and schema, without saved database credentials or result rows. Values typed into requests are part of the AI context.
 - Connections are read-only unless **Allow changes after I confirm them** is checked when connecting. Reads run in database-enforced read-only transactions. Changing permissions requires adding a new connection.
 - Enabled changes support INSERT, UPDATE, DELETE, CREATE TABLE, ALTER TABLE, and DROP TABLE through the usual stored confirmation tokens. Preparing a PostgreSQL write never executes it, even in a rolled-back preview. PostgreSQL write previews do not provide an exact affected-row count. Constraints are finally checked when a confirmed command runs.
 - PostgreSQL operations use five-second statement and two-second lock timeouts. Results are fetched in bounded pages. SQL parsing restricts requests to the connected schema and supported data operations/functions; roles, server functions, temporary tables, file operations, and transactions cannot be changed through chat.

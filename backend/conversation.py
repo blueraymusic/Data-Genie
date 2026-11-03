@@ -1,4 +1,4 @@
-"""Small read-only follow-ups for Keywords mode; Gemini handles wider dialogue."""
+"""Small read-only follow-ups for Keywords mode; Data Genie AI handles wider dialogue."""
 
 import re
 
@@ -122,13 +122,13 @@ def followup_plan(question, turns, selected_table, columns_for_query):
     if location:
         locations = [name for name in columns if name.lower() in {"state", "city", "country", "region", "province", "location"}]
         if len(locations) != 1:
-            raise RequestClarification("Name the location column you want to filter, such as state or city. Gemini can handle more detailed follow-ups.")
+            raise RequestClarification("Name the location column you want to filter, such as state or city. Data Genie AI can handle more detailed follow-ups.")
         value = keywords.literal(location[1])
         return keywords.result_plan(f"SELECT * FROM {wrapped} WHERE {quote_identifier(locations[0])} COLLATE NOCASE = {value} LIMIT 50", "Filter your previous query by " + locations[0] + ".")
     requested = order[1] if order else "name"
     column = next((name for name in columns if name.lower() == requested.lower()), None)
     if not column:
-        raise RequestClarification(f"The previous query did not return a {requested} column. Ask for that column or use Gemini for a broader follow-up.")
+        raise RequestClarification(f"The previous query did not return a {requested} column. Ask for that column or use Data Genie AI for a broader follow-up.")
     if order:
         direction = "DESC" if (order[2] or "").lower() in {"desc", "descending"} else "ASC"
         return keywords.result_plan(f"SELECT * FROM {wrapped} ORDER BY {quote_identifier(column)} {direction} LIMIT 50", "Sort the rows from your previous query.")

@@ -336,9 +336,9 @@ describe('React pages and account flow', () => {
     const events = userEvent.setup();
     render(<App />);
     const search = screen.getByRole('searchbox', { name: 'Search questions and answers' });
-    await events.type(search, 'Gemini');
-    expect(screen.getByRole('status').textContent).toMatch(/^[1-9]\d* matching questions$/);
-    expect(screen.getByText('What does Gemini receive about my database?')).toBeTruthy();
+    await events.type(search, 'AI receive');
+    expect(screen.getByRole('status').textContent).toMatch(/^[1-9]\d* matching questions?$/);
+    expect(screen.getByText('What does Data Genie AI receive about my database?')).toBeTruthy();
     expect(screen.queryByText('Which database files can I upload?')).toBeNull();
     await events.clear(search);
     await events.type(search, 'no-matching-words');
@@ -493,6 +493,48 @@ describe('React pages and account flow', () => {
 });
 
 describe('command safety', () => {
+  it.each([
+    'Data Genie AI could not be reached right now.',
+    'Gemini could not be reached right now.',
+  ])(
+    'does not treat a provider failure as a request for a numeric clarification: %s',
+    async (error) => {
+      const submit = vi.fn(),
+        events = userEvent.setup();
+      render(
+        <AskPage
+          workbench={{
+            session,
+            submit,
+            workingCommands: new Set(),
+            feed: [
+              {
+                request_id: 8,
+                text: 'show recent customers',
+                submitted_at: new Date().toISOString(),
+                status: 'rejected',
+                error,
+                commands: [],
+              },
+            ],
+          }}
+          draft="5"
+          setDraft={vi.fn()}
+        />,
+        { wrapper: Router },
+      );
+      await events.click(
+        within(screen.getByRole('textbox', { name: 'Ask in plain English' }).form).getByRole(
+          'button',
+          { name: 'Ask', exact: true },
+        ),
+      );
+      expect(submit).not.toHaveBeenCalled();
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Describe what you want to see or change',
+      );
+    },
+  );
   it('keeps incomplete input in the composer without submitting it', async () => {
     const submit = vi.fn(),
       setDraft = vi.fn(),

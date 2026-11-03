@@ -81,7 +81,7 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
           previous.intent ||
           (previous.error &&
             previous.status === 'rejected' &&
-            !previous.error.startsWith('Gemini')))),
+            !['Data Genie AI', 'Gemini'].some((prefix) => previous.error.startsWith(prefix))))),
     );
     const problem = requestProblem(text, workbench.feed.length > 0, answering);
     setValidation(problem);
@@ -97,12 +97,12 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
       <div className="workspace-intro">
         <h1>Ask in plain English.</h1>
         <p className="lead">
-          Gemini turns your request into SQL. Review the SQL and see the result here.
+          Data Genie turns your request into SQL. Review the SQL and see the result here.
         </p>
         {!aiAvailable && (
           <p className="status-note" role="status">
-            Gemini AI is unavailable. <Link href="/app?view=sql">Open SQL</Link> to run statements
-            without an AI service.
+            Data Genie AI is unavailable. <Link href="/app?view=sql">Open SQL</Link> to run
+            statements without an AI service.
           </p>
         )}
         {!workbench.session.tables.length && (
@@ -248,7 +248,7 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
             aria-describedby={validation ? 'request-validation' : 'composer-hint'}
             placeholder={
               !aiAvailable
-                ? 'Gemini is unavailable. Open the SQL tab to continue.'
+                ? 'Data Genie AI is unavailable. Open the SQL tab to continue.'
                 : workbench.pending
                   ? 'Review the pending change above to continue.'
                   : workbench.feed.length
@@ -275,7 +275,7 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
         <p className="composer-hint" id="composer-hint">
           {aiAvailable
             ? 'Enter to ask · Shift + Enter for a new line · Changes wait for your OK.'
-            : 'SQL works without Gemini. Choose the SQL tab to write a statement.'}
+            : 'SQL works without AI. Choose the SQL tab to write a statement.'}
         </p>
       </div>
     </section>

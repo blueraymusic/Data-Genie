@@ -1,4 +1,4 @@
-"""Minimal Gemini planner. It never receives database rows, paths, or user details."""
+"""AI request planner for Data Genie. It never receives database rows, paths, or user details."""
 
 import json
 import random
@@ -64,33 +64,33 @@ def _request_json(url, api_key, body):
                 continue
             # Never expose response bodies, credentials, or request URLs in chat.
             if exc.code in {401, 403}:
-                raise GeminiError("Gemini could not authenticate the configured API key.") from exc
+                raise GeminiError("Data Genie AI could not authenticate the configured API key.") from exc
             if exc.code == 404:
-                raise GeminiError("The configured Gemini model is unavailable. Check the model setting or use the SQL tab.") from exc
+                raise GeminiError("Data Genie AI's configured model is unavailable. Check the model setting or use the SQL tab.") from exc
             if exc.code == 429:
-                raise GeminiError("Gemini is temporarily unavailable or its quota is exhausted. Try again later or use the SQL tab.", retryable=True) from exc
+                raise GeminiError("Data Genie AI is temporarily unavailable or its quota is exhausted. Try again later or use the SQL tab.", retryable=True) from exc
             if exc.code == 400:
-                raise GeminiError("Gemini rejected the planning request. Try a simpler request or use the SQL tab.") from exc
-            raise GeminiError("Gemini could not prepare SQL right now. Try again or use the SQL tab.", retryable=transient) from exc
+                raise GeminiError("Data Genie AI rejected the planning request. Try a simpler request or use the SQL tab.") from exc
+            raise GeminiError("Data Genie AI could not prepare SQL right now. Try again or use the SQL tab.", retryable=transient) from exc
         except (error.URLError, TimeoutError, json.JSONDecodeError) as exc:
             if attempt == 0:
                 time.sleep(random.uniform(0.5, 0.8))
                 continue
-            raise GeminiError("Gemini could not be reached right now. Try again later or use the SQL tab.", retryable=True) from exc
+            raise GeminiError("Data Genie AI could not be reached right now. Try again later or use the SQL tab.", retryable=True) from exc
 
 
 def _text(response):
     try:
         return response["candidates"][0]["content"]["parts"][0]["text"]
     except (KeyError, IndexError, TypeError) as exc:
-        raise GeminiError("Gemini did not return a usable SQL plan. Please rephrase your request.") from exc
+        raise GeminiError("Data Genie AI did not return a usable SQL plan. Please rephrase your request.") from exc
 
 
 def generate_plans(question, tables, api_key, model, selected_table=None, conversation=None, dialect="sqlite", schema_name=None, read_only=False):
     """Return a small, JSON-only SQL plan. SQL still undergoes local validation."""
     validate_request(question, has_context=bool(conversation), allow_short_reply=awaiting_answer(conversation))
     if not api_key:
-        raise GeminiError("Gemini AI is not configured. Use the SQL tab or set GEMINI_API_KEY locally.")
+        raise GeminiError("Data Genie AI is not configured. Use the SQL tab or ask the administrator to enable AI.")
     schema = {
         "type": "object",
         "required": ["status", "clarification", "commands", "intent", "choices", "continues_task"],
@@ -167,38 +167,38 @@ Use table visualization by default; bar requires label/value aliases and line re
         result = json.loads(_text(response))
         commands = result["commands"]
     except (json.JSONDecodeError, KeyError, TypeError) as exc:
-        raise GeminiError("Gemini did not return a usable SQL plan. Please rephrase your request.") from exc
+        raise GeminiError("Data Genie AI did not return a usable SQL plan. Please rephrase your request.") from exc
     if not isinstance(commands, list):
-        raise GeminiError("Gemini did not return a usable SQL plan. Please rephrase your request.")
+        raise GeminiError("Data Genie AI did not return a usable SQL plan. Please rephrase your request.")
     if result.get("status") == "needs_clarification" and not commands:
         clarification = result.get("clarification")
         if not isinstance(clarification, str) or not clarification.strip():
-            raise GeminiError("Gemini did not return a usable SQL plan. Please rephrase your request.")
+            raise GeminiError("Data Genie AI did not return a usable SQL plan. Please rephrase your request.")
         intent = result.get("intent")
         choices = result.get("choices", [])
         if intent is not None and not isinstance(intent, str):
-            raise GeminiError("Gemini did not return a usable clarification. Please rephrase your request.")
+            raise GeminiError("Data Genie AI did not return a usable clarification. Please rephrase your request.")
         if not isinstance(choices, list) or len(choices) > 4:
-            raise GeminiError("Gemini did not return usable clarification choices. Please rephrase your request.")
+            raise GeminiError("Data Genie AI did not return usable clarification choices. Please rephrase your request.")
         clean_choices = []
         for choice in choices:
             if not isinstance(choice, dict) or not all(isinstance(choice.get(key), str) and choice[key].strip() for key in ("label", "request")):
-                raise GeminiError("Gemini did not return usable clarification choices. Please rephrase your request.")
+                raise GeminiError("Data Genie AI did not return usable clarification choices. Please rephrase your request.")
             clean_choices.append({"label":choice["label"].strip()[:80], "request":choice["request"].strip()[:500]})
         continues = result.get("continues_task")
         if continues is not None and not isinstance(continues, bool):
-            raise GeminiError("Gemini did not return usable conversation state. Please rephrase your request.")
+            raise GeminiError("Data Genie AI did not return usable conversation state. Please rephrase your request.")
         raise RequestClarification(clarification.strip()[:500], choices=clean_choices, intent=intent, continues_task=continues)
     if result.get("status") != "ready" or result.get("clarification") != "" or not commands or len(commands) > 4:
-        raise GeminiError("Gemini did not return a usable SQL plan. Please rephrase your request.")
+        raise GeminiError("Data Genie AI did not return a usable SQL plan. Please rephrase your request.")
     clean = []
     for command in commands:
         if not isinstance(command, dict):
-            raise GeminiError("Gemini did not return a usable SQL plan. Please rephrase your request.")
+            raise GeminiError("Data Genie AI did not return a usable SQL plan. Please rephrase your request.")
         sql = str(command.get("sql", "")).strip()
         summary = str(command.get("summary", "")).strip()[:500]
         visualization = str(command.get("visualization", "table")).lower()
         if not sql or not summary or visualization not in ALLOWED_VISUALIZATIONS:
-            raise GeminiError("Gemini did not return a usable SQL plan. Please rephrase your request.")
+            raise GeminiError("Data Genie AI did not return a usable SQL plan. Please rephrase your request.")
         clean.append({"sql": sql, "summary": summary, "visualization": visualization})
     return clean

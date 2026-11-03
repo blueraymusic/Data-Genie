@@ -4,7 +4,7 @@ Target: HCP Terraform organization `blueray321`, project `Blueray`, workspace `D
 
 The configured deployment uses **France Central**, app `data-genie-blueray321`, one **Linux B1** instance with Always On enabled, and SQL server `data-genie-blueray321-fr-sql` / database `data-genie-state`. The site is [data-genie-blueray321.azurewebsites.net](https://data-genie-blueray321.azurewebsites.net/). The [manual deployment pipeline](https://dev.azure.com/as4dc/blueray/_build?definitionId=1) is in `as4dc/blueray`; select `appServiceSku=B1` when running it.
 
-The workspace already has the four OIDC environment variables listed below and sensitive `TF_VAR_gemini_api_key`. Its Terraform-category values are `location=francecentral`, `app_service_sku=B1`, and `sql_server_name=data-genie-blueray321-fr-sql`. No client secret or additional Gemini variable is needed. Future hosting changes still require a reviewed plan.
+The workspace already has the four OIDC environment variables listed below and sensitive `TF_VAR_gemini_api_key`. Its Terraform-category values are `location=francecentral`, `app_service_sku=B1`, and `sql_server_name=data-genie-blueray321-fr-sql`. No client secret or additional AI variable is needed. Future hosting changes still require a reviewed plan.
 
 This is a small development/demo deployment. Hosting defaults to **App Service Linux F1**, with **Azure SQL's free offer** for durable state. An explicitly selected **single Linux B1 instance** can use student credit when F1 cannot run the app. It does not create a VM, registry, Key Vault or paid logging workspace. There is no automatic tier upgrade or paid SQL fallback.
 
@@ -43,7 +43,9 @@ In **Terraform → Data-Genie → Variables**, add these under **Environment var
 
 Do not set `ARM_CLIENT_SECRET` when using this OIDC setup. Do not create `tfc_azure_dynamic_credentials` manually; HCP Terraform supplies it. Terraform generates the SQL password and connection-encryption key. They are sensitive values in the private Terraform state and Azure app settings: restrict workspace/state access and preserve the key when restoring the app.
 
-To supply Gemini as an **environment variable**, use `TF_VAR_gemini_api_key` and enable **Sensitive**. Terraform maps it to the application's `GEMINI_API_KEY`. Use either this environment variable or the Terraform-category `gemini_api_key`, not both.
+To enable Data Genie AI with an **environment variable**, use `TF_VAR_gemini_api_key` and enable **Sensitive**. Terraform maps it to the application's `GEMINI_API_KEY`. Use either this environment variable or the Terraform-category `gemini_api_key`, not both.
+
+The product calls this feature **Data Genie AI**. The existing environment-variable, model, and Terraform identifiers below are configuration names; keep their exact spelling when configuring the deployment.
 
 If you already have a scoped service principal that uses a secret, an alternative is `ARM_SUBSCRIPTION_ID`, `ARM_TENANT_ID`, `ARM_CLIENT_ID`, and **sensitive** `ARM_CLIENT_SECRET`. Do not combine this with the OIDC variables. Never put secrets in Git or chat.
 
