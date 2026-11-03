@@ -106,6 +106,7 @@ resource "azurerm_linux_web_app" "app" {
     GENIE_SQL_PASSWORD             = random_password.sql.result
     GEMINI_API_KEY                 = var.gemini_api_key
     GEMINI_MODEL                   = var.gemini_model
+    GENIE_PUBLIC_URL               = var.public_url
   }
   tags = local.tags
 }

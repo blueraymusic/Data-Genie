@@ -52,6 +52,16 @@ variable "gemini_model" {
   default = "gemini-3.5-flash-lite"
 }
 
+variable "public_url" {
+  type        = string
+  default     = ""
+  description = "Canonical HTTPS origin. Set only after its DNS, App Service hostname binding and managed certificate are working. Empty uses the Azure hostname."
+  validation {
+    condition     = var.public_url == "" || can(regex("^https://[a-z0-9]([a-z0-9.-]*[a-z0-9])?$", var.public_url))
+    error_message = "Use an HTTPS origin without a path, port or trailing slash."
+  }
+}
+
 # HCP Terraform injects this object when dynamic Azure credentials are enabled.
 # Do not add its file paths as workspace variables or copy tokens into the repo.
 variable "tfc_azure_dynamic_credentials" {

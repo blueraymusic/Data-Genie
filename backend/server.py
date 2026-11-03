@@ -126,6 +126,18 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self.response_cookie = None
+        # Keep old App Service bookmarks usable without allowing API writes on
+        # a second origin. Only Azure's own configured hostname may redirect.
+        public = settings.public_url()
+        azure_host = os.environ.get("WEBSITE_HOSTNAME", "").strip().lower()
+        host = self.headers.get("Host", "").lower()
+        if (public and azure_host.endswith(".azurewebsites.net")
+                and host == azure_host and host != urlparse(public).netloc.lower()):
+            self.send_response(308)
+            self.send_header("Location", public + "/" + self.path.lstrip("/"))
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         if not self.local_host():
             return self.json({"error": "Use the local Data Genie address."}, 403)
         parsed = urlparse(self.path)

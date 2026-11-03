@@ -1,6 +1,6 @@
 # Using Data Genie
 
-[Open Data Genie](https://data-genie-blueray321.azurewebsites.net/) · [FAQ](https://data-genie-blueray321.azurewebsites.net/faq)
+[Open Data Genie](https://data-genie.space/) · [FAQ](https://data-genie.space/faq)
 
 Sign up or log in, then choose a database. You can create an empty SQLite database, upload a SQLite file, try the sample, or connect PostgreSQL. Hosted accounts and laptop accounts are separate.
 

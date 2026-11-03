@@ -247,6 +247,19 @@ class HostingTests(unittest.TestCase):
             self.assertIn("; Secure", request.response_cookie)
             self.assertIn("HttpOnly", request.response_cookie)
 
+    def test_old_azure_hostname_redirects_gets_but_never_accepts_writes(self):
+        with patch.dict("os.environ", {"GENIE_PUBLIC_URL": "https://genie.example.test",
+                                       "WEBSITE_HOSTNAME": "genie.azurewebsites.net"}), \
+                patch.object(cloud_state, "connect", side_effect=AssertionError("aliases must not connect")):
+            response = self.request("/app", host="genie.azurewebsites.net")
+            self.assertEqual(response["status"], "308 Permanent Redirect")
+            self.assertEqual(response["headers"]["Location"], "https://genie.example.test/app")
+            self.assertEqual(self.request("/api/auth/login", host="genie.azurewebsites.net",
+                                          method="POST")["status"], "403 Forbidden")
+            self.assertEqual(self.request("/app", host="other.azurewebsites.net")["status"], "403 Forbidden")
+            response = self.request("//evil.example/path", host="genie.azurewebsites.net")
+            self.assertEqual(response["headers"]["Location"], "https://genie.example.test/evil.example/path")
+
     def test_invalid_cloud_origin_fails_closed(self):
         with patch.dict("os.environ", {"GENIE_PUBLIC_URL":"http://genie.example.test"}):
             self.assertEqual(self.request()["status"], "500 Internal Server Error")

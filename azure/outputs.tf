@@ -1,5 +1,5 @@
 output "app_url" {
-  value = "https://${azurerm_linux_web_app.app.default_hostname}"
+  value = var.public_url != "" ? var.public_url : "https://${azurerm_linux_web_app.app.default_hostname}"
 }
 
 output "app_name" {

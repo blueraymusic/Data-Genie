@@ -90,3 +90,18 @@ run "larger_paid_tier_rejected" {
   variables { app_service_sku = "P1v3" }
   expect_failures = [var.app_service_sku]
 }
+
+run "custom_https_origin" {
+  command = plan
+  variables { public_url = "https://data-genie.space" }
+  assert {
+    condition     = azurerm_linux_web_app.app.app_settings["GENIE_PUBLIC_URL"] == "https://data-genie.space"
+    error_message = "The canonical origin must survive subsequent infrastructure applies."
+  }
+}
+
+run "invalid_public_origin" {
+  command = plan
+  variables { public_url = "http://data-genie.space/path" }
+  expect_failures = [var.public_url]
+}

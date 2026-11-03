@@ -4,7 +4,7 @@ Data Genie supports local SQLite files and live PostgreSQL databases, including 
 
 ## Connect on the hosted site
 
-Open [Data Genie](https://data-genie-blueray321.azurewebsites.net/), [sign up](https://data-genie-blueray321.azurewebsites.net/signup) or [log in](https://data-genie-blueray321.azurewebsites.net/signin), then open [Databases](https://data-genie-blueray321.azurewebsites.net/databases). Choose **PostgreSQL**, paste a URL containing the username, password, host, and database name, and choose a schema (usually `public`). **Test connection** checks access without saving credentials or changing data. **Connect PostgreSQL** saves the connection for your account.
+Open [Data Genie](https://data-genie.space/), [sign up](https://data-genie.space/signup) or [log in](https://data-genie.space/signin), then open [Databases](https://data-genie.space/databases). Choose **PostgreSQL**, paste a URL containing the username, password, host, and database name, and choose a schema (usually `public`). **Test connection** checks access without saving credentials or changing data. **Connect PostgreSQL** saves the connection for your account.
 
 The hosted site already includes the connector. It needs a public PostgreSQL hostname and `sslmode=verify-full` (the default for external hosts). A database listening only on your laptop, a private network, or a cloud-metadata address cannot be reached through the hosted connector. If your provider restricts incoming connections, its network rules must also permit the Data Genie app's outbound addresses; testing a URL does not change those rules.
 
@@ -43,11 +43,11 @@ To edit, add a connection with **Allow changes after I confirm them** checked. T
 
 ## Work with data
 
-Use **Ask** for Data Genie AI, **SQL** for explicit statements, and **Structure** for manual table and column controls. The SQL editor stays at the bottom; recent requests use small batches, and [History](https://data-genie-blueray321.azurewebsites.net/history) searches the full saved record by page. See the [workspace guide](user-guide.md) for examples and keyboard shortcuts.
+Use **Ask** for Data Genie AI, **SQL** for explicit statements, and **Structure** for manual table and column controls. The SQL editor stays at the bottom; recent requests use small batches, and [History](https://data-genie.space/history) searches the full saved record by page. See the [workspace guide](user-guide.md) for examples and keyboard shortcuts.
 
 - Schema discovery includes readable tables and views, columns, primary keys, unique/check constraints, and foreign keys. Each connection uses one schema.
 - Schema row counts are estimates and display `~`; query results and explicit counts come from actual reads.
-- The same [Workspace](https://data-genie-blueray321.azurewebsites.net/app), Structure, [History](https://data-genie-blueray321.azurewebsites.net/history), sorting, CSV export, and follow-up flows work with either provider. Data Genie sends the configured AI service the correct SQL dialect and schema, without saved database credentials or result rows. Values typed into requests are part of the AI context.
+- The same [Workspace](https://data-genie.space/app), Structure, [History](https://data-genie.space/history), sorting, CSV export, and follow-up flows work with either provider. Data Genie sends the configured AI service the correct SQL dialect and schema, without saved database credentials or result rows. Values typed into requests are part of the AI context.
 - Connections are read-only unless **Allow changes after I confirm them** is checked when connecting. Reads run in database-enforced read-only transactions. Changing permissions requires adding a new connection.
 - Enabled changes support INSERT, UPDATE, DELETE, CREATE TABLE, ALTER TABLE, and DROP TABLE through the usual stored confirmation tokens. Preparing a PostgreSQL write never executes it, even in a rolled-back preview. PostgreSQL write previews do not provide an exact affected-row count. Constraints are finally checked when a confirmed command runs.
 - PostgreSQL operations use five-second statement and two-second lock timeouts. Results are fetched in bounded pages. SQL parsing restricts requests to the connected schema and supported data operations/functions; roles, server functions, temporary tables, file operations, and transactions cannot be changed through chat.
@@ -57,7 +57,7 @@ Use **Ask** for Data Genie AI, **SQL** for explicit statements, and **Structure*
 
 Connection settings are authenticated and encrypted with Fernet in the Data Genie repository and belong to your account. In a local installation without `GENIE_CONNECTION_KEY`, the separate `data_genie_repository.sqlite3.key` file is readable only by its owner. Hosted Azure uses the Terraform-managed `GENIE_CONNECTION_KEY` app setting instead of that local key file. Keep the repository and the key source together when backing up or moving an installation. Losing the key requires reconnecting; it does not recover the password from PostgreSQL. Repository files and local key files are ignored by Git. Session, schema, and test responses do not return the saved connection URL or password.
 
-The hosted installation durably saves accounts, History, SQLite copies, and encrypted connection settings in Azure SQL. Desktop data is separate and is not uploaded automatically. See [hosted storage and limits](azure-free-hosting.md#storage-and-free-tier-limits) and the [live FAQ](https://data-genie-blueray321.azurewebsites.net/faq).
+The hosted installation durably saves accounts, History, SQLite copies, and encrypted connection settings in Azure SQL. Desktop data is separate and is not uploaded automatically. See [hosted storage and limits](azure-free-hosting.md#storage-and-free-tier-limits) and the [live FAQ](https://data-genie.space/faq).
 
 ## Verify
 

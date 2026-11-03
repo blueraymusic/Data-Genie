@@ -69,7 +69,8 @@ stages:
                       python3 "$(Pipeline.Workspace)/application/configure_cloud_firewall.py" --check
                       az webapp deploy --resource-group "$GENIE_RESOURCE_GROUP" --name "$GENIE_APP_NAME" --src-path "$(Pipeline.Workspace)/application/data-genie.zip" --type zip --clean true --restart true --only-show-errors
                       hostname=$(az webapp show --resource-group "$GENIE_RESOURCE_GROUP" --name "$GENIE_APP_NAME" --query defaultHostName --output tsv)
-                      python3 "$(Pipeline.Workspace)/application/verify_cloud.py" "https://$hostname"
+                      origin=$(az webapp config appsettings list --resource-group "$GENIE_RESOURCE_GROUP" --name "$GENIE_APP_NAME" --query "[?name=='GENIE_PUBLIC_URL'].value | [0]" --output tsv)
+                      python3 "$(Pipeline.Workspace)/application/verify_cloud.py" "${origin:-https://$hostname}"
                   env:
                     GENIE_RESOURCE_GROUP: ${{ parameters.resourceGroup }}
                     GENIE_APP_NAME: ${{ parameters.appName }}

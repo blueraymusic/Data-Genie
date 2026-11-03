@@ -2,7 +2,7 @@
 
 Ask your database questions in plain English. Use a SQLite file or connect PostgreSQL, see the SQL and results, then ask a follow-up. Reads run immediately; changes always wait for your confirmation.
 
-[Open Data Genie](https://data-genie-blueray321.azurewebsites.net/) · [Log in](https://data-genie-blueray321.azurewebsites.net/signin) · [Sign up](https://data-genie-blueray321.azurewebsites.net/signup) · [FAQ](https://data-genie-blueray321.azurewebsites.net/faq)
+[Open Data Genie](https://data-genie.space/) · [Log in](https://data-genie.space/signin) · [Sign up](https://data-genie.space/signup) · [FAQ](https://data-genie.space/faq)
 
 ![Data Genie homepage in light mode](docs/images/homepage.jpg)
 
@@ -81,13 +81,13 @@ Restart the server with that environment, then choose **Databases → PostgreSQL
 
 Confirmed edits are saved in PostgreSQL directly; no download or upload is needed. CSV downloads are copies of result rows. This is a direct PostgreSQL connector; an MCP client or server is not included yet.
 
-See the [FAQ](https://data-genie-blueray321.azurewebsites.net/faq) for common questions, or [database connections](docs/database-connections.md) for setup and testing.
+See the [FAQ](https://data-genie.space/faq) for common questions, or [database connections](docs/database-connections.md) for setup and testing.
 
 For a local test database, run `.venv/bin/python scripts/postgres_demo.py start`. It creates sample customers, products, and orders on port 55432. The connection URL is saved privately in `db/postgres-demo/connection.txt`.
 
 ## Host on Azure
 
-[Open the hosted app](https://data-genie-blueray321.azurewebsites.net/). Create a hosted account; desktop accounts stay separate.
+[Open the hosted app](https://data-genie.space/). Create a hosted account; desktop accounts stay separate.
 
 The [Azure deployment guide](docs/azure-free-hosting.md) covers the Terraform variables, Azure DevOps pipeline, and storage limits. Hosting supports free F1 or one budgeted Linux B1 instance using student credit. Azure SQL stays on its free offer and pauses at its limits. Existing local accounts and databases are not uploaded automatically.
 

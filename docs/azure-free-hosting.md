@@ -2,9 +2,9 @@
 
 Target: HCP Terraform organization `blueray321`, project `Blueray`, workspace `Data-Genie`, and the existing Azure resource group `data_genie`.
 
-The configured deployment uses **France Central**, app `data-genie-blueray321`, one **Linux B1** instance with Always On enabled, and SQL server `data-genie-blueray321-fr-sql` / database `data-genie-state`. The site is [data-genie-blueray321.azurewebsites.net](https://data-genie-blueray321.azurewebsites.net/). The [manual deployment pipeline](https://dev.azure.com/as4dc/blueray/_build?definitionId=1) is in `as4dc/blueray`; select `appServiceSku=B1` when running it.
+The configured deployment uses **France Central**, app `data-genie-blueray321`, one **Linux B1** instance with Always On enabled, and SQL server `data-genie-blueray321-fr-sql` / database `data-genie-state`. The site is [data-genie.space](https://data-genie.space/). The [manual deployment pipeline](https://dev.azure.com/as4dc/blueray/_build?definitionId=1) is in `as4dc/blueray`; select `appServiceSku=B1` when running it.
 
-The workspace already has the four OIDC environment variables listed below and sensitive `TF_VAR_gemini_api_key`. Its Terraform-category values are `location=francecentral`, `app_service_sku=B1`, and `sql_server_name=data-genie-blueray321-fr-sql`. No client secret or additional AI variable is needed. Future hosting changes still require a reviewed plan.
+The workspace already has the four OIDC environment variables listed below and sensitive `TF_VAR_gemini_api_key`. Its Terraform-category values are `location=francecentral`, `app_service_sku=B1`, `sql_server_name=data-genie-blueray321-fr-sql`, and `public_url=https://data-genie.space`. No client secret or additional AI variable is needed. Future hosting changes still require a reviewed plan.
 
 This is a small development/demo deployment. Hosting defaults to **App Service Linux F1**, with **Azure SQL's free offer** for durable state. An explicitly selected **single Linux B1 instance** can use student credit when F1 cannot run the app. It does not create a VM, registry, Key Vault or paid logging workspace. There is no automatic tier upgrade or paid SQL fallback.
 
@@ -64,6 +64,7 @@ Optional **Terraform-category variables**:
 | `resource_group_name` | `data_genie` | Existing group; it is not recreated or owned by this configuration. |
 | `app_name` | `data-genie-blueray321` | Must be globally available; also use this value in the deployment pipeline. |
 | `location` | Existing group's region | Override when another allowed region offers the selected host and free SQL. |
+| `public_url` | empty | Set to `https://data-genie.space` for this deployment, after DNS and HTTPS are ready. Empty uses the Azure hostname. |
 | `app_service_sku` | `F1` | Select `B1` explicitly for one budgeted Linux instance; larger tiers are rejected. Match this value when running the pipeline. |
 | `sql_server_name` | App name plus `-sql` | Optional globally unique name if an earlier failed deployment reserved the original name in another region. Deployment reads this server from the app's configured SQL host. |
 | `gemini_api_key` | Empty | Sensitive. Without a key, use SQL or Structure; AI billing/free quotas are separate. |
@@ -93,13 +94,13 @@ After Terraform has created the infrastructure, run the pipeline with the same a
 4. Checks the existing SQL firewall rules without changing network access, then deploys using the service connection. A changed egress address needs administrator review before the pipeline can continue.
 5. Verifies HTTPS, built frontend assets, and the cloud-backed anonymous session endpoint.
 
-The ZIP does **not** contain `.env`, local accounts/databases, keys, Git history, or the laptop's development packages. This deploys a fresh hosted installation. Existing desktop accounts and data remain on the desktop; they are not uploaded automatically. Use [Sign up](https://data-genie-blueray321.azurewebsites.net/signup) and upload only the database files you want to move in [Databases](https://data-genie-blueray321.azurewebsites.net/databases).
+The ZIP does **not** contain `.env`, local accounts/databases, keys, Git history, or the laptop's development packages. This deploys a fresh hosted installation. Existing desktop accounts and data remain on the desktop; they are not uploaded automatically. Use [Sign up](https://data-genie.space/signup) and upload only the database files you want to move in [Databases](https://data-genie.space/databases).
 
 ## If login reports unavailable storage
 
 A storage error alone does not establish that the free allowance is exhausted. In Azure, inspect the database status and the `free_amount_remaining` and `free_amount_consumed` metrics. A normally paused serverless database resumes on connection; an exhausted free offer remains unavailable until the allowance resets. The app's connection retry checks the session endpoint without resubmitting a login, sign-up, or SQL change.
 
-Use [Log in](https://data-genie-blueray321.azurewebsites.net/signin), choose **Retry connection** if offered, then submit the form explicitly. Form details stay in place. If saving a database change could not be confirmed, inspect [History](https://data-genie-blueray321.azurewebsites.net/history) before repeating it. Server diagnostics record the failure stage, exception types, and numeric SQL codes without recording passwords, query text, or snapshot contents.
+Use [Log in](https://data-genie.space/signin), choose **Retry connection** if offered, then submit the form explicitly. Form details stay in place. If saving a database change could not be confirmed, inspect [History](https://data-genie.space/history) before repeating it. Server diagnostics record the failure stage, exception types, and numeric SQL codes without recording passwords, query text, or snapshot contents.
 
 Keep the current SQL free-offer safeguards while diagnosing an error. Paid SQL or overages require a separate cost decision; enabling them is not a remedy for a translation, certificate, or snapshot error. See the [Azure SQL free-offer FAQ](https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer-faq).
 
@@ -124,3 +125,24 @@ Accounts, history, and working data live where the app is hosted, with password 
 - [Azure Pipelines free parallel-job grants](https://learn.microsoft.com/en-us/azure/devops/pipelines/licensing/concurrent-jobs?view=azure-devops)
 
 - [Microsoft Azure retail pricing API](https://prices.azure.com/api/retail/prices?%24filter=serviceName%20eq%20%27Azure%20App%20Service%27%20and%20armRegionName%20eq%20%27francecentral%27%20and%20skuName%20eq%20%27B1%27%20and%20priceType%20eq%20%27Consumption%27)
+
+## Custom domain
+
+The public site is [data-genie.space](https://data-genie.space/). Its Namecheap BasicDNS records are:
+
+| Type | Host | Value |
+| --- | --- | --- |
+| A | `@` | `20.43.43.43` |
+| TXT | `asuid` | Azure's `customDomainVerificationId` for `data-genie-blueray321` |
+
+Keep the verification TXT record to protect domain ownership. Leave email records intact. The apex domain is bound to the existing B1 app with a free App Service managed certificate and SNI HTTPS. No paid certificate or larger plan is required. `www` is not configured.
+
+DNS, the hostname binding, and the managed certificate were configured separately from Terraform. Keep them when applying the existing infrastructure. If recreating or moving the app, retrieve its new inbound IP and ownership ID, update DNS, add the hostname binding, create the managed certificate, and bind it with SNI before setting the canonical origin. Azure renews the managed certificate while its validation requirements remain satisfied. See [Azure's domain and certificate guide](https://learn.microsoft.com/en-us/azure/app-service/tutorial-secure-domain-certificate).
+
+HCP Terraform's `public_url` sets `GENIE_PUBLIC_URL` on the app. This is an origin, without a trailing slash or path. It controls host validation, secure login cookies and same-origin requests. Do not switch it to a domain before HTTPS is working. Existing Azure-hostname GET links redirect to the canonical domain after the application update; POST requests on the old hostname are rejected. Users must log in again on the new domain because login cookies remain scoped to their original host. Accounts and saved data stay in the same Azure SQL database.
+
+The deployment pipeline verifies the configured public origin, including frontend assets, health and the cloud-backed session endpoint. To check manually:
+
+```sh
+python scripts/verify_cloud.py https://data-genie.space
+```

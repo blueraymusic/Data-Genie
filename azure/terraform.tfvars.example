@@ -5,3 +5,6 @@ app_name            = "data-genie-blueray321"
 # location = "eastus2" # Only if the existing region cannot provide both free offers.
 # sql_server_name = "your-unique-genie-sql" # Optional override for a reserved name.
 # Keep AI requests disabled unless you separately confirm its API's free-tier terms.
+
+# Set only once custom-domain DNS and HTTPS are configured:
+# public_url = "https://data-genie.space"

@@ -1,6 +1,6 @@
 # Phase I implementation model
 
-This document maps the Phase I entities to the current implementation. Use the [hosted app](https://data-genie-blueray321.azurewebsites.net/), its [FAQ](https://data-genie-blueray321.azurewebsites.net/faq), or the [README](../README.md) for getting started.
+This document maps the Phase I entities to the current implementation. Use the [hosted app](https://data-genie.space/), its [FAQ](https://data-genie.space/faq), or the [README](../README.md) for getting started.
 
 A connected SQLite database or live PostgreSQL database contains the user's tables and rows. A separate SQLite application repository stores accounts, identity, schema metadata, sessions, requests, generated SQL, encrypted connection settings, and saved outcomes. Ordinary connected-table contents are not mirrored into that repository, but a saved query result contains the returned values.
 
@@ -36,7 +36,7 @@ Schema metadata is refreshed after a connection and after successful structural 
 
 Starting a session registers the metadata identity and database and inspects structure. Browser users must first create an account or log in. Inspecting structure reads metadata and the database. Structure-only requests and table inventories do not create stored requests, commands or results in History. Ending a session records EndTime and keeps the browser login and saved History. A session can be ended without having submitted a request.
 
-In the browser, [Databases](https://data-genie-blueray321.azurewebsites.net/databases) offers SQLite upload, an empty new SQLite database, an optional example `notes` table, a sample database, and PostgreSQL. In the separate local CLI, the file prompt accepts `.create PATH [--empty]`, an existing path, or Enter for the demo. CLI creation includes the `notes` starter unless `--empty` is supplied. This initial setup belongs to connection setup; subsequent table changes use normal recorded requests and confirmations. Creating refuses existing destination files. A failed create or attach leaves the previous session active.
+In the browser, [Databases](https://data-genie.space/databases) offers SQLite upload, an empty new SQLite database, an optional example `notes` table, a sample database, and PostgreSQL. In the separate local CLI, the file prompt accepts `.create PATH [--empty]`, an existing path, or Enter for the demo. CLI creation includes the `notes` starter unless `--empty` is supplied. This initial setup belongs to connection setup; subsequent table changes use normal recorded requests and confirmations. Creating refuses existing destination files. A failed create or attach leaves the previous session active.
 
 Functions that retrieve, calculate or change user data create a request and its SQL commands. Browser users ask Data Genie AI in Ask, enter SQL in the SQL tab, or use the forms in Structure to add, rename, or delete tables and columns. The SQL parser validates explicit statements; all writes still require confirmation. Data Genie sends the configured AI service the current database structure, SQL dialect, and recent conversation context. The local CLI and legacy API retain Keywords with supported local patterns and narrower follow-ups. A request that fails translation is rejected and retained without inventing a query. A SQL command that fails execution is retained without a result. Multi-command requests preserve command order; they do not imply a transaction spanning the entire request.
 
@@ -48,7 +48,7 @@ The workspace keeps a recent cache of 50 requests plus unresolved changes, rende
 
 ## Nine functions
 
-The browser exposes these flows through [Workspace](https://data-genie-blueray321.azurewebsites.net/app), its Structure tab, [History](https://data-genie-blueray321.azurewebsites.net/history), and [Databases](https://data-genie-blueray321.azurewebsites.net/databases). The CLI access below is for local SQLite files:
+The browser exposes these flows through [Workspace](https://data-genie.space/app), its Structure tab, [History](https://data-genie.space/history), and [Databases](https://data-genie.space/databases). The CLI access below is for local SQLite files:
 
 | # | Function | CLI access |
 | --- | --- | --- |
