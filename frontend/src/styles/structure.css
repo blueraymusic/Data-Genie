@@ -1,0 +1,58 @@
+.workspace-page .schema-actions,
+.workspace-page .schema-column-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.workspace-page .schema-table-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.workspace-page .schema-table-heading h3 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  margin-bottom: 0;
+}
+.workspace-page .schema-table-heading .schema-actions {
+  flex-shrink: 0;
+}
+.workspace-page .schema-column-actions {
+  flex-wrap: nowrap;
+  gap: 16px;
+}
+.workspace-page .schema-edit-note {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.workspace-page .schema-review {
+  scroll-margin-top: 24px;
+}
+.workspace-page .schema-review > section {
+  margin-top: 26px;
+}
+.workspace-page .schema-review > section > h2 {
+  font: 500 16px/24px var(--sans);
+}
+.workspace-page .schema-dialog-target {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 900px) {
+  .workspace-page .schema-table-heading {
+    flex-direction: column;
+  }
+  .workspace-page .schema-table-heading .schema-actions {
+    flex-shrink: 1;
+  }
+}
+@media (max-width: 600px) {
+  .workspace-page .page-heading > .schema-actions {
+    width: 100%;
+  }
+  .workspace-page .schema-actions .btn {
+    flex: 1 1 auto;
+  }
+}

@@ -148,6 +148,7 @@ export function useWorkbench(user) {
         {
           request_id: temporary,
           text,
+          raw_sql: raw,
           status: 'pending',
           submitted_at: new Date().toISOString(),
           commands: [],
@@ -171,6 +172,7 @@ export function useWorkbench(user) {
         const request = {
           request_id: data.request_id || temporary,
           text,
+          raw_sql: raw,
           submitted_at: new Date().toISOString(),
           status:
             data.matched === false
@@ -260,7 +262,35 @@ export function useWorkbench(user) {
         );
         await refresh(id);
       } catch (error) {
-        if (active.current === id && version.current === revision) setMessage(error.message);
+        if (active.current === id && version.current === revision) {
+          setMessage(error.message);
+          // A rejected confirmation may already be recorded as failed (or completed).
+          // Read its stored outcome; never replay the decision or guess it succeeded.
+          try {
+            const history = await api('/api/history', { sessionId: id });
+            if (active.current !== id || version.current !== revision) return;
+            const saved = new Map(
+              history.requests.map((request) => [request.request_id, normalizeRequest(request)]),
+            );
+            setFeed((previous) =>
+              previous.map((request) => {
+                const stored = saved.get(request.request_id);
+                if (!stored) return request;
+                return {
+                  ...request,
+                  ...stored,
+                  commands: stored.commands.map((item) => ({
+                    ...request.commands.find((previous) => previous.command_id === item.command_id),
+                    ...item,
+                  })),
+                };
+              }),
+            );
+            await refresh(id);
+          } catch {
+            // Keep a pending command pending when its outcome cannot be checked.
+          }
+        }
       } finally {
         commandLocks.current.delete(command.command_id);
         setWorkingCommands(new Set(commandLocks.current));

@@ -36,8 +36,8 @@ export function SavedDatabases({ workbench, onOpened, onReconnect }) {
     setIssue(null);
     setOpening(item.session_id);
     try {
-      await workbench.open({}, item.session_id);
-      onOpened();
+      const data = await workbench.open({}, item.session_id);
+      onOpened(data);
     } catch (error) {
       setIssue({ sessionId: item.session_id, message: error.message, recovery: error.recovery });
     } finally {

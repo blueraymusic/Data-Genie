@@ -1,13 +1,17 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Translation } from '../components/CommandResult';
 import { quoteIdentifier } from '../lib/api';
+import { Link } from '../lib/router';
 import { requestProblem } from '../lib/requestValidation';
 import { Icon } from '../components/Icon';
-export default function AskPage({ workbench, selected, mode, draft, setDraft, onNewTable }) {
+export default function AskPage({ workbench, selected, draft, setDraft, onNewTable }) {
   const textarea = useRef(null),
     feed = useRef(null),
     wasBlocked = useRef(false);
   const [validation, setValidation] = useState('');
+  const aiAvailable = Boolean(workbench.session.ai?.enabled);
+  const blocked =
+    !aiAvailable || workbench.busy || workbench.pending || workbench.workingCommands?.size > 0;
   const context = workbench.session.conversation_context;
   const contextTables = context?.tables || [];
   const changedTable = Boolean(
@@ -48,7 +52,7 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
       : ['show the structure of the database', 'create a table notes with a body'];
   async function ask(event) {
     event.preventDefault();
-    if (!draft.trim() || workbench.busy || workbench.pending) return;
+    if (!draft.trim() || blocked) return;
     const text = draft.trim();
     const previous = workbench.feed.at(-1);
     const answering = Boolean(
@@ -67,15 +71,21 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
       return;
     }
     setDraft('');
-    await workbench.submit(text, false, mode, selected);
+    await workbench.submit(text, false, 'gemini', selected);
   }
   return (
     <section id="v-ask" className={workbench.feed.length ? 'has-requests' : undefined}>
       <div className="workspace-intro">
         <h1>Ask in plain English.</h1>
         <p className="lead">
-          Your words on the left. The SQL on the right. The result, on the record.
+          Gemini turns your request into SQL. Review the SQL and see the result here.
         </p>
+        {!aiAvailable && (
+          <p className="status-note" role="status">
+            Gemini AI is unavailable. <Link href="/app?view=sql">Open SQL</Link> to run statements
+            without an AI service.
+          </p>
+        )}
         {!workbench.session.tables.length && (
           <p className="empty-inline">
             {workbench.session.read_only ? (
@@ -86,7 +96,7 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
                 <button type="button" className="text-button" onClick={onNewTable}>
                   Create your first table
                 </button>
-                , or describe the table you need below.
+                {aiAvailable ? ', or describe the table you need below.' : '.'}
               </>
             )}
           </p>
@@ -97,7 +107,7 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
               type="button"
               key={example}
               aria-label={example}
-              disabled={workbench.busy || workbench.pending}
+              disabled={blocked}
               onClick={() => {
                 setDraft(example);
                 setValidation('');
@@ -128,11 +138,15 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
             key={request.request_id}
             request={request}
             workbench={workbench}
-            onUseSuggestion={(suggestion) => {
-              setDraft(suggestion);
-              setValidation('');
-              textarea.current?.focus();
-            }}
+            onUseSuggestion={
+              aiAvailable
+                ? (suggestion) => {
+                    setDraft(suggestion);
+                    setValidation('');
+                    textarea.current?.focus();
+                  }
+                : undefined
+            }
           />
         ))}
       </div>
@@ -166,7 +180,7 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
             <button
               type="button"
               className="text-button"
-              disabled={workbench.busy || workbench.pending}
+              disabled={blocked}
               onClick={async () => {
                 if (await workbench.newConversation()) {
                   setDraft('');
@@ -195,16 +209,18 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
               setDraft(event.target.value);
               setValidation('');
             }}
-            disabled={workbench.busy || workbench.pending}
+            disabled={blocked}
             aria-label="Ask in plain English"
             aria-invalid={Boolean(validation)}
             aria-describedby={validation ? 'request-validation' : 'composer-hint'}
             placeholder={
-              workbench.pending
-                ? 'Review the pending change above to continue.'
-                : workbench.feed.length
-                  ? 'Ask a follow-up…'
-                  : 'Ask in plain English…'
+              !aiAvailable
+                ? 'Gemini is unavailable. Open the SQL tab to continue.'
+                : workbench.pending
+                  ? 'Review the pending change above to continue.'
+                  : workbench.feed.length
+                    ? 'Ask a follow-up…'
+                    : 'Ask in plain English…'
             }
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -213,10 +229,7 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
               }
             }}
           />
-          <button
-            className="btn pri"
-            disabled={workbench.busy || workbench.pending || !draft.trim()}
-          >
+          <button className="btn pri" disabled={blocked || !draft.trim()}>
             {workbench.busy ? 'Writing…' : 'Ask'}
             {!workbench.busy && <Icon name="send" />}
           </button>
@@ -227,7 +240,9 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
           </p>
         )}
         <p className="composer-hint" id="composer-hint">
-          Enter to ask · Shift + Enter for a new line · Changes wait for your OK.
+          {aiAvailable
+            ? 'Enter to ask · Shift + Enter for a new line · Changes wait for your OK.'
+            : 'SQL works without Gemini. Choose the SQL tab to write a statement.'}
         </p>
       </div>
     </section>

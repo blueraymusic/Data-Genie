@@ -4,7 +4,7 @@ import { DatabaseForm } from '../components/DatabaseForm';
 import { SavedDatabases } from '../components/SavedDatabases';
 import { useAuth } from '../context/AuthContext';
 import { useRouter, Link } from '../lib/router';
-export default function DatabaseChooser({ workbench }) {
+export default function DatabaseChooser({ workbench, onOpened }) {
   const { user, logout } = useAuth(),
     { navigate } = useRouter();
   const [formVersion, setFormVersion] = useState(0),
@@ -13,8 +13,9 @@ export default function DatabaseChooser({ workbench }) {
     document.title = 'Databases | Data Genie';
   }, []);
   async function open(payload, id) {
-    await workbench.open(payload, id);
-    navigate('/app', true);
+    const data = await workbench.open(payload, id);
+    if (onOpened) onOpened(data);
+    else navigate('/app', true);
   }
   return (
     <AuthShell
@@ -40,7 +41,7 @@ export default function DatabaseChooser({ workbench }) {
       </p>
       <SavedDatabases
         workbench={workbench}
-        onOpened={() => navigate('/app', true)}
+        onOpened={(data) => (onOpened ? onOpened(data) : navigate('/app', true))}
         onReconnect={() => setFormVersion((value) => value + 1)}
       />
       <DatabaseForm

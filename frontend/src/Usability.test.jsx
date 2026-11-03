@@ -83,6 +83,7 @@ it('accepts a numeric clarification answer and keeps the original goal visible',
       workbench={{
         session: {
           tables: ['customers'],
+          ai: { enabled: true },
           pending_intent: 'Generate sample customers with integer IDs.',
         },
         feed: [
@@ -281,6 +282,7 @@ it('shows the actual follow-up table and filters and flags a changed selection',
     workbench: {
       session: {
         tables: ['customers', 'sales'],
+        ai: { enabled: true },
         conversation_context: {
           tables: ['customers'],
           filters: ['state: Iowa'],

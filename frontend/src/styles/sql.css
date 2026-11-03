@@ -1,0 +1,33 @@
+.workspace-page .sql-page > form {
+  margin-top: 24px;
+}
+.workspace-page .sql-page > form > label {
+  display: block;
+  margin-bottom: 8px;
+}
+.workspace-page .sql-examples {
+  padding: 16px 0 4px;
+  border-top: 1px solid var(--rule);
+}
+.workspace-page .sql-examples > p {
+  margin: 0;
+}
+.workspace-page .sql-syntax {
+  margin: 8px 0 20px;
+  padding: 16px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.workspace-page .sql-syntax summary {
+  cursor: pointer;
+}
+.workspace-page .sql-syntax p {
+  max-width: 80ch;
+  color: var(--ink-soft);
+  line-height: 1.65;
+}
+.workspace-page .sql-syntax pre {
+  overflow-x: auto;
+  margin-bottom: 0;
+  font: 13px/22px var(--mono);
+}

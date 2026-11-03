@@ -9,8 +9,8 @@ Ask your database questions in plain English. Use a SQLite file or connect Postg
 ## The workspace
 
 - Upload a SQLite file, connect PostgreSQL, create an empty database, or explore the sample.
-- Ask questions using Gemini or use Keywords mode without an API key.
-- Browse tables and columns, and review SQL before confirming changes.
+- Ask questions using Gemini, or write SQL without an API key. The SQL tab includes examples.
+- Add, rename, or delete tables and columns in Structure, with a SQL preview before each change.
 - Sort, copy, or export results as CSV, and revisit saved requests in History.
 - Open Account and saved History even when no database is connected.
 
@@ -59,7 +59,7 @@ Open the URL Vite prints. It forwards API requests to the Python server.
 
 ## Optional Gemini setup
 
-Copy `.env.example` to `.env` and add your `GEMINI_API_KEY`. The model is configured with `GEMINI_MODEL` in the same file. Without a key, choose Keywords in Account & preferences.
+Copy `.env.example` to `.env` and add your `GEMINI_API_KEY`. The model is configured with `GEMINI_MODEL` in the same file. Without a key, use the SQL tab or the forms in Structure. Neither sends requests to AI.
 
 Gemini receives the database structure and recent conversation context, including request text, SQL, and clarifications. Result rows are not sent to the model.
 

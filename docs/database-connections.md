@@ -66,7 +66,7 @@ For a ready-to-use database with a **local Data Genie installation** (PostgreSQL
 .venv/bin/python scripts/postgres_demo.py url
 ```
 
-Paste that URL into the local app's **Databases → PostgreSQL**, keep schema `public`, test, and connect. In Gemini mode, try “show all customers from Missouri”, then “which ones are in Iowa”. In Keywords mode, start with `show customers`, then ask `which ones are in Iowa`. The isolated demo has its own dedicated user and password, listens only on loopback port 55432, and stores its settings under ignored `db/postgres-demo/`. It cannot be connected through the hosted site. Re-running `start` preserves your data. Use `.venv/bin/python scripts/postgres_demo.py stop` when finished.
+Paste that URL into the local app's **Databases → PostgreSQL**, keep schema `public`, test, and connect. In Ask, try “show all customers from Missouri”, then “which ones are in Iowa”. Without AI, use the SQL tab, for example `SELECT * FROM customers WHERE state = 'Iowa';`. Structure provides forms to add, rename, or delete tables and columns; every change still requires confirmation. The isolated demo has its own dedicated user and password, listens only on loopback port 55432, and stores its settings under ignored `db/postgres-demo/`. It cannot be connected through the hosted site. Re-running `start` preserves your data. Use `.venv/bin/python scripts/postgres_demo.py stop` when finished.
 
 For automated checks:
 

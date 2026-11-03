@@ -187,7 +187,7 @@ class PostgresConnector:
                        a.attnotnull,a.attidentity,pg_catalog.pg_get_expr(d.adbin,d.adrelid) AS column_default,
                        c.reltuples::bigint AS approximate_rows
                 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
-                JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped
+                LEFT JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped
                 LEFT JOIN pg_catalog.pg_attrdef d ON d.adrelid=c.oid AND d.adnum=a.attnum
                 WHERE n.nspname=%s AND c.relkind IN ('r','p','v','m')
                   AND pg_catalog.has_table_privilege(c.oid,'SELECT')
@@ -210,6 +210,8 @@ class PostgresConnector:
             table = tables.setdefault(row["relname"], {"name": row["relname"], "sql": "", "columns": [], "unique_indexes": [],
                 "foreign_keys": [], "row_count": max(row["approximate_rows"], 0) if row["approximate_rows"] >= 0 else None,
                 "row_count_estimated": True})
+            if row["attnum"] is None:
+                continue  # PostgreSQL permits tables with no remaining columns.
             default = row["column_default"] or ("GENERATED AS IDENTITY" if row["attidentity"] else None)
             table["columns"].append({"name": row["attname"], "type": row["data_type"], "not_null": row["attnotnull"],
                 "notnull": row["attnotnull"], "primary_key": False, "pk": 0, "default": default, "dflt_value": default,

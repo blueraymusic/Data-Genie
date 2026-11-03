@@ -1,0 +1,7 @@
+.request-text.sql-request {
+  font-family: var(--mono);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

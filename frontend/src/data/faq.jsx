@@ -291,17 +291,19 @@ export const faqGroups = [
       {
         question: 'Can I use Data Genie without AI?',
         search:
-          'Yes. Choose Keywords in Account & preferences. Keywords mode supports specific commands such as \u201ccount customers\u201d and \u201cshow sales where amount > 50\u201d. It does not send the request to an AI provider. Gemini AI mode supports more flexible phrasing. If the AI service is unavailable, you can switch to Keywords; the app does not silently change modes.',
+          'Yes. Open the SQL tab to enter standard SQLite or PostgreSQL statements. Examples cover previewing rows, counts, filters and creating tables. The parser checks statements before running them, and changes need confirmation. Structure has forms for editing tables and columns. Neither SQL nor Structure uses AI. Set your default workspace view in Account & preferences.',
         answer: (
           <>
             <p>
-              Yes. Choose <strong>Keywords</strong> in Account &amp; preferences. Keywords mode
-              supports specific commands such as “count customers” and “show sales where amount &gt;
-              50”. It does not send the request to an AI provider.
+              Yes. Open the <strong>SQL</strong> tab and enter a statement such as{' '}
+              <code>SELECT COUNT(*) FROM customers;</code>. Examples help with common queries and
+              use the syntax for your connected database. The parser checks statements first;
+              changes still wait for confirmation.
             </p>
             <p>
-              Gemini AI mode supports more flexible phrasing. If the AI service is unavailable, you
-              can switch to Keywords; the app does not silently change modes.
+              <strong>Structure</strong> also has forms for editing tables and columns. Neither
+              option uses AI. You can set your default workspace view in{' '}
+              <strong>Account &amp; preferences</strong>.
             </p>
           </>
         ),
@@ -312,6 +314,30 @@ export const faqGroups = [
     id: 'requests-and-changes',
     title: 'Requests & changes',
     items: [
+      {
+        question: 'Can I edit tables and columns without typing a request?',
+        search:
+          'Yes. In Structure create a table, rename or delete a table, or add, rename or delete a column or attribute. Choose its type when adding a column. Review the SQL and confirm the change, or choose Don’t run. Read-only connections do not allow editing. Deleting a column removes its values and deleting a table removes its rows. Existing column types and constraints are shown for inspection; the forms do not convert existing data types.',
+        answer: (
+          <>
+            <p>
+              Yes. Open <strong>Structure</strong> to create, rename, or delete a table. Each table
+              also has controls to add a column, rename a column, or delete one. Choose a data type
+              when adding a column.
+            </p>
+            <p>
+              Review the SQL, then confirm or choose <strong>Don’t run</strong>. Read-only
+              connections cannot be edited. Deleting a column removes its values; deleting a table
+              removes its rows. These changes have no automatic undo.
+            </p>
+            <p>
+              Existing types and constraints are shown for inspection. The forms do not convert
+              existing data types; advanced changes can be entered in SQL where your database
+              supports them.
+            </p>
+          </>
+        ),
+      },
       {
         question: 'When does a request actually run?',
         search:
@@ -371,13 +397,13 @@ export const faqGroups = [
       {
         question: 'Can I ask a follow-up without repeating the table name?',
         search:
-          'In AI mode you can continue the current conversation. After show all customers from Missouri, ask which ones are in Iowa. Recent requests and the database structure provide context. Keywords mode supports a narrower set of follow-ups. New conversation clears context for future requests and keeps saved History.',
+          'In Ask you can continue the current conversation. After show all customers from Missouri, ask which ones are in Iowa. Recent requests and the database structure provide context. SQL statements are explicit queries and do not use conversation context. New conversation clears context for future requests and keeps saved History.',
         answer: (
           <>
             <p>
               Yes. In AI mode, try “show all customers from Missouri”, then “which ones are in
-              Iowa”. Recent requests and the database structure provide context. Keywords mode
-              supports a narrower set of follow-ups.
+              Iowa”. Recent requests and the database structure provide context. Statements in the
+              SQL tab are explicit queries and do not use conversation context.
             </p>
             <p>
               Choose <strong>New conversation</strong> to clear context for future requests. Your
@@ -389,7 +415,7 @@ export const faqGroups = [
       {
         question: 'What if my request is not understood?',
         search:
-          'Check the table and column names in Structure, then make your request more specific. For example, \u201cshow customers where state is Missouri\u201d is clearer than \u201cshow people from there\u201d.Keywords mode uses a fixed command grammar, so follow the suggested examples. Use Gemini AI mode when you want to ask more freely.',
+          'Check the table and column names in Structure, then make your request more specific. For example, show customers where state is Missouri is clearer than show people from there. Use SQL to write an explicit statement, or Structure to edit tables and columns with forms. These options do not need AI.',
         answer: (
           <>
             <p>
@@ -398,8 +424,8 @@ export const faqGroups = [
               “show people from there”.
             </p>
             <p>
-              Keywords mode uses a fixed command grammar, so follow the suggested examples. Use
-              Gemini AI mode when you want to ask more freely.
+              For an explicit query, switch to <strong>SQL</strong> and start from one of its
+              examples. To edit tables or columns without a prompt, use <strong>Structure</strong>.
             </p>
           </>
         ),

@@ -128,6 +128,86 @@ class PostgresIntegrationTests(unittest.TestCase):
         with workbench.session_scope(editable):
             self.assertIn("phone", [column["name"] for column in workbench.table_schema("customers")["columns"]])
 
+    def test_every_manual_schema_operation_is_rejected_on_read_only_connections(self):
+        session_id = self.open()["session_id"]
+        statements = ["CREATE TABLE manual_notes (id INTEGER)", "ALTER TABLE customers RENAME TO clients",
+                      "ALTER TABLE customers ADD COLUMN phone TEXT", "ALTER TABLE customers RENAME COLUMN name TO title",
+                      "ALTER TABLE customers DROP COLUMN state", "DROP TABLE orders"]
+        for statement in statements:
+            with self.subTest(statement=statement):
+                response = workbench.submit_request(session_id, statement, raw_sql=True)
+                self.assertFalse(response["matched"], response)
+                self.assertIn("read-only", response["message"])
+                self.assertNotIn("command_id", response)
+        with workbench.session_scope(session_id):
+            self.assertEqual(workbench.visible_tables(), ["customers", "orders"])
+            self.assertIn("state", [column["name"] for column in workbench.table_schema("customers")["columns"]])
+
+    def test_quoted_manual_schema_lifecycle_preserves_rows_and_refreshes_structure(self):
+        session_id = self.open(changes=True)["session_id"]
+
+        def schema():
+            return {table["name"]: table for table in workbench.schema_for_session(session_id)["tables"]}
+
+        def prepare(statement):
+            pending = workbench.submit_request(session_id, statement, raw_sql=True)
+            self.assertTrue(pending["matched"], pending)
+            self.assertTrue(pending["requires_confirmation"], pending)
+            self.assertEqual(pending["kind"], "DDL")
+            return pending
+
+        def confirm(pending):
+            done = workbench.confirm_command(session_id, pending["command_id"], pending["confirmation_token"])
+            self.assertTrue(done["schema_changed"])
+            self.assertNotIn("schema_warning", done)
+
+        created = prepare('CREATE TABLE "Manual ""Notes""" ("entry id" INTEGER PRIMARY KEY, "entry text" TEXT)')
+        self.assertNotIn('Manual "Notes"', schema())
+        confirm(created)
+        self.assertEqual([column["name"] for column in schema()['Manual "Notes"']["columns"]], ["entry id", "entry text"])
+        inserted = workbench.submit_request(session_id, 'INSERT INTO "Manual ""Notes""" VALUES (7,\'keep this note\')', raw_sql=True)
+        workbench.confirm_command(session_id, inserted["command_id"], inserted["confirmation_token"])
+        renamed = prepare('ALTER TABLE "Manual ""Notes""" RENAME TO "Renamed ""Notes"""')
+        self.assertIn('Manual "Notes"', schema())
+        confirm(renamed)
+        self.assertNotIn('Manual "Notes"', schema())
+        self.assertIn('Renamed "Notes"', schema())
+        renamed_column = prepare('ALTER TABLE "Renamed ""Notes""" RENAME COLUMN "entry text" TO "Note; Text"')
+        self.assertIn("entry text", [column["name"] for column in schema()['Renamed "Notes"']["columns"]])
+        confirm(renamed_column)
+        added = prepare('ALTER TABLE "Renamed ""Notes""" ADD COLUMN "extra; value" TEXT DEFAULT \'draft\'')
+        self.assertNotIn("extra; value", [column["name"] for column in schema()['Renamed "Notes"']["columns"]])
+        confirm(added)
+        self.assertEqual(workbench.submit_request(session_id, 'SELECT * FROM "Renamed ""Notes"""', raw_sql=True)["rows"], [
+            {"entry id": 7, "Note; Text": "keep this note", "extra; value": "draft"},
+        ])
+        removed = prepare('ALTER TABLE "Renamed ""Notes""" DROP COLUMN "extra; value"')
+        self.assertIn("extra; value", [column["name"] for column in schema()['Renamed "Notes"']["columns"]])
+        confirm(removed)
+        self.assertEqual(workbench.submit_request(session_id, 'SELECT * FROM "Renamed ""Notes"""', raw_sql=True)["rows"], [
+            {"entry id": 7, "Note; Text": "keep this note"},
+        ])
+        dropped = prepare('DROP TABLE "Renamed ""Notes"""')
+        self.assertIn('Renamed "Notes"', schema())
+        confirm(dropped)
+        self.assertNotIn('Renamed "Notes"', schema())
+
+    def test_removing_the_last_postgres_column_keeps_the_table_visible_and_editable(self):
+        session_id = self.open(changes=True)["session_id"]
+        for statement in ("CREATE TABLE emptyable (body TEXT)", "ALTER TABLE emptyable DROP COLUMN body"):
+            pending = workbench.submit_request(session_id, statement, raw_sql=True)
+            self.assertTrue(pending["requires_confirmation"], pending)
+            done = workbench.confirm_command(session_id, pending["command_id"], pending["confirmation_token"])
+            self.assertNotIn("schema_warning", done)
+        with workbench.session_scope(session_id):
+            self.assertIn("emptyable", workbench.visible_tables())
+            self.assertEqual(workbench.table_schema("emptyable")["columns"], [])
+        pending = workbench.submit_request(session_id, "ALTER TABLE emptyable ADD COLUMN title TEXT", raw_sql=True)
+        self.assertTrue(pending["requires_confirmation"], pending)
+        workbench.confirm_command(session_id, pending["command_id"], pending["confirmation_token"])
+        with workbench.session_scope(session_id):
+            self.assertEqual([column["name"] for column in workbench.table_schema("emptyable")["columns"]], ["title"])
+
     def test_pagination_and_connection_ownership(self):
         session = self.open()
         session_id = session["session_id"]

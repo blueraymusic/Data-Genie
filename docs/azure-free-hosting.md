@@ -64,7 +64,7 @@ Optional **Terraform-category variables**:
 | `location` | Existing group's region | Override when another allowed region offers the selected host and free SQL. |
 | `app_service_sku` | `F1` | Select `B1` explicitly for one budgeted Linux instance; larger tiers are rejected. Match this value when running the pipeline. |
 | `sql_server_name` | App name plus `-sql` | Optional globally unique name if an earlier failed deployment reserved the original name in another region. Deployment reads this server from the app's configured SQL host. |
-| `gemini_api_key` | Empty | Sensitive. Keywords mode is the default; AI billing/free quotas are separate. |
+| `gemini_api_key` | Empty | Sensitive. Without a key, use SQL or Structure; AI billing/free quotas are separate. |
 | `gemini_model` | `gemini-3.5-flash-lite` | Only used when a key is supplied. |
 
 Confirm the plan contains only the selected F1 or B1 Linux service plan with one instance, SQL logical server, free SQL database, web app, and generated secrets. The database uses the ARM API through AzAPI because AzureRM's database resource does not expose the free-limit safeguards. The API must report both safeguards back. The database has deletion protection. The hosting plan’s original Azure name ends in `-free`; it is retained for in-place upgrades, so check the SKU itself when reviewing cost.

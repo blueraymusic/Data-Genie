@@ -52,20 +52,28 @@ export default function AccountPage({ workbench, mode, setMode }) {
         {workbench.session && (
           <>
             <p>
-              <span>Request interpretation</span>
+              <span>Default workspace view</span>
               <label className="sr-only" htmlFor="requestMode">
-                Request interpretation
+                Default workspace view
               </label>
               <select
                 id="requestMode"
                 value={mode}
                 onChange={(event) => setMode(event.target.value)}
+                aria-describedby="requestModeHelp"
               >
                 <option value="gemini" disabled={!workbench.session.ai?.enabled}>
                   Gemini AI
                 </option>
-                <option value="keywords">Keywords</option>
+                <option value="sql">SQL</option>
               </select>
+            </p>
+            <p id="requestModeHelp" className="small muted">
+              Gemini AI accepts plain English. SQL runs statements directly without an AI service or
+              AI key. Local SQLite works offline while Data Genie is running; PostgreSQL still needs
+              its database connection. Your choice applies when you next open a database.
+              {!workbench.session.ai?.enabled &&
+                ' Gemini is unavailable, so new sessions open in SQL.'}
             </p>
             {workbench.session.source === 'postgresql' ? (
               <p>
@@ -93,7 +101,7 @@ export default function AccountPage({ workbench, mode, setMode }) {
       </div>
       {!workbench.session && (
         <p className="small muted">
-          <Link href="/databases">Choose a database</Link> to change request interpretation or
+          <Link href="/databases">Choose a database</Link> to change your default workspace view or
           export a SQLite file.
         </p>
       )}

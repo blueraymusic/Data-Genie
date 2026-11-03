@@ -28,7 +28,7 @@ const session = {
       columns: [{ name: 'customer_id', type: 'INTEGER', primary_key: true }],
     },
   ],
-  ai: { enabled: false },
+  ai: { enabled: true },
 };
 const response = (data, status = 200) =>
   Promise.resolve({ ok: status < 400, status, json: async () => data });
@@ -336,7 +336,9 @@ describe('React pages and account flow', () => {
     render(<App />);
     const search = screen.getByRole('searchbox', { name: 'Search questions and answers' });
     await events.type(search, 'Gemini');
-    expect(screen.getByText('4 matching questions')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toMatch(/^[1-9]\d* matching questions$/);
+    expect(screen.getByText('What does Gemini receive about my database?')).toBeTruthy();
+    expect(screen.queryByText('Which database files can I upload?')).toBeNull();
     await events.clear(search);
     await events.type(search, 'no-matching-words');
     expect(screen.getByText(/No matching questions/)).toBeTruthy();
@@ -561,6 +563,53 @@ describe('command safety', () => {
       }),
     ).toBeTruthy();
     expect(within(screen.getByRole('region', { name: 'Result' })).getByText('Ana')).toBeTruthy();
+  });
+
+  it.each([false, true])(
+    'labels submitted and restored raw SQL as user SQL (explicit flag: %s)',
+    (explicit) => {
+      render(
+        <Translation
+          request={{
+            text: 'SELECT * FROM customers;',
+            raw_sql: explicit,
+            status: 'executed',
+            submitted_at: new Date().toISOString(),
+            commands: [
+              { sql: 'SELECT * FROM customers', status: 'executed', rows: [{ name: 'Ana' }] },
+            ],
+          }}
+          workbench={{ workingCommands: new Set() }}
+        />,
+      );
+      expect(screen.getByRole('region', { name: 'Your SQL' }).textContent).toContain(
+        'SELECT * FROM customers;',
+      );
+      expect(screen.getByRole('region', { name: 'SQL review' })).toBeTruthy();
+      expect(screen.queryByRole('region', { name: 'Generated SQL' })).toBeNull();
+      expect(within(screen.getByRole('region', { name: 'Result' })).getByText('Ana')).toBeTruthy();
+    },
+  );
+
+  it('warns that dropping a column deletes its values and still waits for confirmation', async () => {
+    const decide = vi.fn(),
+      events = userEvent.setup();
+    const command = {
+      command_id: 27,
+      sql: 'ALTER TABLE "customers" DROP COLUMN "email"',
+      operation: 'ALTER',
+      status: 'pending',
+      requires_confirmation: true,
+      preview: { table: 'customers' },
+    };
+    render(<Confirmation command={command} onDecide={decide} />);
+    expect(
+      screen.getByText('This will delete a column and its values from customers.'),
+    ).toBeTruthy();
+    expect(screen.getByText(/Deleted data cannot be restored here/)).toBeTruthy();
+    expect(decide).not.toHaveBeenCalled();
+    await events.click(screen.getByRole('button', { name: 'Delete column from customers' }));
+    expect(decide).toHaveBeenCalledWith(command, false);
   });
 
   it('shows clarification once without a SQL block or empty result', () => {

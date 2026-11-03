@@ -4,6 +4,7 @@ import { ResultTable, Cell } from './ResultTable';
 import { formatTime } from '../lib/api';
 import { api } from '../lib/api';
 import { resultHeadline, chartNumber, isNumeric } from '../lib/resultData';
+import '../styles/sql-review.css';
 export const operationOf = (command) =>
   command.sql_operation ||
   (!['read', 'write'].includes(command.operation) && command.operation) ||
@@ -223,6 +224,8 @@ export function Confirmation({ command, predecessors = [], onDecide, busy = fals
     count = command.preview?.affected_rows;
   const blocked = predecessors.some((previous) => previous.status !== 'executed');
   const drop = operation === 'DROP';
+  const dropsColumn = operation === 'ALTER' && /\bDROP\s+COLUMN\b/i.test(command.sql || '');
+  const destructive = drop || dropsColumn || operation === 'DELETE';
   const action =
     {
       DELETE: 'Delete',
@@ -234,30 +237,32 @@ export function Confirmation({ command, predecessors = [], onDecide, busy = fals
       ALTER: 'Change',
       SELECT: 'Run',
     }[operation] || 'Run';
-  const label =
-    drop || ['CREATE', 'ALTER'].includes(operation)
+  const label = dropsColumn
+    ? `Delete column from ${target}`
+    : drop || ['CREATE', 'ALTER'].includes(operation)
       ? `${action} table ${target}`
       : ['DELETE', 'UPDATE', 'INSERT', 'REPLACE'].includes(operation) && Number.isInteger(count)
         ? `${action} ${count} ${count === 1 ? 'row' : 'rows'}`
         : `${action} ${operation === 'SELECT' ? 'step' : 'records'}`;
   return (
     <div
-      className={
-        'confirm' + (['DELETE', 'DROP'].includes(operation) ? ' destructive' : ' constructive')
-      }
+      className={'confirm' + (destructive ? ' destructive' : ' constructive')}
       role="alert"
       tabIndex="-1"
     >
       <b>
-        {drop
-          ? `This will drop table ${target}.`
-          : ['DELETE', 'UPDATE', 'INSERT', 'REPLACE'].includes(operation) && Number.isInteger(count)
-            ? `This will ${action.toLowerCase()} ${count} ${count === 1 ? 'row' : 'rows'} ${operation === 'DELETE' ? 'from' : operation === 'INSERT' ? 'to' : 'in'} ${target}.`
-            : `This will ${operation === 'SELECT' ? 'read' : 'change'} ${target}.`}
+        {dropsColumn
+          ? `This will delete a column and its values from ${target}.`
+          : drop
+            ? `This will drop table ${target}.`
+            : ['DELETE', 'UPDATE', 'INSERT', 'REPLACE'].includes(operation) &&
+                Number.isInteger(count)
+              ? `This will ${action.toLowerCase()} ${count} ${count === 1 ? 'row' : 'rows'} ${operation === 'DELETE' ? 'from' : operation === 'INSERT' ? 'to' : 'in'} ${target}.`
+              : `This will ${operation === 'SELECT' ? 'read' : 'change'} ${target}.`}
       </b>
       <p>
         Review this change before you continue.
-        {['DELETE', 'DROP'].includes(operation) ? ' Deleted data cannot be restored here.' : ''}
+        {destructive ? ' Deleted data cannot be restored here.' : ''}
       </p>
       {command.preview_error && <p className="err">{command.preview_error}</p>}
       {drop && (
@@ -278,7 +283,7 @@ export function Confirmation({ command, predecessors = [], onDecide, busy = fals
       )}
       <div className="row">
         <button
-          className={'btn ' + (['DELETE', 'DROP'].includes(operation) ? 'warn' : 'pri')}
+          className={'btn ' + (destructive ? 'warn' : 'pri')}
           disabled={busy || blocked || Boolean(command.preview_error) || (drop && typed !== target)}
           onClick={() => onDecide(command, false)}
         >
@@ -321,6 +326,13 @@ export function CommandOutput({
 
 export function Translation({ request, workbench, onUseSuggestion }) {
   const hasSql = request.commands.some((command) => command.sql);
+  const stripTerminator = (text) => text?.trim().replace(/;\s*$/, '');
+  const rawSql = Boolean(
+    request.raw_sql ||
+    (request.commands.length === 1 &&
+      request.commands[0].sql &&
+      stripTerminator(request.text) === stripTerminator(request.commands[0].sql)),
+  );
   const hasOutput = !request.sending && (request.commands.length > 0 || request.error);
   const waiting = request.commands.some(
     (command) => command.requires_confirmation && command.status === 'pending',
@@ -350,9 +362,9 @@ export function Translation({ request, workbench, onUseSuggestion }) {
       </div>
       <div className="exchange-content">
         <div className={'translation' + (errorWithoutSql ? ' without-sql' : '')}>
-          <section className="request-panel" aria-label="Your request">
-            <h2 className="exchange-label">Your request</h2>
-            <p className="request-text">{request.text}</p>
+          <section className="request-panel" aria-label={rawSql ? 'Your SQL' : 'Your request'}>
+            <h2 className="exchange-label">{rawSql ? 'Your SQL' : 'Your request'}</h2>
+            <p className={'request-text' + (rawSql ? ' sql-request' : '')}>{request.text}</p>
           </section>
           {(hasSql || request.sending) && (
             <svg
@@ -370,7 +382,9 @@ export function Translation({ request, workbench, onUseSuggestion }) {
               errorWithoutSql
                 ? 'Data Genie response'
                 : hasSql || request.sending
-                  ? 'Generated SQL'
+                  ? rawSql
+                    ? 'SQL review'
+                    : 'Generated SQL'
                   : 'Database inspection'
             }
           >
@@ -378,11 +392,16 @@ export function Translation({ request, workbench, onUseSuggestion }) {
               {errorWithoutSql
                 ? 'Data Genie response'
                 : hasSql || request.sending
-                  ? 'Generated SQL'
+                  ? rawSql
+                    ? 'SQL review'
+                    : 'Generated SQL'
                   : 'Database inspection'}
             </h2>
             {request.sending ? (
-              <div className="skeleton" aria-label="Writing the SQL">
+              <div
+                className="skeleton"
+                aria-label={rawSql ? 'Checking the SQL' : 'Writing the SQL'}
+              >
                 <i />
                 <i />
                 <i />

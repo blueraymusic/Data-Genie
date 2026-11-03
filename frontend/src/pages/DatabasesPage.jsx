@@ -24,8 +24,8 @@ export default function DatabasesPage({ workbench, onOpened }) {
             initialMode={formVersion ? 'postgresql' : 'create'}
             busy={workbench.busy || workbench.pending || workbench.workingCommands.size > 0}
             onOpen={async (payload) => {
-              await workbench.open(payload);
-              onOpened();
+              const data = await workbench.open(payload);
+              onOpened(data);
             }}
           />
         </div>

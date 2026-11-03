@@ -66,17 +66,17 @@ def _request_json(url, api_key, body):
             if exc.code in {401, 403}:
                 raise GeminiError("Gemini could not authenticate the configured API key.") from exc
             if exc.code == 404:
-                raise GeminiError("The configured Gemini model is unavailable. Check the model setting or use Keywords.") from exc
+                raise GeminiError("The configured Gemini model is unavailable. Check the model setting or use the SQL tab.") from exc
             if exc.code == 429:
-                raise GeminiError("Gemini is temporarily unavailable or its quota is exhausted. Try again later or use Keywords.", retryable=True) from exc
+                raise GeminiError("Gemini is temporarily unavailable or its quota is exhausted. Try again later or use the SQL tab.", retryable=True) from exc
             if exc.code == 400:
-                raise GeminiError("Gemini rejected the planning request. Try a simpler request or use Keywords.") from exc
-            raise GeminiError("Gemini could not prepare SQL right now. Try again or use Keywords.", retryable=transient) from exc
+                raise GeminiError("Gemini rejected the planning request. Try a simpler request or use the SQL tab.") from exc
+            raise GeminiError("Gemini could not prepare SQL right now. Try again or use the SQL tab.", retryable=transient) from exc
         except (error.URLError, TimeoutError, json.JSONDecodeError) as exc:
             if attempt == 0:
                 time.sleep(random.uniform(0.5, 0.8))
                 continue
-            raise GeminiError("Gemini could not be reached right now. Try again later or use Keywords.", retryable=True) from exc
+            raise GeminiError("Gemini could not be reached right now. Try again later or use the SQL tab.", retryable=True) from exc
 
 
 def _text(response):
@@ -90,7 +90,7 @@ def generate_plans(question, tables, api_key, model, selected_table=None, conver
     """Return a small, JSON-only SQL plan. SQL still undergoes local validation."""
     validate_request(question, has_context=bool(conversation), allow_short_reply=awaiting_answer(conversation))
     if not api_key:
-        raise GeminiError("Gemini AI is not configured. Select Keywords or set GEMINI_API_KEY locally.")
+        raise GeminiError("Gemini AI is not configured. Use the SQL tab or set GEMINI_API_KEY locally.")
     schema = {
         "type": "object",
         "required": ["status", "clarification", "commands", "intent", "choices", "continues_task"],
