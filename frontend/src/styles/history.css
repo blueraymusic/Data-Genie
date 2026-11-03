@@ -1,0 +1,119 @@
+.workspace-page .history-page .history-controls {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: var(--chalk);
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.workspace-page .history-page .history-filters {
+  display: block;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.workspace-page .history-search-row,
+.workspace-page .history-filter-fields {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.workspace-page .history-search-row label {
+  flex: 1;
+  min-width: 160px;
+}
+.workspace-page .history-search-row input,
+.workspace-page .history-filter-fields select {
+  width: 100%;
+}
+.workspace-page .history-filter-options {
+  margin-top: 10px;
+}
+.workspace-page .history-filter-options > summary {
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.workspace-page .history-filter-fields {
+  padding-top: 12px;
+}
+.workspace-page .history-filter-fields label:first-child {
+  flex: 2;
+}
+.workspace-page .history-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+.workspace-page .history-page-count {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.workspace-page .history-page-buttons {
+  display: flex;
+  gap: 8px;
+}
+.workspace-page .history-page .history-meta {
+  margin-top: 14px;
+}
+.workspace-page .history-results {
+  scroll-margin-top: 210px;
+}
+.workspace-page .history-entry-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 16px;
+}
+.workspace-page .history-entry-heading > h3 {
+  min-width: 0;
+  flex: 1;
+}
+.workspace-page .history-entry-heading > button {
+  flex-shrink: 0;
+}
+.workspace-page .history-full-request {
+  margin: 12px 0;
+}
+.workspace-page .history-full-request summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+.workspace-page .history-full-request pre,
+.workspace-page .history-command .sqlblock pre {
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .workspace-page .history-entry-heading {
+    display: block;
+  }
+  .workspace-page .history-entry-heading > button {
+    margin-bottom: 12px;
+  }
+  .workspace-page .history-page .history-filter-fields label,
+  .workspace-page .history-page .history-search-row label {
+    min-width: 0;
+  }
+  .workspace-page .history-filter-fields label:first-child {
+    flex-basis: 100%;
+  }
+  .workspace-page .history-search-row {
+    gap: 8px;
+  }
+  .workspace-page .history-search-row label {
+    flex-basis: calc(100% - 170px);
+  }
+  .workspace-page .history-page-buttons {
+    gap: 6px;
+  }
+  .workspace-page .history-page-buttons .btn {
+    padding-inline: 10px;
+  }
+}

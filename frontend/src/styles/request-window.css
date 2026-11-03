@@ -1,0 +1,41 @@
+.workspace-page .request-window-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  padding: 16px 0;
+  border-top: 1px solid var(--rule);
+}
+.workspace-page .request-window-count {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 20px;
+}
+.workspace-page .request-window-count a {
+  white-space: nowrap;
+}
+.workspace-page .request-window-actions,
+.workspace-page .conversation-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+.workspace-page .conversation-actions {
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+.workspace-page .request-window-actions .btn {
+  font-size: 13px;
+}
+@media (max-width: 600px) {
+  .workspace-page .conversation-tools {
+    flex-wrap: wrap;
+  }
+  .workspace-page .conversation-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+}

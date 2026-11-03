@@ -437,6 +437,26 @@ export const faqGroups = [
     title: 'History & sessions',
     items: [
       {
+        question: 'How do I navigate a long conversation or history?',
+        search:
+          'Ask and SQL show recent requests in small batches. Show earlier requests opens older cached requests and Jump to latest returns to current work. All saved requests are available in History, with search, operation filters and pages of older or newer results. SQL keeps its editor and Run SQL button at the bottom while results scroll above. Pending changes remain visible for review. Structure keeps tools nearby and collapses the last completed change.',
+        answer: (
+          <>
+            <p>
+              Ask and SQL show recent requests in small batches. Choose{' '}
+              <strong>Show earlier requests</strong> or <strong>Jump to latest</strong> to move
+              around. The SQL editor and Run button stay at the bottom while results scroll above.
+            </p>
+            <p>
+              Open <strong>History</strong> for the full saved record. Search your words or SQL,
+              filter by operation, and use the newer and older page controls. Completed command
+              details stay collapsed until you open them. Pending changes remain available for
+              review.
+            </p>
+          </>
+        ),
+      },
+      {
         question: 'Where is my data stored on the hosted site?',
         search:
           'The hosted Azure installation stores accounts, history, uploaded SQLite working copies and encrypted PostgreSQL connection settings on the server, with durable state in Azure SQL. Your laptop installation is separate: sign up on the hosted site and upload only the SQLite files you want to move. The small hosted installation supports 64 MiB of total application state and 256 files. SQL can pause after inactivity or when its free allowance is exhausted. If the first login takes time, choose Retry connection, then submit the form yourself. Connection retries keep the form details and do not replay a request.',

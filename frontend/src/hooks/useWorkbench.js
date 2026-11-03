@@ -19,6 +19,21 @@ export function normalizeRequest(request) {
   };
 }
 
+const unresolved = (request) =>
+  request.commands?.some((command) => ['pending', 'running'].includes(command.status));
+const recentFeed = (requests) =>
+  requests.filter(
+    (request, index) => index >= requests.length - 50 || request.sending || unresolved(request),
+  );
+function restoredFeed(history, conversationAfter = 0) {
+  const requests = new Map(
+    [...(history.pending_requests || []), ...history.requests]
+      .filter((request) => request.request_id > conversationAfter)
+      .map((request) => [request.request_id, normalizeRequest(request)]),
+  );
+  return [...requests.values()].sort((left, right) => left.request_id - right.request_id);
+}
+
 export function useWorkbench(user) {
   const [session, setSession] = useState(null),
     [feed, setFeed] = useState([]),
@@ -43,14 +58,11 @@ export function useWorkbench(user) {
     setFeed([]);
     setMessage('');
     try {
-      const history = await api('/api/history', { sessionId: data.session_id });
+      const history = await api('/api/history?limit=50&include_pending=1', {
+        sessionId: data.session_id,
+      });
       if (version.current === revision)
-        setFeed(
-          history.requests
-            .filter((request) => request.request_id > (data.conversation_after || 0))
-            .map(normalizeRequest)
-            .reverse(),
-        );
+        setFeed(restoredFeed(history, data.conversation_after || 0));
     } catch (error) {
       if (version.current === revision)
         setMessage('The database is open, but History could not be loaded. ' + error.message);
@@ -143,18 +155,20 @@ export function useWorkbench(user) {
       setBusy(true);
       setMessage('');
       const temporary = 'sending-' + Date.now();
-      setFeed((previous) => [
-        ...previous,
-        {
-          request_id: temporary,
-          text,
-          raw_sql: raw,
-          status: 'pending',
-          submitted_at: new Date().toISOString(),
-          commands: [],
-          sending: true,
-        },
-      ]);
+      setFeed((previous) =>
+        recentFeed([
+          ...previous,
+          {
+            request_id: temporary,
+            text,
+            raw_sql: raw,
+            status: 'pending',
+            submitted_at: new Date().toISOString(),
+            commands: [],
+            sending: true,
+          },
+        ]),
+      );
       try {
         const data = await api(raw ? '/api/query' : '/api/ask', {
           method: 'POST',
@@ -267,10 +281,14 @@ export function useWorkbench(user) {
           // A rejected confirmation may already be recorded as failed (or completed).
           // Read its stored outcome; never replay the decision or guess it succeeded.
           try {
-            const history = await api('/api/history', { sessionId: id });
+            const requestId = command.request_id;
+            const query = requestId
+              ? '?request_id=' + encodeURIComponent(requestId)
+              : '?limit=50&include_pending=1';
+            const history = await api('/api/history' + query, { sessionId: id });
             if (active.current !== id || version.current !== revision) return;
             const saved = new Map(
-              history.requests.map((request) => [request.request_id, normalizeRequest(request)]),
+              restoredFeed(history).map((request) => [request.request_id, request]),
             );
             setFeed((previous) =>
               previous.map((request) => {

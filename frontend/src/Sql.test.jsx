@@ -38,6 +38,11 @@ function setup({ path = '/app?view=sql', active = true, data = session, saved = 
   );
   return fetch.getMockImplementation();
 }
+async function chooseExample(events, name) {
+  await events.click(screen.getByRole('button', { name: 'Examples', exact: true }));
+  await events.click(screen.getByRole('button', { name, exact: true }));
+}
+
 beforeEach(() => {
   sessionStorage.clear();
   localStorage.clear();
@@ -84,11 +89,11 @@ describe('SQL workspace', () => {
         .getAllByRole('button')
         .map((button) => button.textContent),
     ).toEqual(['Ask', 'SQL', 'Structure']);
-    await events.click(screen.getByRole('button', { name: 'Preview rows', exact: true }));
+    await chooseExample(events, 'Preview rows');
     expect(input.value).toBe('SELECT * FROM "order items" LIMIT 50;');
-    await events.click(screen.getByRole('button', { name: 'Filter rows', exact: true }));
+    await chooseExample(events, 'Filter rows');
     expect(input.value).toBe('SELECT * FROM "order items" WHERE "id" IS NOT NULL LIMIT 50;');
-    await events.click(screen.getByRole('button', { name: 'Preview rows', exact: true }));
+    await chooseExample(events, 'Preview rows');
     expect(fetch.mock.calls.some(([path]) => path === '/api/query')).toBe(false);
     await events.click(screen.getByRole('button', { name: 'Run SQL', exact: true }));
     expect(await screen.findByRole('cell', { name: '1', exact: true })).toBeTruthy();
@@ -96,6 +101,108 @@ describe('SQL workspace', () => {
     expect(JSON.parse(options.body)).toEqual({ sql: 'SELECT * FROM "order items" LIMIT 50;' });
     expect(options.headers['X-Session-ID']).toBe(session.session_id);
     expect(fetch.mock.calls.some(([path]) => path === '/api/ask')).toBe(false);
+  });
+
+  it.each(['Control', 'Meta'])(
+    'runs SQL with %s+Enter while plain Enter keeps a newline',
+    async (modifier) => {
+      const base = setup();
+      fetch.mockImplementation((path, options) =>
+        path === '/api/query'
+          ? response({
+              request_id: 29,
+              command_id: 30,
+              sql: JSON.parse(options.body).sql,
+              sql_operation: 'SELECT',
+              rows: [{ value: 4 }],
+            })
+          : base(path, options),
+      );
+      const events = userEvent.setup();
+      render(<App />);
+      const input = await screen.findByRole('textbox', { name: 'SQL statement', exact: true });
+      await events.type(input, 'SELECT{Enter}4 AS value;');
+      expect(input.value).toBe('SELECT\n4 AS value;');
+      expect(fetch.mock.calls.some(([path]) => path === '/api/query')).toBe(false);
+      await events.keyboard(`{${modifier}>}{Enter}{/${modifier}}`);
+      expect(await screen.findByRole('cell', { name: '4', exact: true })).toBeTruthy();
+      await waitFor(() => expect(document.activeElement).toBe(input));
+      expect(input.closest('.sql-composer')).toBeTruthy();
+      const feed = document.getElementById('sql-feed');
+      expect(
+        feed.compareDocumentPosition(input.closest('.sql-composer')) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(feed.querySelector('.exchange-results').scrollIntoView).toHaveBeenCalled();
+    },
+  );
+
+  it('keeps examples and help compact and returns focus to the editor or disclosure', async () => {
+    setup();
+    const events = userEvent.setup();
+    render(<App />);
+    const input = await screen.findByRole('textbox', { name: 'SQL statement', exact: true });
+    expect(screen.queryByRole('button', { name: 'Preview rows', exact: true })).toBeNull();
+    await chooseExample(events, 'Preview rows');
+    expect(screen.queryByRole('group', { name: 'SQLite examples' })).toBeNull();
+    expect(document.activeElement).toBe(input);
+    const help = screen.getByRole('button', { name: 'SQLite syntax help', exact: true });
+    await events.click(help);
+    expect(help.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('region', { name: 'SQLite syntax help' })).toBeTruthy();
+    await events.keyboard('{Escape}');
+    expect(help.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(help);
+    expect(screen.queryByRole('region', { name: 'SQLite syntax help' })).toBeNull();
+  });
+
+  it('keeps a long SQL feed bounded and lets earlier requests stay in view until returning to latest', async () => {
+    const base = setup();
+    const requests = Array.from({ length: 30 }, (_, index) => ({
+      request_id: index + 1,
+      text: `SELECT ${index + 1} AS value;`,
+      status: 'executed',
+      submitted_at: session.started_at,
+      commands: [
+        {
+          command_id: index + 100,
+          sql: `SELECT ${index + 1} AS value;`,
+          status: 'executed',
+          sql_operation: 'SELECT',
+          rows: [{ value: index + 1 }],
+        },
+      ],
+    })).reverse();
+    fetch.mockImplementation((path, options) =>
+      path.startsWith('/api/history?') && path.includes('include_pending=1')
+        ? response({ requests })
+        : base(path, options),
+    );
+    const events = userEvent.setup();
+    render(<App />);
+    await screen.findByRole('cell', { name: '30', exact: true });
+    const feed = document.getElementById('sql-feed');
+    expect(feed.querySelectorAll(':scope > article')).toHaveLength(8);
+    expect(within(feed).queryByRole('cell', { name: '1', exact: true })).toBeNull();
+    Element.prototype.scrollIntoView.mockClear();
+    await events.click(screen.getByRole('button', { name: 'Show earlier requests', exact: true }));
+    expect(feed.querySelectorAll(':scope > article')).toHaveLength(10);
+    expect(within(feed).queryByRole('cell', { name: '30', exact: true })).toBeNull();
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+    const input = screen.getByRole('textbox', { name: 'SQL statement', exact: true });
+    expect(input.closest('.sql-composer')).toBeTruthy();
+    await events.click(
+      within(input.closest('.sql-composer')).getByRole('button', {
+        name: 'Jump to latest',
+        exact: true,
+      }),
+    );
+    expect(feed.querySelectorAll(':scope > article')).toHaveLength(8);
+    expect(within(feed).getByRole('cell', { name: '30', exact: true })).toBeTruthy();
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    expect(
+      screen.queryByText('Write SQLite SQL directly. No AI service or AI key needed.'),
+    ).toBeNull();
   });
 
   it('keeps SQL writes pending until confirmation and blocks another statement', async () => {
@@ -130,7 +237,7 @@ describe('SQL workspace', () => {
     await events.click(screen.getByRole('button', { name: 'Run SQL', exact: true }));
     const confirm = await screen.findByRole('button', { name: 'Delete 1 row', exact: true });
     expect(input.disabled).toBe(true);
-    expect(screen.getByRole('button', { name: 'Preview rows', exact: true }).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Examples', exact: true }).disabled).toBe(true);
     expect(fetch.mock.calls.some(([path]) => path === '/api/commands/confirm')).toBe(false);
     await events.click(confirm);
     expect(await screen.findByText('One item deleted.')).toBeTruthy();
@@ -165,9 +272,9 @@ describe('SQL workspace', () => {
       expect(
         screen.getByText((text, element) => element.tagName === 'CODE' && text.includes(identity)),
       ).toBeTruthy();
-      await events.click(screen.getByRole('button', { name: "Get today's date", exact: true }));
+      await chooseExample(events, "Get today's date");
       expect(input.value).toBe(dateSql);
-      await events.click(screen.getByRole('button', { name: 'Create a notes table', exact: true }));
+      await chooseExample(events, 'Create a notes table');
       expect(input.value).toContain(identity);
       expect(fetch.mock.calls.some(([path]) => path === '/api/query')).toBe(false);
     },
@@ -426,7 +533,7 @@ describe('SQL workspace', () => {
       const base = setup({ path: '/history', saved: [session] });
       localStorage.setItem('dg-request-mode:7', preference);
       fetch.mockImplementation((path, options) =>
-        path.startsWith('/api/history?')
+        path.startsWith('/api/history?') && !path.includes('include_pending=1')
           ? response({
               requests: [
                 {

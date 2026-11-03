@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render as baseRender, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import StructurePage from './pages/StructurePage';
 import { useWorkbench } from './hooks/useWorkbench';
 import { schemaStatement } from './lib/schemaSql';
+import { Router } from './lib/router';
+const render = (ui) => baseRender(ui, { wrapper: Router });
 
 const table = {
   name: 'order "lines"',
@@ -33,6 +35,7 @@ const baseWorkbench = (overrides = {}) => ({
 });
 
 beforeEach(() => {
+  window.scrollTo = vi.fn();
   sessionStorage.clear();
   HTMLDialogElement.prototype.showModal = function () {
     this.open = true;
@@ -223,7 +226,7 @@ function liveFixture() {
   );
   fetch.mockImplementation((path) => {
     if (path === '/api/status') return response({ ...baseSession, table_details: [current] });
-    if (path === '/api/history') return response({ requests: [] });
+    if (path.startsWith('/api/history')) return response({ requests: [] });
     if (path === '/api/schema') return response({ tables: [current] });
     if (path === '/api/query') return response({ request_id: 3, commands: [command] });
     if (path === '/api/commands/confirm') {
@@ -237,6 +240,51 @@ function liveFixture() {
 }
 
 describe('Structure confirmation flow', () => {
+  it('keeps completed changes compact until details are requested', async () => {
+    const events = userEvent.setup();
+    const feed = Array.from({ length: 100 }, (_, index) => ({
+      request_id: index + 1,
+      text: `CREATE TABLE saved_${index} (id INTEGER)`,
+      status: 'executed',
+      submitted_at: new Date().toISOString(),
+      commands: [
+        {
+          command_id: index + 1,
+          sql: `CREATE TABLE saved_${index} (id INTEGER)`,
+          operation: 'CREATE',
+          status: 'executed',
+          changes: 0,
+        },
+      ],
+    }));
+    render(<StructurePage workbench={baseWorkbench({ feed })} />);
+    await screen.findByRole('button', { name: `Add column to ${table.name}` });
+    expect(screen.queryByRole('code')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Structure change review' })).toBeNull();
+    await events.click(screen.getByText('Last structure change · executed · View details'));
+    expect((await screen.findAllByRole('code')).map((node) => node.textContent)).toEqual([
+      'CREATE TABLE saved_99 (id INTEGER)',
+    ]);
+    expect(
+      screen.getByRole('link', { name: 'All saved changes in History' }).getAttribute('href'),
+    ).toBe('/history');
+  });
+
+  it('jumps directly to a selected table without losing keyboard context', async () => {
+    const events = userEvent.setup();
+    const second = { ...table, name: 'customers' };
+    fetch.mockImplementation(() => response({ tables: [table, second] }));
+    render(<StructurePage workbench={baseWorkbench()} />);
+    const picker = await screen.findByRole('combobox', { name: 'Jump to table' });
+    await waitFor(() => expect(picker.disabled).toBe(false));
+    await events.selectOptions(picker, 'customers');
+    expect(document.activeElement.textContent).toContain('customers');
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'auto',
+      block: 'start',
+    });
+  });
+
   it.each([false, true])(
     'reviews locally and refreshes structure after decline=%s',
     async (decline) => {
@@ -266,6 +314,7 @@ describe('Structure confirmation flow', () => {
         ),
       );
       if (decline) {
+        await events.click(screen.getByText('Last structure change · declined · View details'));
         await screen.findByText('Not run. You declined this.');
         expect(
           screen.queryByRole('button', { name: `Rename column phone in ${table.name}` }),

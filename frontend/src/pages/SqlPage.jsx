@@ -1,17 +1,26 @@
-import { useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Translation } from '../components/CommandResult';
+import { RequestWindowControls } from '../components/RequestWindowControls';
+import { useRequestWindow } from '../hooks/useRequestWindow';
 import { quoteIdentifier } from '../lib/api';
 import '../styles/sql.css';
 
 export default function SqlPage({ workbench, selected, draft, setDraft, onNewTable }) {
-  const textarea = useRef(null);
+  const textarea = useRef(null),
+    feed = useRef(null),
+    handledJump = useRef(0),
+    panelTrigger = useRef(null),
+    wasWorking = useRef(false);
+  const [openPanel, setOpenPanel] = useState(null);
   const { session } = workbench;
+  const requestWindow = useRequestWindow(workbench.feed, session.session_id);
   const activeTable = session.tables.includes(selected) ? selected : session.tables[0] || '';
   const postgres = session.dialect === 'postgresql' || session.source === 'postgresql';
   const dialect = postgres ? 'PostgreSQL' : 'SQLite';
   const firstColumn = session.table_details?.find((table) => table.name === activeTable)
     ?.columns?.[0]?.name;
-  const blocked = workbench.busy || workbench.pending || workbench.workingCommands?.size > 0;
+  const working = workbench.busy || workbench.workingCommands?.size > 0;
+  const blocked = working || workbench.pending;
   const tableNames = new Set(session.tables.map((name) => name.toLowerCase()));
   let exampleTable = 'example_notes';
   for (let suffix = 2; tableNames.has(exampleTable); suffix++)
@@ -49,130 +58,282 @@ export default function SqlPage({ workbench, selected, draft, setDraft, onNewTab
       : []),
     ...(!session.read_only ? [{ label: 'Create a notes table', sql: createExample }] : []),
   ];
+  useLayoutEffect(() => {
+    if (!textarea.current) return;
+    textarea.current.style.height = 'auto';
+    textarea.current.style.height = Math.min(textarea.current.scrollHeight, 154) + 'px';
+  }, [draft]);
+  useLayoutEffect(() => {
+    const explicitJump = requestWindow.jumpVersion !== handledJump.current;
+    handledJump.current = requestWindow.jumpVersion;
+    if (requestWindow.viewingEarlier) return;
+    const latest = feed.current?.lastElementChild;
+    const target =
+      (!explicitJump && workbench.pending && feed.current?.querySelector('.confirm')) ||
+      latest?.querySelector('.exchange-results') ||
+      latest;
+    target?.scrollIntoView({ block: 'start', behavior: 'auto' });
+  }, [
+    requestWindow.latestRequestId,
+    requestWindow.jumpVersion,
+    requestWindow.viewingEarlier,
+    working,
+    workbench.pending,
+  ]);
+  useLayoutEffect(() => {
+    if (workbench.pending && !working)
+      feed.current?.querySelector('.confirm')?.focus({ preventScroll: true });
+    else if (wasWorking.current && !blocked) textarea.current?.focus({ preventScroll: true });
+    wasWorking.current = Boolean(blocked);
+  }, [blocked, working, workbench.pending]);
+  function togglePanel(panel, event) {
+    panelTrigger.current = event.currentTarget;
+    setOpenPanel((current) => (current === panel ? null : panel));
+  }
+  function closePanel() {
+    setOpenPanel(null);
+    panelTrigger.current?.focus({ preventScroll: true });
+  }
   function useExample(sql) {
     if (blocked) return;
     setDraft(sql);
-    textarea.current?.focus();
+    setOpenPanel(null);
+    textarea.current?.focus({ preventScroll: true });
   }
   function submit(event) {
     event.preventDefault();
-    if (!blocked && draft.trim()) workbench.submit(draft.trim(), true);
+    if (blocked || !draft.trim()) return;
+    setOpenPanel(null);
+    requestWindow.jumpToLatest();
+    workbench.submit(draft.trim(), true);
   }
   return (
-    <section className="sql-page">
-      <h1>Run SQL.</h1>
-      <p className="lead">Write {dialect} SQL directly. No AI service or AI key needed.</p>
-      <p id="sql-help" className="muted">
-        Reads run immediately. Changes show a preview and wait for your confirmation. Every
-        statement and available result stays in History.
-        {postgres && ' PostgreSQL queries must use a table in the connected schema.'}
-        {session.read_only && ' This connection is read-only.'}
-      </p>
-      <form onSubmit={submit}>
-        <label htmlFor="sql-statement">SQL statement</label>
-        <textarea
-          id="sql-statement"
-          ref={textarea}
-          className="sqlbox"
-          rows="7"
-          spellCheck={false}
-          autoCapitalize="off"
-          autoCorrect="off"
-          aria-describedby="sql-help sql-syntax-hint"
-          placeholder={
-            activeTable
-              ? `SELECT * FROM ${quoteIdentifier(activeTable)} LIMIT 50;`
-              : postgres
-                ? session.read_only
-                  ? 'Choose a schema with readable tables.'
-                  : 'Create a table before querying this schema.'
-                : 'SELECT 1 AS example;'
+    <section id="v-sql" className={'sql-page' + (workbench.feed.length ? ' has-requests' : '')}>
+      <div className="sql-intro">
+        <h1>Run SQL.</h1>
+        {!workbench.feed.length && (
+          <p className="lead">Write {dialect} SQL directly. No AI service or AI key needed.</p>
+        )}
+      </div>
+      <RequestWindowControls window={requestWindow} feedId="sql-feed" />
+      <div
+        id="sql-feed"
+        className="sql-feed"
+        ref={feed}
+        role="log"
+        aria-live="polite"
+        aria-label="SQL requests and results"
+      >
+        {requestWindow.requests.map((request) => (
+          <Translation
+            key={request.request_id}
+            request={request}
+            workbench={workbench}
+            compactResult={request.request_id !== requestWindow.latestRequestId}
+          />
+        ))}
+      </div>
+      <div
+        className="composer sql-composer"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && openPanel) {
+            event.stopPropagation();
+            closePanel();
           }
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          disabled={blocked}
-        />
-        <p id="sql-syntax-hint" className="small muted">
-          Use one {dialect} statement at a time. A trailing semicolon is optional.
-        </p>
-        <div className="sql-actions">
-          <button className="btn pri" disabled={blocked || !draft.trim()}>
+        }}
+      >
+        {workbench.pending && (
+          <p className="sql-pending-note" role="status">
+            Confirm or decline the pending change above to continue.
+          </p>
+        )}
+        <div className="sql-composer-heading">
+          <label htmlFor="sql-statement">SQL statement</label>
+          <span title={activeTable ? 'Selected table: ' + activeTable : dialect}>
+            {dialect}
+            {activeTable ? ' · ' + activeTable : ''}
+            {session.read_only ? ' · Read-only' : ''}
+          </span>
+          {workbench.feed.length > 1 && (
+            <button
+              className="text-button sql-jump-latest"
+              type="button"
+              onClick={requestWindow.jumpToLatest}
+              aria-controls="sql-feed"
+            >
+              Jump to latest
+            </button>
+          )}
+        </div>
+        <form className="sql-editor" onSubmit={submit}>
+          <textarea
+            id="sql-statement"
+            ref={textarea}
+            className="sqlbox"
+            rows="3"
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+            aria-describedby="sql-syntax-hint"
+            placeholder={
+              activeTable
+                ? `SELECT * FROM ${quoteIdentifier(activeTable)} LIMIT 50;`
+                : postgres
+                  ? session.read_only
+                    ? 'Choose a schema with readable tables.'
+                    : 'Create a table before querying this schema.'
+                  : 'SELECT 1 AS example;'
+            }
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            disabled={blocked}
+            onKeyDown={(event) => {
+              if (
+                event.key === 'Enter' &&
+                (event.ctrlKey || event.metaKey) &&
+                !event.nativeEvent.isComposing
+              ) {
+                event.preventDefault();
+                event.currentTarget.form.requestSubmit();
+              }
+            }}
+          />
+          <button
+            className="btn pri"
+            disabled={blocked || !draft.trim()}
+            aria-keyshortcuts="Control+Enter Meta+Enter"
+          >
             {workbench.busy ? 'Running…' : 'Run SQL'}
           </button>
-          <button
-            className="btn"
-            type="button"
-            disabled={blocked || session.read_only}
-            onClick={onNewTable}
-          >
-            Create a table
-          </button>
-        </div>
-      </form>
-      {workbench.pending && (
-        <p className="status-note" role="status">
-          Confirm or decline the pending change below before running another statement.
-        </p>
-      )}
-      <div className="sql-examples" role="group" aria-label={`${dialect} examples`}>
-        {examples.length > 0 && (
-          <p className="small muted">Load an example, edit it, then choose Run SQL.</p>
-        )}
-        <div className="sql-actions">
-          {examples.map(({ label, sql }) => (
+        </form>
+        <div className="sql-composer-footer">
+          <div className="sql-composer-tools">
+            {examples.length > 0 && (
+              <button
+                className="text-button"
+                type="button"
+                disabled={blocked}
+                aria-expanded={openPanel === 'examples'}
+                aria-controls="sql-examples-panel"
+                onClick={(event) => togglePanel('examples', event)}
+              >
+                Examples
+              </button>
+            )}
             <button
-              className="btn"
-              key={label}
+              className="text-button"
               type="button"
-              disabled={blocked}
-              title={sql}
-              onClick={() => useExample(sql)}
+              aria-expanded={openPanel === 'syntax'}
+              aria-controls="sql-syntax-panel"
+              onClick={(event) => togglePanel('syntax', event)}
             >
-              {label}
+              {dialect} syntax help
             </button>
-          ))}
+            <button
+              className="text-button"
+              type="button"
+              disabled={blocked || session.read_only}
+              onClick={onNewTable}
+            >
+              Create a table
+            </button>
+          </div>
+          <p id="sql-syntax-hint">Ctrl / ⌘ + Enter to run · Changes wait for your OK.</p>
         </div>
-      </div>
-      <details className="sql-syntax">
-        <summary>{dialect} syntax help</summary>
-        <p>
-          <code>SELECT</code> reads rows; <code>INSERT</code>, <code>UPDATE</code>, and{' '}
-          <code>DELETE</code> change rows. <code>CREATE TABLE</code>, <code>ALTER TABLE</code>, and{' '}
-          <code>DROP TABLE</code> change the structure. Use the Structure tab to check column names
-          and types.
-        </p>
-        <p>
-          Put table and column names in double quotes, such as <code>"order items"</code>. Put text
-          values in single quotes, such as <code>'Sam'</code>; escape a single quote by doubling it:{' '}
-          <code>'Sam''s notes'</code>. Add a <code>WHERE</code> condition to update or delete
-          specific rows.
-        </p>
-        <p>
-          {postgres
-            ? 'PostgreSQL uses identity columns for generated IDs. Statements use the connected schema'
-            : 'SQLite uses INTEGER PRIMARY KEY for generated IDs. Statements run on your working database'}
-          {postgres && session.schema_name ? ` (${session.schema_name})` : ''}.
-          {postgres
-            ? ' Confirmed changes are saved directly to the connected database.'
-            : ' Local SQLite works offline while Data Genie is running.'}
-        </p>
-        <pre>
-          <code>{createExample}</code>
-        </pre>
-      </details>
-      <p className="small muted">
-        {activeTable
-          ? 'Selected table: ' + activeTable
-          : postgres
-            ? session.read_only
-              ? 'This schema has no readable tables. Choose a schema with tables before running queries.'
-              : 'This schema has no tables yet. Create a table before running queries.'
-            : 'This database has no tables yet. Try SELECT 1, or create your first table.'}
-      </p>
-      <div aria-live="polite">
-        {workbench.feed.slice(-10).map((request) => (
-          <Translation key={request.request_id} request={request} workbench={workbench} />
-        ))}
+        {!activeTable && (
+          <p className="sql-empty-note">
+            {postgres
+              ? session.read_only
+                ? 'This schema has no readable tables. Choose a schema with tables before running queries.'
+                : 'This schema has no tables yet. Create a table before running queries.'
+              : 'This database has no tables yet. Try SELECT 1, or create your first table.'}
+          </p>
+        )}
+        {openPanel === 'examples' && (
+          <div
+            id="sql-examples-panel"
+            className="sql-tool-panel sql-examples"
+            role="group"
+            aria-label={`${dialect} examples`}
+          >
+            <div className="sql-panel-heading">
+              <strong>{dialect} examples</strong>
+              <button
+                className="text-button"
+                type="button"
+                onClick={closePanel}
+                aria-label="Close SQL examples"
+              >
+                Close
+              </button>
+            </div>
+            <p className="small muted">Load an example, edit it, then choose Run SQL.</p>
+            <div className="sql-example-actions">
+              {examples.map(({ label, sql }) => (
+                <button
+                  className="btn"
+                  key={label}
+                  type="button"
+                  disabled={blocked}
+                  title={sql}
+                  onClick={() => useExample(sql)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {openPanel === 'syntax' && (
+          <div
+            id="sql-syntax-panel"
+            className="sql-tool-panel sql-syntax"
+            role="region"
+            aria-label={`${dialect} syntax help`}
+          >
+            <div className="sql-panel-heading">
+              <strong>{dialect} syntax help</strong>
+              <button
+                className="text-button"
+                type="button"
+                onClick={closePanel}
+                aria-label="Close SQL syntax help"
+              >
+                Close
+              </button>
+            </div>
+            <p>
+              Use one {dialect} statement at a time. A trailing semicolon is optional. Reads run
+              immediately; changes show a preview and wait for confirmation. Every statement and
+              available result stays in History.
+              {postgres && ' PostgreSQL queries must use a table in the connected schema.'}
+            </p>
+            <p>
+              <code>SELECT</code> reads rows; <code>INSERT</code>, <code>UPDATE</code>, and{' '}
+              <code>DELETE</code> change rows. <code>CREATE TABLE</code>, <code>ALTER TABLE</code>,
+              and <code>DROP TABLE</code> change the structure. Check column names and types in
+              Structure.
+            </p>
+            <p>
+              Use double quotes for names, such as <code>"order items"</code>, and single quotes for
+              text, such as <code>'Sam'</code>. Escape a single quote by doubling it:{' '}
+              <code>'Sam''s notes'</code>. Add a <code>WHERE</code> condition to update or delete
+              specific rows.
+            </p>
+            <p>
+              {postgres
+                ? 'PostgreSQL uses identity columns for generated IDs. Statements use the connected schema'
+                : 'SQLite uses INTEGER PRIMARY KEY for generated IDs. Statements run on your working database'}
+              {postgres && session.schema_name ? ` (${session.schema_name})` : ''}.
+              {postgres
+                ? ' Confirmed changes are saved directly to the connected database.'
+                : ' Local SQLite works offline while Data Genie is running.'}
+            </p>
+            <pre>
+              <code>{createExample}</code>
+            </pre>
+          </div>
+        )}
       </div>
     </section>
   );

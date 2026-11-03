@@ -6,6 +6,7 @@ import { Confirmation, Translation, ResultOutput } from './components/CommandRes
 import AskPage from './pages/AskPage';
 import { SqlBlock } from './components/SqlBlock';
 import { normalizeCommand } from './hooks/useWorkbench';
+import { Router } from './lib/router';
 
 const user = {
   account_id: 1,
@@ -52,7 +53,7 @@ function switchingFixture({ failures = 0, recovery = 'retry', restore = true } =
   fetch.mockImplementation((path) => {
     if (path === '/api/auth/session') return response({ user, csrf_token: 'csrf-test' });
     if (path === '/api/status') return response(session);
-    if (path === '/api/history') return response({ requests: [] });
+    if (path.startsWith('/api/history')) return response({ requests: [] });
     if (path === '/api/sessions')
       return response({
         sessions: [session, remote, { ...remote, session_id: 'older-pg-session' }],
@@ -409,7 +410,7 @@ describe('React pages and account flow', () => {
           ? { user, csrf_token: 'csrf-test' }
           : path === '/api/status'
             ? session
-            : path === '/api/history'
+            : path.startsWith('/api/history')
               ? { requests: [] }
               : path === '/api/ask'
                 ? { ...command, commands: [command] }
@@ -471,7 +472,7 @@ describe('React pages and account flow', () => {
           ? { user, csrf_token: 'csrf-test' }
           : path === '/api/status'
             ? { ...session, conversation_after: boundary }
-            : path === '/api/history'
+            : path.startsWith('/api/history')
               ? { requests: [previous] }
               : { sessions: [] },
       );
@@ -529,7 +530,7 @@ describe('command safety', () => {
       mode: 'gemini',
       setDraft: vi.fn(),
     };
-    const view = render(<AskPage {...props} draft="Iowa" />);
+    const view = render(<AskPage {...props} draft="Iowa" />, { wrapper: Router });
     await events.click(screen.getByRole('button', { name: 'Ask', exact: true }));
     expect(submit).toHaveBeenCalledWith('Iowa', false, 'gemini', 'customers');
     view.rerender(<AskPage {...props} draft="e" />);
@@ -563,6 +564,49 @@ describe('command safety', () => {
       }),
     ).toBeTruthy();
     expect(within(screen.getByRole('region', { name: 'Result' })).getByText('Ana')).toBeTruthy();
+  });
+
+  it('mounts an older saved result only when opened, while pending confirmations stay visible', async () => {
+    const events = userEvent.setup(),
+      workbench = { workingCommands: new Set(), decide: vi.fn() };
+    const request = {
+      text: 'show customers',
+      status: 'executed',
+      submitted_at: new Date().toISOString(),
+      commands: [
+        {
+          sql: 'SELECT * FROM customers',
+          status: 'executed',
+          rows: [{ name: 'Older saved customer' }],
+        },
+      ],
+    };
+    const view = render(<Translation request={request} workbench={workbench} compactResult />);
+    expect(screen.queryByText('Older saved customer')).toBeNull();
+    await events.click(screen.getByText('Show saved result'));
+    expect(await screen.findByText('Older saved customer')).toBeTruthy();
+    view.rerender(
+      <Translation
+        request={{
+          ...request,
+          status: 'pending',
+          commands: [
+            {
+              command_id: 14,
+              sql: 'DELETE FROM customers',
+              operation: 'DELETE',
+              status: 'pending',
+              requires_confirmation: true,
+              preview: { table: 'customers', affected_rows: 3 },
+            },
+          ],
+        }}
+        workbench={workbench}
+        compactResult
+      />,
+    );
+    expect(screen.queryByText('Show saved result')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete 3 rows' })).toBeTruthy();
   });
 
   it.each([false, true])(

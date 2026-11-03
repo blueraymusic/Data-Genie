@@ -245,7 +245,7 @@ export default function WorkspaceApp() {
               </div>
             )}
             <main
-              className={'content' + (view === 'ask' ? ' ask-content' : '')}
+              className={'content' + (['ask', 'sql'].includes(view) ? ' ask-content' : '')}
               id="workspaceContent"
               tabIndex="-1"
               ref={content}

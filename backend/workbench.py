@@ -406,7 +406,8 @@ def schema_for_session(session_id):
         return {"session_id": session_id, "database": session["database"], "tables": tables}
 
 
-def history_for_session(session_id, search="", operation=None, history_session_id=None, refresh_pending=True):
+def history_for_session(session_id, search="", operation=None, history_session_id=None, refresh_pending=True,
+                        limit=None, offset=0, request_id=None, pending_only=False):
     repository = get_repository()
     current = repository.get_session(session_id)
     target_id = history_session_id or session_id
@@ -415,7 +416,8 @@ def history_for_session(session_id, search="", operation=None, history_session_i
         raise ValueError("That history belongs to a different user.")
     if current.get("account_id") != target.get("account_id"):
         raise ValueError("That history belongs to a different account.")
-    requests = repository.history(target_id, search=search, operation=operation)
+    requests = repository.history(target_id, search=search, operation=operation, limit=limit, offset=offset,
+                                  request_id=request_id, pending_only=pending_only)
     # A restored confirmation must show a fresh preview, including after reload.
     pending_commands = [command for request in requests for command in request["commands"]
                         if command["status"] == "pending" and command["requires_confirmation"]]

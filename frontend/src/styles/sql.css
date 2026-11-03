@@ -1,33 +1,207 @@
-.workspace-page .sql-page > form {
-  margin-top: 24px;
+.workspace-page .sql-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  max-width: 1050px;
+  margin: 0 auto;
 }
-.workspace-page .sql-page > form > label {
-  display: block;
+.workspace-page .sql-intro {
+  padding: 28px 0 12px;
+}
+.workspace-page .sql-intro h1 {
   margin-bottom: 8px;
 }
-.workspace-page .sql-examples {
-  padding: 16px 0 4px;
-  border-top: 1px solid var(--rule);
-}
-.workspace-page .sql-examples > p {
+.workspace-page .sql-intro .lead {
   margin: 0;
 }
-.workspace-page .sql-syntax {
-  margin: 8px 0 20px;
-  padding: 16px;
+.workspace-page .sql-page.has-requests .sql-intro {
+  padding: 0;
+}
+.workspace-page .sql-page.has-requests .sql-intro h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.workspace-page .sql-feed {
+  flex: 1 0 auto;
+  min-width: 0;
+}
+.workspace-page .sql-feed > .exchange:first-child {
+  border-top: 0;
+}
+.workspace-page .sql-page .sql-composer {
+  flex: none;
+  margin-top: 20px;
+  padding: 12px 0 14px;
+  min-width: 0;
+}
+.workspace-page .sql-composer-heading,
+.workspace-page .sql-composer-footer,
+.workspace-page .sql-composer-tools,
+.workspace-page .sql-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+.workspace-page .sql-composer-heading {
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.workspace-page .sql-composer-heading label {
+  flex-shrink: 0;
+}
+.workspace-page .sql-composer-heading > .sql-jump-latest {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+.workspace-page .sql-composer-heading > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+.workspace-page .sql-editor {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 0;
+  padding: 6px;
   border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--paper);
+  min-width: 0;
+}
+.workspace-page .sql-editor:focus-within {
+  border-color: var(--lapis);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lapis) 12%, transparent);
+}
+.workspace-page .sql-editor .sqlbox {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  min-height: 84px;
+  max-height: 154px;
+  overflow: auto;
+  resize: none;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font: 13px/22px var(--mono);
+}
+.workspace-page .sql-editor .sqlbox:focus-visible {
+  outline: none;
+}
+.workspace-page .sql-editor > .btn {
+  flex-shrink: 0;
+  min-height: 42px;
+  padding: 8px 16px;
   border-radius: 8px;
 }
-.workspace-page .sql-syntax summary {
-  cursor: pointer;
+.workspace-page .sql-composer-footer {
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 8px;
+}
+.workspace-page .sql-composer-tools {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.workspace-page .sql-composer-tools button,
+.workspace-page .sql-composer-footer > p,
+.workspace-page .sql-empty-note,
+.workspace-page .sql-pending-note {
+  font-size: 11px;
+  line-height: 17px;
+}
+.workspace-page .sql-composer-footer > p {
+  margin: 0;
+  color: var(--ink-soft);
+}
+.workspace-page .sql-composer .sql-empty-note {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+}
+.workspace-page .sql-composer .sql-pending-note {
+  margin: 0 0 8px;
+  color: var(--ink-soft);
+}
+.workspace-page .sql-tool-panel {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  max-height: min(45vh, 340px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: 0 8px 28px #03081620;
+  overflow-wrap: anywhere;
+}
+.workspace-page .sql-panel-heading {
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+.workspace-page .sql-panel-heading > button {
+  font-size: 11px;
+}
+.workspace-page .sql-example-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .workspace-page .sql-syntax p {
   max-width: 80ch;
   color: var(--ink-soft);
+  font-size: 12px;
   line-height: 1.65;
 }
 .workspace-page .sql-syntax pre {
-  overflow-x: auto;
+  max-width: 100%;
+  overflow: auto;
   margin-bottom: 0;
-  font: 13px/22px var(--mono);
+  font: 12px/20px var(--mono);
+}
+@media (max-width: 620px) {
+  .workspace-page .sql-intro {
+    padding-top: 24px;
+  }
+  .workspace-page .sql-intro h1 {
+    font-size: 31px;
+    line-height: 37px;
+  }
+  .workspace-page .sql-intro .lead {
+    font-size: 17px;
+    line-height: 26px;
+  }
+  .workspace-page .sql-editor .sqlbox {
+    min-height: 72px;
+    max-height: 132px;
+    font-size: 12px;
+  }
+  .workspace-page .sql-editor > .btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .workspace-page .sql-composer-tools {
+    gap: 4px 12px;
+  }
+  .workspace-page .sql-tool-panel {
+    max-height: 40vh;
+    padding: 12px;
+  }
 }

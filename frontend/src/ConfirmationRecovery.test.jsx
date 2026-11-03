@@ -66,7 +66,7 @@ it('reconciles a failed schema confirmation from History and unlocks further que
   let confirmed = false;
   fetch.mockImplementation((path) => {
     if (path === '/api/status') return response(session);
-    if (path === '/api/history')
+    if (path.startsWith('/api/history'))
       return response({
         requests: [
           {
@@ -105,7 +105,7 @@ it.each([true, false])(
     let attempted = false;
     fetch.mockImplementation((path) => {
       if (path === '/api/status') return response(session);
-      if (path === '/api/history') {
+      if (path.startsWith('/api/history')) {
         if (attempted && unavailable) return Promise.reject(new TypeError('Connection lost'));
         return response({ requests: [request] });
       }

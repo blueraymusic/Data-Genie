@@ -825,17 +825,45 @@ class Repository:
             self._update_request(connection, command["request_id"])
             return self._command(connection, command_id)
 
-    def history(self, session_id, search="", operation=None):
+    @staticmethod
+    def _history_filter(session_id, search="", operation=None, request_id=None, pending_only=False):
+        clauses, params = ["r.session_id=?"], [session_id]
+        if search:
+            clauses.append("(instr(lower(r.request_text),lower(?))>0 OR EXISTS(SELECT 1 FROM sql_commands c WHERE c.request_id=r.request_id AND instr(lower(c.sql_text),lower(?))>0))")
+            params.extend((str(search), str(search)))
+        if operation:
+            clauses.append("EXISTS(SELECT 1 FROM sql_commands c WHERE c.request_id=r.request_id AND (c.operation=? OR c.kind=?))")
+            params.extend((str(operation).upper(), str(operation).upper()))
+        if request_id is not None:
+            if isinstance(request_id, bool) or not isinstance(request_id, int) or not 1 <= request_id <= 9223372036854775807:
+                raise RepositoryError("Choose a valid history request.")
+            clauses.append("r.request_id=?")
+            params.append(request_id)
+        if pending_only:
+            clauses.append("EXISTS(SELECT 1 FROM sql_commands c WHERE c.request_id=r.request_id AND c.status IN ('pending','running'))")
+        return " AND ".join(clauses), params
+
+    def history_count(self, session_id, search="", operation=None, request_id=None):
+        where, params = self._history_filter(session_id, search, operation, request_id)
         with self._connection() as connection:
             self._session(connection, session_id)
-            clauses, params = ["r.session_id=?"], [session_id]
-            if search:
-                clauses.append("(instr(lower(r.request_text),lower(?))>0 OR EXISTS(SELECT 1 FROM sql_commands c WHERE c.request_id=r.request_id AND instr(lower(c.sql_text),lower(?))>0))")
-                params.extend((str(search), str(search)))
-            if operation:
-                clauses.append("EXISTS(SELECT 1 FROM sql_commands c WHERE c.request_id=r.request_id AND (c.operation=? OR c.kind=?))")
-                params.extend((str(operation).upper(), str(operation).upper()))
-            rows = connection.execute("SELECT r.* FROM requests r WHERE " + " AND ".join(clauses) + " ORDER BY r.request_id DESC", params).fetchall()
+            return connection.execute("SELECT COUNT(*) FROM requests r WHERE " + where, params).fetchone()[0]
+
+    def history(self, session_id, search="", operation=None, limit=None, offset=0, request_id=None, pending_only=False):
+        if limit is not None and (isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 100):
+            raise RepositoryError("Choose a history page size between 1 and 100.")
+        if isinstance(offset, bool) or not isinstance(offset, int) or not 0 <= offset <= 1000000:
+            raise RepositoryError("Choose a valid history offset.")
+        if limit is None and offset:
+            raise RepositoryError("Choose a history page size when using an offset.")
+        where, params = self._history_filter(session_id, search, operation, request_id, pending_only)
+        with self._connection() as connection:
+            self._session(connection, session_id)
+            sql = "SELECT r.* FROM requests r WHERE " + where + " ORDER BY r.request_id DESC"
+            if limit is not None:
+                sql += " LIMIT ? OFFSET ?"
+                params.extend((limit, offset))
+            rows = connection.execute(sql, params).fetchall()
             result = []
             for row in rows:
                 request = self._request_record(row)

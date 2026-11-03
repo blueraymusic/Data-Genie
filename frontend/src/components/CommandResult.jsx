@@ -324,7 +324,21 @@ export function CommandOutput({
   return <ResultOutput command={command} sessionId={sessionId} onUseSuggestion={onUseSuggestion} />;
 }
 
-export function Translation({ request, workbench, onUseSuggestion }) {
+function SavedResultDetails({ children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details
+      className="saved-result-details"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary>Show saved result</summary>
+      {open && children}
+    </details>
+  );
+}
+
+export function Translation({ request, workbench, onUseSuggestion, compactResult = false }) {
   const hasSql = request.commands.some((command) => command.sql);
   const stripTerminator = (text) => text?.trim().replace(/;\s*$/, '');
   const rawSql = Boolean(
@@ -338,6 +352,23 @@ export function Translation({ request, workbench, onUseSuggestion }) {
     (command) => command.requires_confirmation && command.status === 'pending',
   );
   const errorWithoutSql = request.error && !hasSql;
+  const output =
+    request.error && !request.commands.some((command) => command.error) ? (
+      <p className="err">{request.error}</p>
+    ) : (
+      request.commands.map((command, index) => (
+        <div className="command-result" key={command.command_id || index}>
+          <CommandOutput
+            command={command}
+            predecessors={request.commands.slice(0, index)}
+            onDecide={workbench.decide}
+            busy={workbench.workingCommands.has(command.command_id)}
+            sessionId={workbench.session?.session_id}
+            onUseSuggestion={onUseSuggestion}
+          />
+        </div>
+      ))
+    );
   return (
     <article
       className={'exchange' + (request.sending ? '' : ' ready')}
@@ -461,21 +492,10 @@ export function Translation({ request, workbench, onUseSuggestion }) {
             <h2 className="exchange-label">
               {waiting ? 'Review change' : 'Result'} {waiting && <span>Confirmation required</span>}
             </h2>
-            {request.error && !request.commands.some((command) => command.error) ? (
-              <p className="err">{request.error}</p>
+            {compactResult && !waiting && request.status !== 'rejected' ? (
+              <SavedResultDetails>{output}</SavedResultDetails>
             ) : (
-              request.commands.map((command, index) => (
-                <div className="command-result" key={command.command_id || index}>
-                  <CommandOutput
-                    command={command}
-                    predecessors={request.commands.slice(0, index)}
-                    onDecide={workbench.decide}
-                    busy={workbench.workingCommands.has(command.command_id)}
-                    sessionId={workbench.session?.session_id}
-                    onUseSuggestion={onUseSuggestion}
-                  />
-                </div>
-              ))
+              output
             )}
           </section>
         )}

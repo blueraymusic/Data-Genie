@@ -168,10 +168,28 @@ class Handler(BaseHTTPRequestHandler):
                 self.owned_session(session_id, user)
                 if explicit:
                     self.owned_session(explicit, user)
-                requests = workbench.history_for_session(session_id, query.get("search", [""])[0],
-                                                        query.get("operation", [None])[0], explicit,
-                                                        refresh_pending=explicit is None or self.headers.get("X-Session-ID") == explicit)
-                return self.json({"requests": requests})
+                search, operation = query.get("search", [""])[0], query.get("operation", [None])[0]
+                paginated = "limit" in query or "offset" in query
+                limit = int(query.get("limit", [20])[0]) if paginated else None
+                offset = int(query.get("offset", [0])[0])
+                request_id = int(query["request_id"][0]) if "request_id" in query else None
+                include_pending = query.get("include_pending", ["0"])[0]
+                if include_pending not in {"0", "1"}:
+                    raise ValueError("Choose include_pending=0 or 1.")
+                refresh_pending = explicit is None or self.headers.get("X-Session-ID") == explicit
+                requests = workbench.history_for_session(session_id, search, operation, explicit,
+                                                        refresh_pending=refresh_pending, limit=limit, offset=offset,
+                                                        request_id=request_id)
+                result = {"requests": requests}
+                if paginated:
+                    total = workbench.get_repository().history_count(explicit or session_id, search, operation, request_id)
+                    result.update(total=total, limit=limit, offset=offset, has_more=offset + len(requests) < total)
+                if include_pending == "1":
+                    present = {request["request_id"] for request in requests}
+                    result["pending_requests"] = [request for request in workbench.history_for_session(
+                        session_id, history_session_id=explicit, refresh_pending=refresh_pending, pending_only=True)
+                        if request["request_id"] not in present]
+                return self.json(result)
             session_id = self.session_id(query, user=user)
             if parsed.path == "/api/schema":
                 return self.json(workbench.schema_for_session(session_id))

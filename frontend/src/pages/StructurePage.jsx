@@ -4,6 +4,7 @@ import { ResultTable } from '../components/ResultTable';
 import { Translation } from '../components/CommandResult';
 import { SchemaChangeDialog } from '../components/SchemaChangeDialog';
 import { schemaDialect } from '../lib/schemaSql';
+import { Link } from '../lib/router';
 import '../styles/structure.css';
 const identifierList = (value) => (Array.isArray(value) ? value.join(', ') : value);
 const isSchemaRequest = (request) =>
@@ -49,7 +50,7 @@ function SchemaTable({ table, sessionId, index, disabled, dialect, onChange }) {
   return (
     <div className="tbl" id={'schema-table-' + index}>
       <div className="schema-table-heading">
-        <h3>
+        <h3 tabIndex="-1">
           {table.name}
           <span className="schema-count">
             ·{' '}
@@ -193,7 +194,9 @@ export default function StructurePage({ workbench }) {
   const [tables, setTables] = useState(null),
     [error, setError] = useState(''),
     [revision, setRevision] = useState(0),
-    [change, setChange] = useState(null);
+    [change, setChange] = useState(null),
+    [jumpTable, setJumpTable] = useState(''),
+    [openedReview, setOpenedReview] = useState(null);
   const session = workbench.session;
   const disabled = Boolean(
     workbench.busy || workbench.pending || workbench.workingCommands?.size || session.read_only,
@@ -204,11 +207,23 @@ export default function StructurePage({ workbench }) {
     .filter((command) => ['executed', 'declined', 'failed'].includes(command.status))
     .map((command) => `${command.command_id}:${command.status}`)
     .join('|');
-  const reviewRequests = (workbench.feed || [])
-    .filter((request) => isSchemaRequest(request) || isPendingRequest(request))
-    .slice(-3);
+  const latestSchema = schemaRequests.at(-1);
+  const reviewRequests = (workbench.feed || []).filter(
+    (request) =>
+      isPendingRequest(request) ||
+      (isSchemaRequest(request) && request.sending) ||
+      (request === latestSchema && ['rejected', 'failed'].includes(request.status)),
+  );
+  const lastCompleted =
+    !reviewRequests.length && latestSchema && ['executed', 'declined'].includes(latestSchema.status)
+      ? latestSchema
+      : null;
   const review = useRef(null);
-  useEffect(() => setChange(null), [session.session_id]);
+  useEffect(() => {
+    setChange(null);
+    setJumpTable('');
+    setOpenedReview(null);
+  }, [session.session_id]);
   useEffect(() => {
     const controller = new AbortController();
     setTables(null);
@@ -238,6 +253,28 @@ export default function StructurePage({ workbench }) {
           <h1>Structure</h1>
           <p className="lead">The tables, columns, and links behind your data.</p>
         </div>
+      </header>
+      <div className="schema-toolbar" role="group" aria-label="Structure tools">
+        <label>
+          Jump to table
+          <select
+            value={tables?.some((table) => table.name === jumpTable) ? jumpTable : ''}
+            disabled={!tables?.length}
+            onChange={(event) => {
+              const name = event.target.value;
+              setJumpTable(name);
+              const index = tables.findIndex((table) => table.name === name);
+              const target = document.getElementById('schema-table-' + index);
+              target?.scrollIntoView({ behavior: 'auto', block: 'start' });
+              target?.querySelector('h3')?.focus({ preventScroll: true });
+            }}
+          >
+            <option value="">Choose a table</option>
+            {(tables || []).map((table) => (
+              <option key={table.name}>{table.name}</option>
+            ))}
+          </select>
+        </label>
         <div className="schema-actions">
           <button
             className="btn pri"
@@ -257,7 +294,7 @@ export default function StructurePage({ workbench }) {
             Refresh structure
           </button>
         </div>
-      </header>
+      </div>
       {session.read_only ? (
         <p className="schema-edit-note muted">
           This connection is read-only. Add a connection with changes enabled to edit its structure.
@@ -280,6 +317,26 @@ export default function StructurePage({ workbench }) {
               <Translation key={request.request_id} request={request} workbench={workbench} />
             ))}
           </section>
+        )}
+        {lastCompleted && (
+          <details
+            className="schema-last-change"
+            key={lastCompleted.request_id}
+            open={openedReview === lastCompleted.request_id}
+            onToggle={(event) =>
+              setOpenedReview(event.currentTarget.open ? lastCompleted.request_id : null)
+            }
+          >
+            <summary>Last structure change · {lastCompleted.status} · View details</summary>
+            {openedReview === lastCompleted.request_id && (
+              <Translation request={lastCompleted} workbench={workbench} />
+            )}
+          </details>
+        )}
+        {schemaRequests.length > 0 && (
+          <p className="schema-history-link">
+            <Link href="/history">All saved changes in History</Link>
+          </p>
         )}
       </div>
       {error && (

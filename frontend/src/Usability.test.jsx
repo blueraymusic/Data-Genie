@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render as baseRender, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ResultTable } from './components/ResultTable';
 import { Confirmation, ResultOutput, Translation } from './components/CommandResult';
@@ -7,8 +7,11 @@ import { exportRows, sortedRows } from './lib/resultData';
 import AskPage from './pages/AskPage';
 import { DatabaseForm } from './components/DatabaseForm';
 import { api } from './lib/api';
+import { Router } from './lib/router';
+const render = (ui) => baseRender(ui, { wrapper: Router });
 
 beforeEach(() => {
+  window.scrollTo = vi.fn();
   Element.prototype.scrollIntoView = vi.fn();
   vi.stubGlobal('fetch', vi.fn());
 });

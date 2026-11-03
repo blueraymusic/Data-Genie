@@ -12,6 +12,7 @@ Ask your database questions in plain English. Use a SQLite file or connect Postg
 - Ask questions using Gemini, or write SQL without an API key. The SQL tab includes examples.
 - Add, rename, or delete tables and columns in Structure, with a SQL preview before each change.
 - Sort, copy, or export results as CSV, and revisit saved requests in History.
+- Keep writing from the bottom editor; browse recent requests in small batches and search the full History by page.
 - Open Account and saved History even when no database is connected.
 
 ![Workspace showing a request, its SQL translation, and matching customers](docs/images/workspace.jpg)

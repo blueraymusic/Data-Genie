@@ -4,11 +4,15 @@ import { quoteIdentifier } from '../lib/api';
 import { Link } from '../lib/router';
 import { requestProblem } from '../lib/requestValidation';
 import { Icon } from '../components/Icon';
+import { useRequestWindow } from '../hooks/useRequestWindow';
+import { RequestWindowControls } from '../components/RequestWindowControls';
 export default function AskPage({ workbench, selected, draft, setDraft, onNewTable }) {
   const textarea = useRef(null),
     feed = useRef(null),
-    wasBlocked = useRef(false);
+    wasBlocked = useRef(false),
+    lastJump = useRef(0);
   const [validation, setValidation] = useState('');
+  const requestWindow = useRequestWindow(workbench.feed, workbench.session.session_id);
   const aiAvailable = Boolean(workbench.session.ai?.enabled);
   const blocked =
     !aiAvailable || workbench.busy || workbench.pending || workbench.workingCommands?.size > 0;
@@ -24,7 +28,14 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
     }
   }, [draft]);
   useLayoutEffect(() => {
-    const latest = feed.current?.lastElementChild;
+    if (requestWindow.viewingEarlier) return;
+    const jumping = lastJump.current !== requestWindow.jumpVersion;
+    lastJump.current = requestWindow.jumpVersion;
+    const latest =
+      (!jumping &&
+        workbench.pending &&
+        feed.current?.querySelector('.confirm')?.closest('.exchange')) ||
+      feed.current?.lastElementChild;
     if (!workbench.feed.length || !latest) return;
     latest.scrollIntoView({ block: 'start', behavior: 'auto' });
     const container = feed.current.closest('.content'),
@@ -33,12 +44,20 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
       const overlap = latest.getBoundingClientRect().bottom - composer.getBoundingClientRect().top;
       if (overlap > 0) container.scrollTo({ top: container.scrollTop + overlap, behavior: 'auto' });
     }
-  }, [workbench.feed.length, workbench.busy]);
+  }, [
+    workbench.session.session_id,
+    requestWindow.latestRequestId,
+    requestWindow.viewingEarlier,
+    requestWindow.jumpVersion,
+    workbench.busy,
+    workbench.pending,
+    workbench.workingCommands?.size,
+  ]);
   useLayoutEffect(() => {
     const blocked = Boolean(workbench.busy || workbench.pending);
     if (wasBlocked.current && !blocked) textarea.current?.focus({ preventScroll: true });
     if (workbench.pending && !workbench.busy)
-      feed.current?.lastElementChild?.querySelector('.confirm')?.focus({ preventScroll: true });
+      feed.current?.querySelector('.confirm')?.focus({ preventScroll: true });
     wasBlocked.current = blocked;
   }, [workbench.busy, workbench.pending]);
   const examples = selected
@@ -132,12 +151,14 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
           ))}
         </div>
       </div>
+      <RequestWindowControls window={requestWindow} feedId="feed" />
       <div id="feed" ref={feed} aria-live="polite">
-        {workbench.feed.map((request) => (
+        {requestWindow.requests.map((request) => (
           <Translation
             key={request.request_id}
             request={request}
             workbench={workbench}
+            compactResult={request.request_id !== requestWindow.latestRequestId}
             onUseSuggestion={
               aiAvailable
                 ? (suggestion) => {
@@ -176,22 +197,34 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
               )}
             </span>
           </div>
-          {workbench.feed.length > 0 && (
-            <button
-              type="button"
-              className="text-button"
-              disabled={blocked}
-              onClick={async () => {
-                if (await workbench.newConversation()) {
-                  setDraft('');
-                  setValidation('');
-                  textarea.current?.focus();
-                }
-              }}
-            >
-              New conversation
-            </button>
-          )}
+          <div className="conversation-actions">
+            {requestWindow.total > 1 && (
+              <button
+                type="button"
+                className="text-button"
+                aria-controls="feed"
+                onClick={requestWindow.jumpToLatest}
+              >
+                Jump to latest
+              </button>
+            )}
+            {workbench.feed.length > 0 && (
+              <button
+                type="button"
+                className="text-button"
+                disabled={blocked}
+                onClick={async () => {
+                  if (await workbench.newConversation()) {
+                    setDraft('');
+                    setValidation('');
+                    textarea.current?.focus();
+                  }
+                }}
+              >
+                New conversation
+              </button>
+            )}
+          </div>
         </div>
         <div className="composer-tools">
           <label className="composer-label" htmlFor="request-input">

@@ -1,8 +1,124 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, formatTime } from '../lib/api';
 import { normalizeRequest } from '../hooks/useWorkbench';
 import { SqlBlock } from '../components/SqlBlock';
 import { CommandOutput, operationOf } from '../components/CommandResult';
+import '../styles/history.css';
+
+const PAGE_SIZE = 20;
+
+function HistoryCommand({ command, request, index, active, sessionId, workbench, onDecide }) {
+  const pending = command.requires_confirmation && command.status === 'pending';
+  const [expanded, setExpanded] = useState(Boolean(pending && active));
+  return (
+    <details
+      className="history-command"
+      open={expanded}
+      onToggle={(event) => setExpanded(event.currentTarget.open)}
+    >
+      <summary>
+        {operationOf(command)} · {command.status} ·{' '}
+        {pending && active ? 'Review change' : 'View SQL and result'}
+      </summary>
+      {expanded && (
+        <div className="command">
+          <SqlBlock sql={command.sql} operation={operationOf(command)} />
+          <CommandOutput
+            command={command}
+            sessionId={active ? sessionId : undefined}
+            predecessors={request.commands.slice(0, index)}
+            onDecide={onDecide}
+            busy={workbench.workingCommands.has(command.command_id)}
+            actionable={Boolean(sessionId && active)}
+          />
+        </div>
+      )}
+    </details>
+  );
+}
+
+function HistoryEntry({ request, active, id, workbench, onDecide, onReuse }) {
+  const text = request.text.replace(/\s+/g, ' ').trim();
+  const shortened = text.length > 220 || request.text.includes('\n');
+  const [fullRequest, setFullRequest] = useState(false);
+  return (
+    <article className="history-entry">
+      <div className="history-entry-heading">
+        <h3>{text.length > 220 ? text.slice(0, 220) + '…' : text}</h3>
+        <button
+          className="btn"
+          disabled={
+            !id || workbench.pending || workbench.busy || workbench.workingCommands.size > 0
+          }
+          onClick={() => onReuse(request)}
+        >
+          {active ? 'Use request' : 'Use in current database'}
+        </button>
+      </div>
+      <p className="small muted">
+        {formatTime(request.submitted_at)} · {request.status}
+      </p>
+      {shortened && (
+        <details
+          className="history-full-request"
+          onToggle={(event) => setFullRequest(event.currentTarget.open)}
+        >
+          <summary>View full request</summary>
+          {fullRequest && <pre>{request.text}</pre>}
+        </details>
+      )}
+      {request.error && <p className="err">{request.error}</p>}
+      {request.commands.map((command, index) => (
+        <HistoryCommand
+          key={command.command_id}
+          {...{ command, request, index, active, workbench, onDecide }}
+          sessionId={id}
+        />
+      ))}
+    </article>
+  );
+}
+
+function HistoryNavigation({ page, offset, loading, disabled, onPage, placement }) {
+  const count = page?.requests.length || 0;
+  const total = page?.total || 0;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  return (
+    <nav className="history-pagination" aria-label={`History pages ${placement}`}>
+      <span className="history-page-count" {...(placement === 'top' ? { role: 'status' } : {})}>
+        {loading
+          ? 'Loading history…'
+          : total
+            ? `${offset + 1}–${offset + count} of ${total.toLocaleString()} ${total === 1 ? 'request' : 'requests'} · Page ${Math.floor(offset / PAGE_SIZE) + 1} of ${pages.toLocaleString()}`
+            : '0 requests'}
+      </span>
+      <div className="history-page-buttons">
+        <button
+          className="btn"
+          disabled={disabled || loading || offset === 0}
+          onClick={() => onPage(0)}
+        >
+          Newest
+        </button>
+        <button
+          className="btn"
+          disabled={disabled || loading || offset === 0}
+          onClick={() => onPage(Math.max(0, offset - PAGE_SIZE))}
+        >
+          Previous
+        </button>
+        <button
+          className="btn"
+          disabled={disabled || loading || !page?.has_more}
+          onClick={() => onPage(offset + PAGE_SIZE)}
+        >
+          Next
+        </button>
+      </div>
+    </nav>
+  );
+}
+
 export default function HistoryPage({ workbench, onReuse }) {
   const id = workbench.session?.session_id;
   const [sessions, setSessions] = useState([]),
@@ -10,12 +126,15 @@ export default function HistoryPage({ workbench, onReuse }) {
     [search, setSearch] = useState(''),
     [operation, setOperation] = useState(''),
     [filters, setFilters] = useState({ search: '', operation: '' }),
-    [requests, setRequests] = useState(null),
+    [page, setPage] = useState(null),
+    [offset, setOffset] = useState(0),
     [error, setError] = useState(''),
     [sessionsError, setSessionsError] = useState(''),
     [revision, setRevision] = useState(0);
+  const results = useRef(null);
   useEffect(() => {
     setTarget(id || '');
+    setOffset(0);
   }, [id]);
   useEffect(() => {
     const controller = new AbortController();
@@ -38,93 +157,163 @@ export default function HistoryPage({ workbench, onReuse }) {
   }, [id, revision]);
   useEffect(() => {
     if (!target) {
-      setRequests([]);
+      setPage({ requests: [], total: 0, has_more: false });
       return;
     }
     const controller = new AbortController();
-    setRequests(null);
+    setPage(null);
     setError('');
-    const query = new URLSearchParams({ history_session_id: target, ...filters });
+    const query = new URLSearchParams({
+      history_session_id: target,
+      ...filters,
+      limit: PAGE_SIZE,
+      offset,
+    });
     api('/api/history?' + query, { sessionId: id, signal: controller.signal })
       .then((data) => {
-        if (!controller.signal.aborted) setRequests(data.requests.map(normalizeRequest));
+        if (controller.signal.aborted) return;
+        const paginated = Number.isInteger(data.total);
+        const total = paginated ? data.total : data.requests.length;
+        if (total > 0 && offset >= total) {
+          setOffset(Math.floor((total - 1) / PAGE_SIZE) * PAGE_SIZE);
+          return;
+        }
+        const requests = paginated
+          ? data.requests
+          : data.requests.slice(offset, offset + PAGE_SIZE);
+        setPage({
+          requests: requests.map(normalizeRequest),
+          total,
+          has_more: paginated ? data.has_more : offset + requests.length < total,
+        });
       })
       .catch((error) => {
         if (!controller.signal.aborted && error.name !== 'AbortError') {
           setError(error.message);
-          setRequests([]);
+          setPage({ requests: [], total: 0, has_more: false });
         }
       });
     return () => controller.abort();
-  }, [id, target, filters, revision]);
+  }, [id, target, filters, revision, offset]);
   async function decide(command, decline) {
     await workbench.decide(command, decline);
     setRevision((value) => value + 1);
+  }
+  function changePage(next) {
+    setOffset(next);
+    results.current?.scrollIntoView({ block: 'start' });
   }
   const choices =
     id && !sessions.some((item) => item.session_id === id)
       ? [workbench.session, ...sessions]
       : sessions;
+  const current = choices.find((item) => item.session_id === target);
+  const navigation = {
+    page,
+    offset,
+    loading: page === null,
+    disabled: Boolean(error || !target),
+    onPage: changePage,
+  };
   return (
-    <section>
+    <section className="history-page">
       <h1>On the record.</h1>
       <p className="lead">Your requests, their SQL, and the results you saw.</p>
-      <form
-        className="history-filters"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setError('');
-          setFilters({ search, operation });
-        }}
-      >
-        <label>
-          Session
-          <select
-            value={target}
-            disabled={!choices.length}
-            onChange={(event) => setTarget(event.target.value)}
-          >
-            {!choices.length && <option value="">No saved sessions</option>}
-            {choices.map((item) => (
-              <option key={item.session_id} value={item.session_id}>
-                {item.database} · {formatTime(item.started_at)}
-                {item.session_id === id ? ' · Current' : item.ended_at ? ' · Ended' : ''}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Find a request
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search your words or SQL"
-          />
-        </label>
-        <label>
-          Operation
-          <select value={operation} onChange={(event) => setOperation(event.target.value)}>
-            <option value="">All operations</option>
-            {['SELECT', 'INSERT', 'REPLACE', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP'].map(
-              (value) => (
-                <option key={value}>{value}</option>
-              ),
-            )}
-          </select>
-        </label>
-        <button className="btn" disabled={!target}>
-          Search
-        </button>
-      </form>
+      <div className="history-controls">
+        <form
+          className="history-filters"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setError('');
+            setOffset(0);
+            setFilters({ search, operation });
+          }}
+        >
+          <div className="history-search-row">
+            <label>
+              <span className="sr-only">Find a request</span>
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search your words or SQL"
+              />
+            </label>
+            <button className="btn" disabled={!target}>
+              Search
+            </button>
+            <button className="btn" type="button" onClick={() => setRevision((value) => value + 1)}>
+              Refresh
+            </button>
+          </div>
+          <details className="history-filter-options">
+            <summary>
+              Session & operation · {current?.database || 'Choose a session'}
+              {filters.operation ? ` · ${filters.operation}` : ''}
+            </summary>
+            <div className="history-filter-fields">
+              <label>
+                Session
+                <select
+                  value={target}
+                  disabled={!choices.length}
+                  onChange={(event) => {
+                    setOffset(0);
+                    setTarget(event.target.value);
+                  }}
+                >
+                  {!choices.length && <option value="">No saved sessions</option>}
+                  {choices.map((item) => (
+                    <option key={item.session_id} value={item.session_id}>
+                      {item.database} · {formatTime(item.started_at)}
+                      {item.session_id === id ? ' · Current' : item.ended_at ? ' · Ended' : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Operation
+                <select value={operation} onChange={(event) => setOperation(event.target.value)}>
+                  <option value="">All operations</option>
+                  {[
+                    'SELECT',
+                    'INSERT',
+                    'REPLACE',
+                    'UPDATE',
+                    'DELETE',
+                    'CREATE',
+                    'ALTER',
+                    'DROP',
+                  ].map((value) => (
+                    <option key={value}>{value}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                className="btn"
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setOperation('');
+                  setOffset(0);
+                  setFilters({ search: '', operation: '' });
+                }}
+              >
+                Clear filters
+              </button>
+            </div>
+          </details>
+        </form>
+        <HistoryNavigation {...navigation} placement="top" />
+      </div>
       <p className="history-meta">
         {target === id
-          ? 'Current session · History is saved with this Data Genie installation.'
+          ? 'Current session · Newest first. History is saved with this Data Genie installation.'
           : id
-            ? `Saved session · Reused requests will be prepared in ${workbench.session.database}.`
+            ? `Saved session · Newest first. Reused requests will be prepared in ${workbench.session.database}.`
             : 'Saved results stay available without opening a database. Choose a database to reuse requests.'}
       </p>
-      <div aria-live="polite">
+      <div className="history-results" ref={results} aria-busy={page === null}>
         {(error || sessionsError) && (
           <div role="alert">
             <p className="err">{error || sessionsError}</p>
@@ -133,49 +322,21 @@ export default function HistoryPage({ workbench, onReuse }) {
             </button>
           </div>
         )}
-        {requests === null ? (
-          <p className="muted">Loading history…</p>
-        ) : error || (!target && sessionsError) ? null : !requests.length ? (
+        {page === null ? null : error || (!target && sessionsError) ? null : !page.requests
+            .length ? (
           <p className="muted">No saved requests match these filters.</p>
         ) : (
-          requests.map((request) => (
-            <article className="history-entry" key={request.request_id}>
-              <h3>{request.text}</h3>
-              <p className="small muted">
-                {formatTime(request.submitted_at)} · {request.status}
-              </p>
-              {request.error && <p className="err">{request.error}</p>}
-              {request.commands.map((command, index) => (
-                <details className="history-command" key={command.command_id}>
-                  <summary>
-                    {operationOf(command)} · {command.status} · View SQL and result
-                  </summary>
-                  <div className="command">
-                    <SqlBlock sql={command.sql} operation={operationOf(command)} />
-                    <CommandOutput
-                      command={command}
-                      sessionId={target === id ? id : undefined}
-                      predecessors={request.commands.slice(0, index)}
-                      onDecide={decide}
-                      busy={workbench.workingCommands.has(command.command_id)}
-                      actionable={Boolean(id && target === id)}
-                    />
-                  </div>
-                </details>
-              ))}
-              <button
-                className="btn"
-                disabled={
-                  !id || workbench.pending || workbench.busy || workbench.workingCommands.size > 0
-                }
-                onClick={() => onReuse(request)}
-              >
-                {target === id ? 'Use request' : 'Use in current database'}
-              </button>
-            </article>
+          page.requests.map((request) => (
+            <HistoryEntry
+              key={request.request_id}
+              {...{ request, id, workbench, onReuse }}
+              active={target === id}
+              onDecide={decide}
+            />
           ))
         )}
       </div>
+      <HistoryNavigation {...navigation} placement="bottom" />
     </section>
   );
 }

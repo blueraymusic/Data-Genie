@@ -5,3 +5,12 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.workspace-page .saved-result-details > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--ink-soft);
+  padding: 6px 0;
+}
+.workspace-page .saved-result-details[open] > summary {
+  margin-bottom: 12px;
+}

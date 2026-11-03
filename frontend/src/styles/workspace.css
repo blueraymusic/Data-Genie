@@ -547,7 +547,7 @@
   padding: 0 32px;
   scroll-padding-bottom: 140px;
 }
-.workspace-page .content > section:not(#v-ask) {
+.workspace-page .content > section:not(#v-ask):not(#v-sql) {
   max-width: 1050px;
   margin: 0 auto;
   padding: 40px 0 72px;
