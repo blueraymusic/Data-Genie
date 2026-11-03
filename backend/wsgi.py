@@ -70,7 +70,9 @@ def application(environ, start_response):
         request.wfile = BytesIO()
         request.response_headers = []
         request.response_cookie = None
-        request.json({"error": str(error)}, 503)
+        request.json({"error": str(error), "code": "cloud_storage_unavailable",
+                      "retry_safe": error.retry_safe,
+                      "recovery": "retry" if error.retry_safe else "check_history"}, 503)
     except Exception:
         request.wfile = BytesIO()
         request.response_headers = []

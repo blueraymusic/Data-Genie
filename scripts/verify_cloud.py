@@ -10,14 +10,14 @@ from urllib.request import urlopen
 class FrontendAssets(HTMLParser):
     def __init__(self):
         super().__init__()
-        self.paths = set()
+        self.paths = {}
 
     def handle_starttag(self, tag, attributes):
         values = dict(attributes)
         if tag == "script" and values.get("src"):
-            self.paths.add(values["src"])
+            self.paths[values["src"]] = "script"
         if tag == "link" and set(values.get("rel", "").split()) & {"stylesheet", "modulepreload"} and values.get("href"):
-            self.paths.add(values["href"])
+            self.paths[values["href"]] = "stylesheet" if "stylesheet" in values["rel"].split() else "modulepreload"
 
 
 def read_response(url, timeout, content_types):
@@ -39,10 +39,15 @@ def check_deployment(origin):
     html = read_response(origin + "/", 60, {"text/html"}).decode("utf-8")
     parser = FrontendAssets()
     parser.feed(html)
-    assets = {urljoin(origin + "/", path) for path in parser.paths}
+    assets = {(urljoin(origin + "/", path), kind) for path, kind in parser.paths.items()}
     kinds = set()
-    for asset in sorted(assets):
+    for asset, kind in sorted(assets):
         parsed = urlsplit(asset)
+        # Google Fonts is an optional, external stylesheet, not a deployed Vite
+        # build asset. Do not fetch it or mistake it for the application's CSS.
+        if (kind == "stylesheet" and parsed.scheme == "https"
+                and parsed.netloc == "fonts.googleapis.com" and parsed.path in {"/css", "/css2"}):
+            continue
         if parsed.scheme != "https" or parsed.netloc != urlsplit(origin).netloc or not parsed.path.startswith("/assets/"):
             raise ValueError("Frontend build assets must use this application's HTTPS origin.")
         if parsed.path.endswith(".js"):

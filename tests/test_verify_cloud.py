@@ -60,6 +60,22 @@ class DeploymentVerificationTests(unittest.TestCase):
             verify_cloud.check_deployment(ORIGIN)
         self.assertNotIn(ORIGIN + "/api/auth/session", [call.args[0] for call in request.call_args_list])
 
+    def test_google_font_stylesheet_is_optional_and_never_replaces_build_css(self):
+        for has_build_css in (True, False):
+            resources = self.resources()
+            html = resources["/"][0]
+            if not has_build_css:
+                html = html.replace(b'<link rel="stylesheet" href="/assets/app.css">', b"")
+            resources["/"] = (html + b'<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader&amp;display=swap">', "text/html")
+            with self.subTest(has_build_css=has_build_css), \
+                    patch.object(verify_cloud, "urlopen", side_effect=self.fetch(resources)) as request:
+                if has_build_css:
+                    verify_cloud.check_deployment(ORIGIN)
+                else:
+                    with self.assertRaises(ValueError):
+                        verify_cloud.check_deployment(ORIGIN)
+                self.assertTrue(all(call.args[0].startswith(ORIGIN + "/") for call in request.call_args_list))
+
     def test_html_fallback_for_missing_javascript_is_rejected(self):
         resources = self.resources()
         resources["/assets/app.js"] = (b"<html>Not found</html>", "text/html")

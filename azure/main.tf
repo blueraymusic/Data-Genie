@@ -89,7 +89,7 @@ resource "azurerm_linux_web_app" "app" {
   ftp_publish_basic_authentication_enabled       = false
   webdeploy_publish_basic_authentication_enabled = false
   site_config {
-    always_on           = false
+    always_on           = var.app_service_sku == "B1"
     ftps_state          = "Disabled"
     minimum_tls_version = "1.2"
     app_command_line    = "python -m gunicorn -c azure/gunicorn.conf.py backend.wsgi:application"

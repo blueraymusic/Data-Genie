@@ -24,7 +24,7 @@ export const faqGroups = [
       {
         question: 'Do I need to know SQL?',
         search:
-          'No. In Gemini AI mode, start with a request such as \u201cshow all customers from Missouri\u201d. The generated SQL appears beside your words so you can see how the request was interpreted.The Structure tab shows the tables and columns available in your database. Naming them in your request helps make your intent clear.',
+          'No. In Gemini AI mode, start with a request such as \u201cshow all customers from Missouri\u201d. The generated SQL appears beside your words so you can see how the request was interpreted. The Structure tab shows the tables and columns available in your database. Naming them in your request helps make your intent clear.',
         answer: (
           <>
             <p>
@@ -291,7 +291,7 @@ export const faqGroups = [
       {
         question: 'Can I use Data Genie without AI?',
         search:
-          'Yes. Choose Keywords in Account & preferences. Keywords mode supports specific commands such as \u201ccount customers\u201d and \u201cshow sales where amount > 50\u201d. It does not send the request to an AI provider.Gemini AI mode supports more flexible phrasing. If the AI service is unavailable, you can switch to Keywords; the app does not silently change modes.',
+          'Yes. Choose Keywords in Account & preferences. Keywords mode supports specific commands such as \u201ccount customers\u201d and \u201cshow sales where amount > 50\u201d. It does not send the request to an AI provider. Gemini AI mode supports more flexible phrasing. If the AI service is unavailable, you can switch to Keywords; the app does not silently change modes.',
         answer: (
           <>
             <p>
@@ -413,7 +413,7 @@ export const faqGroups = [
       {
         question: 'Where is my data stored on the hosted site?',
         search:
-          'The hosted Azure installation stores accounts, history, uploaded SQLite working copies and encrypted PostgreSQL connection settings on the server, with durable state in Azure SQL. Your laptop installation is separate: sign up on the hosted site and upload only the SQLite files you want to move. The small hosted installation supports 64 MiB of total application state and 256 files. SQL pauses when its free allowance is exhausted.',
+          'The hosted Azure installation stores accounts, history, uploaded SQLite working copies and encrypted PostgreSQL connection settings on the server, with durable state in Azure SQL. Your laptop installation is separate: sign up on the hosted site and upload only the SQLite files you want to move. The small hosted installation supports 64 MiB of total application state and 256 files. SQL can pause after inactivity or when its free allowance is exhausted. If the first login takes time, choose Retry connection, then submit the form yourself. Connection retries keep the form details and do not replay a request.',
         answer: (
           <>
             <p>
@@ -428,8 +428,13 @@ export const faqGroups = [
             </p>
             <p>
               This small deployment supports 64 MiB of total application state and 256 files across
-              all accounts. Azure SQL pauses if its free allowance is exhausted. Keep downloaded
-              copies of important SQLite databases.
+              all accounts. Azure SQL can pause after inactivity or if its free allowance is
+              exhausted. Keep downloaded copies of important SQLite databases.
+            </p>
+            <p>
+              The first connection after inactivity may take a moment. If login reports a connection
+              problem, choose <strong>Retry connection</strong>, then submit the form yourself. The
+              check keeps your entered details and does not repeat your request.
             </p>
           </>
         ),

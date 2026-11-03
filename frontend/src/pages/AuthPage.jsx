@@ -38,6 +38,7 @@ export default function AuthPage() {
   }
   async function retryConnection() {
     if (busy || retrying) return;
+    setError('');
     setRetrying(true);
     try {
       await refresh();

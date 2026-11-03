@@ -214,10 +214,15 @@ class HostingTests(unittest.TestCase):
         return response
 
     def test_https_liveness_does_not_wake_or_require_sql(self):
-        with patch.dict("os.environ", {"GENIE_PUBLIC_URL": "https://genie.example.test"}), patch.object(cloud_state, "connect", side_effect=AssertionError("liveness must not connect")):
-            response = self.request()
-        self.assertEqual(response["status"], "200 OK")
-        self.assertIn("max-age", response["headers"]["Strict-Transport-Security"])
+        with patch.dict("os.environ", {"GENIE_PUBLIC_URL": "https://genie.example.test"}), \
+                patch.object(cloud_state, "connect", side_effect=AssertionError("warm-up probes must not connect")), \
+                patch.object(wsgi.Request, "accounts", side_effect=AssertionError("warm-up probes must not access accounts")), \
+                patch.object(Path, "read_bytes", return_value=b"<!doctype html><html>Data Genie</html>"):
+            for path in ("/healthz", "/"):
+                with self.subTest(path=path):
+                    response = self.request(path)
+                    self.assertEqual(response["status"], "200 OK")
+                    self.assertIn("max-age", response["headers"]["Strict-Transport-Security"])
 
     def test_unknown_non_api_paths_are_not_found_without_account_or_sql_access(self):
         with patch.dict("os.environ", {"GENIE_PUBLIC_URL": "https://genie.example.test"}), \
@@ -251,10 +256,16 @@ class HostingTests(unittest.TestCase):
             self.assertEqual(self.request("/api/auth/session")["status"], "503 Service Unavailable")
 
     def test_unavailable_cloud_storage_returns_retry_safe_error(self):
-        with patch.dict("os.environ", {"GENIE_PUBLIC_URL":"https://genie.example.test"}), patch.object(cloud_state, "transaction", side_effect=cloud_state.StateUnavailable("Check History before retrying a change.")):
-            response = self.request("/api/auth/session")
-        self.assertEqual(response["status"], "503 Service Unavailable")
-        self.assertIn(b"Check History", response["body"])
+        for retry_safe in (True, False):
+            with self.subTest(retry_safe=retry_safe), \
+                    patch.dict("os.environ", {"GENIE_PUBLIC_URL":"https://genie.example.test"}), \
+                    patch.object(cloud_state, "transaction", side_effect=cloud_state.StateUnavailable("Storage unavailable.", retry_safe=retry_safe)):
+                response = self.request("/api/auth/session")
+            self.assertEqual(response["status"], "503 Service Unavailable")
+            payload = json.loads(response["body"])
+            self.assertEqual(payload["code"], "cloud_storage_unavailable")
+            self.assertEqual(payload["retry_safe"], retry_safe)
+            self.assertEqual(payload["recovery"], "retry" if retry_safe else "check_history")
 
     def test_public_connector_blocks_metadata_and_dns_rebinding(self):
         for address in ("localhost", "127.0.0.1", "169.254.169.254", "10.0.0.1", "::1", "fd00::1"):

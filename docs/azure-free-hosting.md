@@ -2,7 +2,7 @@
 
 Target: HCP Terraform organization `blueray321`, project `Blueray`, workspace `Data-Genie`, and the existing Azure resource group `data_genie`.
 
-The configured deployment uses **France Central**, app `data-genie-blueray321`, one **Linux B1** instance, and SQL server `data-genie-blueray321-fr-sql` / database `data-genie-state`. The site is [data-genie-blueray321.azurewebsites.net](https://data-genie-blueray321.azurewebsites.net/). The [manual deployment pipeline](https://dev.azure.com/as4dc/blueray/_build?definitionId=1) is in `as4dc/blueray`; select `appServiceSku=B1` when running it.
+The configured deployment uses **France Central**, app `data-genie-blueray321`, one **Linux B1** instance with Always On enabled, and SQL server `data-genie-blueray321-fr-sql` / database `data-genie-state`. The site is [data-genie-blueray321.azurewebsites.net](https://data-genie-blueray321.azurewebsites.net/). The [manual deployment pipeline](https://dev.azure.com/as4dc/blueray/_build?definitionId=1) is in `as4dc/blueray`; select `appServiceSku=B1` when running it.
 
 The workspace already has the four OIDC environment variables listed below and sensitive `TF_VAR_gemini_api_key`. Its Terraform-category values are `location=francecentral`, `app_service_sku=B1`, and `sql_server_name=data-genie-blueray321-fr-sql`. No client secret or additional Gemini variable is needed. Future hosting changes still require a reviewed plan.
 
@@ -75,7 +75,7 @@ In Azure Quotas, check the actual **F1 VMs** entry. The **Total Regional VMs** c
 
 ## 3. Deploy with Azure DevOps
 
-Open your project at `https://dev.azure.com/YOUR-ORGANIZATION/YOUR-PROJECT`. This is a separate service from the Azure portal. If you have only created a DevOps organization, create a project before setting up its pipeline.
+Use the existing [Azure DevOps project](https://dev.azure.com/as4dc/blueray) and [Data Genie pipeline](https://dev.azure.com/as4dc/blueray/_build?definitionId=1). The steps below describe how to recreate the connection when needed; the current project and connection are already configured.
 
 Create a separate deployment managed identity with **Reader on `data_genie`** and **Website Contributor only on the Data Genie web app**. It can deploy code and read the app's settings, so it has application-level access to data and credentials. It has no Azure management role to change the hosting plan, SQL firewall, or Terraform identity. Create a workload-identity Azure Resource Manager service connection named `data-genie-azure`, scoped to `data_genie`, using this identity. Authorize only this pipeline. Creating this connection grants access; review its scope. This is a separate trust from Terraform's OIDC trust.
 
@@ -91,7 +91,15 @@ After Terraform has created the infrastructure, run the pipeline with the same a
 4. Checks the existing SQL firewall rules without changing network access, then deploys using the service connection. A changed egress address needs administrator review before the pipeline can continue.
 5. Verifies HTTPS, built frontend assets, and the cloud-backed anonymous session endpoint.
 
-The ZIP does **not** contain `.env`, local accounts/databases, keys, Git history, or the laptop's development packages. This deploys a fresh hosted installation. Existing desktop accounts and data remain on the desktop; they are not uploaded automatically. Sign up at the new URL and upload only the database files you want to move.
+The ZIP does **not** contain `.env`, local accounts/databases, keys, Git history, or the laptop's development packages. This deploys a fresh hosted installation. Existing desktop accounts and data remain on the desktop; they are not uploaded automatically. Use [Sign up](https://data-genie-blueray321.azurewebsites.net/signup) and upload only the database files you want to move in [Databases](https://data-genie-blueray321.azurewebsites.net/databases).
+
+## If login reports unavailable storage
+
+A storage error alone does not establish that the free allowance is exhausted. In Azure, inspect the database status and the `free_amount_remaining` and `free_amount_consumed` metrics. A normally paused serverless database resumes on connection; an exhausted free offer remains unavailable until the allowance resets. The app's connection retry checks the session endpoint without resubmitting a login, sign-up, or SQL change.
+
+Use [Log in](https://data-genie-blueray321.azurewebsites.net/signin), choose **Retry connection** if offered, then submit the form explicitly. Form details stay in place. If saving a database change could not be confirmed, inspect [History](https://data-genie-blueray321.azurewebsites.net/history) before repeating it. Server diagnostics record the failure stage, exception types, and numeric SQL codes without recording passwords, query text, or snapshot contents.
+
+Keep the current SQL free-offer safeguards while diagnosing an error. Paid SQL or overages require a separate cost decision; enabling them is not a remedy for a translation, certificate, or snapshot error. See the [Azure SQL free-offer FAQ](https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer-faq).
 
 ## Storage and free-tier limits
 
@@ -101,7 +109,7 @@ This adapter serializes requests and limits the whole installation to **64 MiB o
 
 Uploaded SQLite files use working copies. Hosted PostgreSQL requires a public hostname with verified TLS; private, loopback, and cloud-metadata addresses are blocked. A PostgreSQL database on your laptop is not directly reachable from this hosted site. Local mode keeps supporting local PostgreSQL connections.
 
-Azure F1 has a daily CPU allowance and cold starts; SQL can take time to resume. `/healthz` checks liveness without waking SQL. The deployment script checks `/api/auth/session` to verify durable storage separately. This configuration does not promise continuous availability or an SLA. SQL’s free offer and AutoPause must remain enabled. Hosting is restricted to F1 or one explicitly selected Linux B1 instance; do not enable SQL overages or a larger hosting tier.
+Azure F1 has a daily CPU allowance and cold starts. B1 uses its included Always On capability to keep the web app loaded. Its root-page probes do not open SQL connections, so the database can still pause after inactivity and take time to resume. `/healthz` checks liveness without waking SQL. The deployment script checks `/api/auth/session` to verify durable storage separately. This configuration does not promise continuous availability or an SLA. SQL’s free offer and AutoPause must remain enabled. Hosting is restricted to F1 or one explicitly selected Linux B1 instance; do not enable SQL overages or a larger hosting tier.
 
 Accounts, history, and working data live where the app is hosted, with password hashing and HTTPS cookies. SQL transport verifies the server's certificate chain and hostname. The current python-tds release needs the small `backend/cloud_tls.py` compatibility adapter for pyOpenSSL 26; keep `service-identity` installed and hostname verification enabled. Durable ZIP snapshots are bound as `pytds.Binary`, not text. Azure SQL backs up its state; the Terraform-managed connection key must also be retained to unlock saved PostgreSQL connections after recovery. A snapshot must be treated as private user data.
 

@@ -74,7 +74,20 @@ export function AuthProvider({ children }) {
     const revision = ++generation.current;
     setError('');
     setConnectionError(false);
-    const data = await api('/api/auth/' + mode, { method: 'POST', body });
+    let data;
+    try {
+      data = await api('/api/auth/' + mode, { method: 'POST', body });
+    } catch (error) {
+      if (
+        generation.current === revision &&
+        error.code === 'cloud_storage_unavailable' &&
+        error.recovery === 'retry'
+      ) {
+        setError(error.message);
+        setConnectionError(true);
+      }
+      throw error;
+    }
     if (generation.current !== revision) return data.user;
     rememberSession(null);
     account.current = data.user.account_id;

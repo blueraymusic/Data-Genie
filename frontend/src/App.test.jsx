@@ -215,6 +215,32 @@ describe('React pages and account flow', () => {
     ]);
   });
 
+  it('rechecks storage after a login connection failure without resubmitting credentials', async () => {
+    history.replaceState({}, '', '/signin');
+    const message = 'Cloud storage is temporarily unavailable. No request was run.';
+    fetch.mockImplementation((path) =>
+      path === '/api/auth/session'
+        ? response({ user: null })
+        : response({ error: message, code: 'cloud_storage_unavailable', recovery: 'retry' }, 503),
+    );
+    const events = userEvent.setup();
+    render(<App />);
+    const email = await screen.findByRole('textbox', { name: 'Email', exact: true });
+    await events.type(email, user.email);
+    await events.type(screen.getByLabelText('Password', { exact: true }), 'a long test passphrase');
+    await events.click(screen.getByRole('button', { name: 'Log in', exact: true }));
+    await screen.findByText(message);
+    await events.click(screen.getByRole('button', { name: 'Retry connection', exact: true }));
+    await waitFor(() => expect(screen.queryByText(message)).toBeNull());
+    expect(email.value).toBe(user.email);
+    expect(screen.getByLabelText('Password', { exact: true }).value).toBe('a long test passphrase');
+    expect(fetch.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
+      ['/api/auth/session', 'GET'],
+      ['/api/auth/login', 'POST'],
+      ['/api/auth/session', 'GET'],
+    ]);
+  });
+
   it('switches to a saved PostgreSQL database from Change and marks the current database', async () => {
     const remote = switchingFixture();
     const events = userEvent.setup();

@@ -79,6 +79,10 @@ run "budgeted_student_credit_hosting" {
     condition     = azapi_resource.free_state.body.properties.useFreeLimit == true && azapi_resource.free_state.body.properties.freeLimitExhaustionBehavior == "AutoPause"
     error_message = "Using credit for hosting must not enable SQL overages."
   }
+  assert {
+    condition     = azurerm_linux_web_app.app.site_config[0].always_on == true
+    error_message = "B1 should keep the app warm using its included Always On capability."
+  }
 }
 
 run "larger_paid_tier_rejected" {
