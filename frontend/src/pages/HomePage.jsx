@@ -65,15 +65,15 @@ export default function HomePage() {
                 Ask a question. See the SQL and your answer. Changes always wait for your OK.
               </p>
               <div className="cta-row">
-                <Link href="/#demo" className="btn btn-primary">
-                  Try the demo <span aria-hidden="true">↓</span>
+                <Link href="/signup" className="btn btn-primary">
+                  Try Data Genie <Icon name="arrow" />
                 </Link>
                 <Link href={user ? '/databases' : '/signin'} className="btn btn-dark">
                   Open my database
                 </Link>
               </div>
               <p className="hero-hint">
-                No account needed for the demo.
+                <Link href="/#demo">Explore the sample demo</Link> · No account needed.
                 <br />
                 SQLite files and PostgreSQL connections.
               </p>
@@ -152,6 +152,7 @@ export default function HomePage() {
               <Link href="/#ask">What you can ask</Link>
               <Link href="/#safety">Safety</Link>
               <Link href="/faq">FAQ</Link>
+              <Link href="/contact">Contact us</Link>
               <EntryLink />
             </nav>
           </div>

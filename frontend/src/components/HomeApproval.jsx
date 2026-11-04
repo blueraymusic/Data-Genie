@@ -5,12 +5,13 @@ import { sampleUpdate } from '../data/homeSamples';
 
 export function HomeApproval({
   change = sampleUpdate,
+  compact = false,
   approveLabel = 'Approve change',
   approvedText = 'Sample result: Priya Nair’s state is now Kansas.',
 }) {
   const [decision, setDecision] = useState(null);
   return (
-    <div className="home-approval">
+    <div className={'home-approval' + (compact ? ' approval-compact' : '')}>
       <div className="sample-meta">
         <span className={'chip st-' + (decision || 'pending')}>
           <Icon
@@ -18,9 +19,9 @@ export function HomeApproval({
           />
           {decision || 'Waiting for your OK'}
         </span>
-        <span className="sample-label">Sample only</span>
+        {!compact && <span className="sample-label">Sample only</span>}
       </div>
-      <p className="example-request">{change.request}</p>
+      {!compact && <p className="example-request">{change.request}</p>}
       <SqlBlock
         home
         sql={change.sql}
@@ -33,12 +34,14 @@ export function HomeApproval({
             <p className="approval-outcome">
               {decision === 'executed' ? approvedText : 'Not run. You declined this.'}
             </p>
-            <p className="sample-caption">Your real data has not been changed.</p>
+            {!compact && <p className="sample-caption">Your real data has not been changed.</p>}
           </>
         ) : (
           <>
             <p>{change.description}</p>
-            <p className="sample-caption">This is a local demo. No database is changed.</p>
+            {!compact && (
+              <p className="sample-caption">This is a local demo. No database is changed.</p>
+            )}
           </>
         )}
       </div>

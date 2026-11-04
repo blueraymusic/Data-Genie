@@ -39,6 +39,23 @@ export const faqGroups = [
         ),
       },
       {
+        question: 'How can I contact Data Genie?',
+        search:
+          'Open Contact us to ask a question, report a problem, or share feedback. The form prepares an email draft for you to review and send in your own email app. Copy message is available if you prefer to paste it into webmail. No message is sent automatically. You do not need an account.',
+        answer: (
+          <>
+            <p>
+              Open <a href="/contact">Contact us</a> to ask a question, report a problem, or share
+              feedback. You do not need an account.
+            </p>
+            <p>
+              The form prepares an email draft for you to review and send. Use{' '}
+              <strong>Copy message</strong> if you prefer webmail. No message is sent automatically.
+            </p>
+          </>
+        ),
+      },
+      {
         question: 'Do I need to know SQL?',
         search:
           'No. In Data Genie AI mode, start with a request such as \u201cshow all customers from Missouri\u201d. The generated SQL appears beside your words so you can see how the request was interpreted. The Structure tab shows the tables and columns available in your database. Naming them in your request helps make your intent clear.',

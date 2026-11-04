@@ -2,7 +2,7 @@
 
 Ask your database questions in plain English. Use a SQLite file or connect PostgreSQL, see the SQL and results, then ask a follow-up. Reads run immediately; changes always wait for your confirmation.
 
-[Open Data Genie](https://data-genie.space/) · [Log in](https://data-genie.space/signin) · [Sign up](https://data-genie.space/signup) · [FAQ](https://data-genie.space/faq)
+[Open Data Genie](https://data-genie.space/) · [Log in](https://data-genie.space/signin) · [Sign up](https://data-genie.space/signup) · [FAQ](https://data-genie.space/faq) · [Contact us](https://data-genie.space/contact)
 
 ![Data Genie homepage in light mode](docs/images/homepage.jpg)
 
@@ -81,7 +81,7 @@ Restart the server with that environment, then choose **Databases → PostgreSQL
 
 Confirmed edits are saved in PostgreSQL directly; no download or upload is needed. CSV downloads are copies of result rows. This is a direct PostgreSQL connector; an MCP client or server is not included yet.
 
-See the [FAQ](https://data-genie.space/faq) for common questions, or [database connections](docs/database-connections.md) for setup and testing.
+See the [FAQ](https://data-genie.space/faq) for common questions, [Contact us](https://data-genie.space/contact) to prepare an email, or [database connections](docs/database-connections.md) for setup and testing.
 
 For a local test database, run `.venv/bin/python scripts/postgres_demo.py start`. It creates sample customers, products, and orders on port 55432. The connection URL is saved privately in `db/postgres-demo/connection.txt`.
 

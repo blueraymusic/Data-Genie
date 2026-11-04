@@ -714,74 +714,6 @@
   color: var(--ink);
   color-scheme: dark;
 }
-.home-page .home-connections {
-  border-bottom: 1px solid var(--rule);
-}
-.home-page .connection-strip {
-  display: flex;
-  align-items: center;
-  gap: 40px;
-  padding-block: 24px;
-}
-.home-page .connection-strip > p {
-  flex: none;
-  font-size: 9px;
-  letter-spacing: 0.12em;
-}
-.home-page .connection-strip ul {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex: 1;
-  gap: 28px;
-  padding-left: 40px;
-  border-left: 1px solid var(--rule);
-}
-.home-page .connection-strip li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.home-page .connection-strip :is(strong, a) {
-  display: block;
-  color: var(--ink);
-  font: 500 16px/1.4 var(--sans);
-  text-decoration: none;
-  white-space: nowrap;
-}
-.home-page .connection-strip a:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-.home-page .connection-strip li div > span {
-  display: block;
-  font-size: 9px;
-  color: var(--ink-soft);
-  margin-top: 3px;
-}
-.home-page .connection-strip .sqlite-wordmark {
-  font: italic 600 22px/1 var(--serif);
-}
-.home-page .connection-strip .ic {
-  width: 25px;
-  height: 25px;
-  color: #b5c7fa;
-}
-.home-page .github-mark {
-  width: 24px;
-  height: 24px;
-  color: var(--ink-soft);
-}
-.home-page .azure-mark {
-  display: grid;
-  grid-template-columns: 10px 10px;
-  gap: 2px;
-  transform: skewY(-5deg);
-}
-.home-page .azure-mark i {
-  height: 10px;
-  background: #b5c7fa;
-}
 .home-page .home-section {
   padding-block: 88px;
   scroll-margin-top: 74px;
@@ -1086,16 +1018,6 @@
     padding-left: 9px;
     font-size: 9px;
   }
-  .home-page .connection-strip {
-    gap: 24px;
-  }
-  .home-page .connection-strip ul {
-    padding-left: 24px;
-    gap: 16px;
-  }
-  .home-page .connection-strip :is(strong, a) {
-    font-size: 14px;
-  }
 }
 @media (max-width: 900px) {
   .home-page .nav {
@@ -1143,24 +1065,6 @@
   }
   .home-page .demo-database code {
     font-size: 10px;
-  }
-  .home-page .connection-strip {
-    flex-direction: column;
-    gap: 20px;
-  }
-  .home-page .connection-strip > p {
-    text-align: center;
-  }
-  .home-page .connection-strip > p br {
-    display: none;
-  }
-  .home-page .connection-strip ul {
-    justify-content: center;
-    width: 100%;
-    padding: 0;
-    border: 0;
-    gap: 32px;
-    flex-wrap: wrap;
   }
   .home-page .safety-layout {
     gap: 32px;
@@ -1292,24 +1196,6 @@
   .home-page .picks .btn .ic {
     width: 13px;
     height: 13px;
-  }
-  .home-page .connection-strip {
-    padding-block: 26px;
-  }
-  .home-page .connection-strip ul {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px 16px;
-  }
-  .home-page .connection-strip li {
-    gap: 8px;
-  }
-  .home-page .connection-strip :is(strong, a) {
-    font-size: 13px;
-  }
-  .home-page .connection-strip .ic {
-    width: 22px;
-    height: 22px;
   }
   .home-page .home-section {
     padding-block: 60px;

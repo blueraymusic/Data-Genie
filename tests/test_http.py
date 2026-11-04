@@ -195,7 +195,7 @@ class HttpTests(HttpHarness, unittest.TestCase):
         self.assertEqual(self.request("POST", "/api/ask", b"{bad", self.session_id)[0], 400)
 
     def test_only_explicit_static_files_are_served(self):
-        for path in ("/", "/index.html", "/faq", "/faq.html", "/app", "/signin", "/signup", "/databases", "/history", "/account", "/dashboard.html", "/static/design.css", "/static/favicon.svg"):
+        for path in ("/", "/index.html", "/faq", "/faq.html", "/contact", "/contact.html", "/app", "/signin", "/signup", "/databases", "/history", "/account", "/dashboard.html", "/static/design.css", "/static/favicon.svg"):
             with self.subTest(path=path):
                 self.assertEqual(self.request("GET", path, raw=True)[0], 200)
         for path in ("/server.py", "/repository.py", "/db/data_genie_repository.sqlite3", "/static/../server.py"):

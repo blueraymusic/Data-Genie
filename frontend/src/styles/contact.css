@@ -1,0 +1,185 @@
+.contact-page .contact-intro {
+  padding-block: 64px 126px;
+  background: var(--lapis-wash);
+}
+.contact-page .contact-intro h1 {
+  max-width: 24ch;
+  margin-top: 18px;
+  font: 500 clamp(38px, 4vw, 54px)/1.1 var(--serif);
+  letter-spacing: -0.02em;
+}
+.contact-page .contact-intro h1 em {
+  color: var(--lapis);
+  font-weight: inherit;
+}
+.contact-page .contact-intro p:last-child {
+  max-width: 55ch;
+  margin-top: 18px;
+  color: var(--ink-soft);
+  font-size: 16px;
+  line-height: 1.6;
+}
+.contact-page .contact-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 64px;
+  margin-top: -70px;
+  padding-bottom: 72px;
+}
+.contact-page .contact-form {
+  min-width: 0;
+  padding: 32px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--paper);
+  box-shadow: var(--shadow-floating);
+}
+.contact-page .contact-form-intro {
+  margin-bottom: 26px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.contact-page .contact-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px 18px;
+}
+.contact-page .contact-fields label {
+  display: block;
+  min-width: 0;
+  font-size: 13px;
+}
+.contact-page .contact-fields label > span:not(.optional) {
+  color: var(--remove);
+}
+.contact-page .optional {
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+.contact-page .contact-fields :is(input, select, textarea) {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 14px/1.5 var(--sans);
+}
+.contact-page .contact-fields textarea {
+  resize: vertical;
+  min-height: 124px;
+}
+.contact-page .contact-wide {
+  grid-column: 1/-1;
+}
+.contact-page .contact-note {
+  margin-top: 22px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.contact-page .contact-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+.contact-page .contact-form-actions .btn {
+  flex: 1;
+}
+.contact-page .contact-status {
+  margin-top: 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+.contact-page .contact-status:empty {
+  display: none;
+}
+.contact-page .contact-help {
+  min-width: 0;
+  margin-top: 112px;
+  padding-top: 24px;
+  border-top: 1px solid var(--rule);
+}
+.contact-page .contact-help h2 {
+  font: 500 25px/1.2 var(--serif);
+}
+.contact-page .contact-help > div {
+  margin-top: 26px;
+}
+.contact-page .contact-help a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.contact-page .contact-help a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.contact-page .contact-help p {
+  margin-top: 7px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.contact-page .contact-help .ic {
+  width: 16px;
+  height: 16px;
+}
+.contact-page .contact-direct {
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+.contact-page .contact-direct a {
+  margin-top: 7px;
+}
+@media (max-width: 900px) {
+  .contact-page .contact-layout {
+    gap: 32px;
+  }
+  .contact-page .contact-form {
+    padding: 26px;
+  }
+}
+@media (max-width: 700px) {
+  .contact-page .contact-intro {
+    padding-block: 44px 96px;
+  }
+  .contact-page .contact-intro h1 {
+    font-size: 40px;
+  }
+  .contact-page .contact-intro p:last-child {
+    font-size: 14px;
+  }
+  .contact-page .contact-layout {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: -54px;
+    gap: 32px;
+    padding-bottom: 48px;
+  }
+  .contact-page .contact-help {
+    margin-top: 0;
+  }
+}
+@media (max-width: 420px) {
+  .contact-page .contact-form {
+    padding: 22px;
+  }
+  .contact-page .contact-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+  .contact-page .contact-form-actions .btn {
+    flex-basis: 100%;
+  }
+}

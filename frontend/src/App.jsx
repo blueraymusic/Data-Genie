@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { AuthShell } from './components/AuthShell';
 import HomePage from './pages/HomePage';
 import FaqPage from './pages/FaqPage';
+import ContactPage from './pages/ContactPage';
 import AuthPage from './pages/AuthPage';
 import WorkspaceApp from './pages/WorkspaceApp';
 
@@ -27,6 +28,7 @@ function Pages() {
   const { pathname } = useRouter();
   if (['/', '/index.html'].includes(pathname)) return <HomePage />;
   if (['/faq', '/faq.html'].includes(pathname)) return <FaqPage />;
+  if (['/contact', '/contact.html'].includes(pathname)) return <ContactPage />;
   return <ProtectedPages />;
 }
 class ErrorBoundary extends Component {

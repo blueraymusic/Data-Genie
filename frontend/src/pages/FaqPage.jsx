@@ -176,7 +176,9 @@ export default function FaqPage() {
       </main>
       <footer className="wrap foot">
         <span>Data Genie, by Adel Sissoko.</span>
-        <Link href="/">Homepage</Link>
+        <div>
+          <Link href="/contact">Contact us</Link> · <Link href="/">Homepage</Link>
+        </div>
       </footer>
     </div>
   );

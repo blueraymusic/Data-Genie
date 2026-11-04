@@ -1,23 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { SqlBlock } from './SqlBlock';
 import { HomeApproval } from './HomeApproval';
-import { sampleCustomers, sampleStates, customerLookup } from '../data/homeSamples';
+import { sampleCustomers, sampleStates, customerLookup, sampleUpdate } from '../data/homeSamples';
 
 function LookupExample() {
   const [state, setState] = useState('Missouri');
   const query = customerLookup(state);
   return (
-    <article className="example-card lookup-card" aria-labelledby="lookup-h">
-      <div className="example-card-top">
-        <span className="example-icon">
-          <Icon name="search" />
-        </span>
-        <span>Look up</span>
-      </div>
-      <h3 id="lookup-h">Find your people.</h3>
-      <p>Turn a question into the exact rows you need. Change the state and see it happen.</p>
-      <div className="example-playground">
+    <article className="compact-example" aria-labelledby="lookup-h">
+      <div className="example-input">
+        <div className="example-stat">
+          <strong>{query.rows.length}</strong>
+          <span>
+            {query.rows.length === 1 ? 'matching customer' : 'matching customers'} in {state}
+          </span>
+        </div>
+        <h3 id="lookup-h">Find your people.</h3>
+        <p>Find the records you need, in your own words.</p>
         <label htmlFor="example-state">
           Choose a state
           <select
@@ -30,24 +30,25 @@ function LookupExample() {
             ))}
           </select>
         </label>
-        <div aria-live="polite">
-          <p className="example-request">{query.request}</p>
-          <SqlBlock home sql={query.sql} />
-          <div className="example-people">
-            {query.rows.map((row) => (
-              <span key={row.name}>
-                <Icon name="account" />
-                {row.name}
-              </span>
-            ))}
-          </div>
-          <p className="example-result">
-            <span className="chip st-executed">
-              <Icon name="check" />
-              executed
-            </span>
+        <p className="demo-label">Your request</p>
+        <p className="example-request">{query.request}</p>
+      </div>
+      <div className="example-output dark-surface" aria-live="polite">
+        <div className="example-output-heading">
+          <p className="demo-label">SQL translation</p>
+          <span className="chip st-executed">
+            <Icon name="check" />
             {query.rows.length} {query.rows.length === 1 ? 'row' : 'rows'}
-          </p>
+          </span>
+        </div>
+        <SqlBlock home sql={query.sql} />
+        <div className="example-people" aria-label="Matching customers">
+          {query.rows.map((row) => (
+            <span key={row.name}>
+              <Icon name="account" />
+              {row.name}
+            </span>
+          ))}
         </div>
       </div>
     </article>
@@ -64,108 +65,221 @@ function SummaryExample() {
       ? 'SELECT state, COUNT(*) AS customers\nFROM customers\nGROUP BY state;'
       : 'SELECT state,\n  ROUND(COUNT(*) * 100.0 /\n    (SELECT COUNT(*) FROM customers), 1)\n  AS percentage\nFROM customers GROUP BY state;';
   return (
-    <article className="example-card summary-card" aria-labelledby="summary-h">
-      <div className="example-card-top">
-        <span className="example-icon">
-          <Icon name="layers" />
-        </span>
-        <span>Summarize</span>
-      </div>
-      <h3 id="summary-h">See the bigger picture.</h3>
-      <p>Count, group and compare. Go from individual records to an answer you can use.</p>
-      <div className="example-playground">
-        <div className="summary-toggle" role="group" aria-label="Summary measure">
-          <button
-            type="button"
-            aria-pressed={metric === 'count'}
-            onClick={() => setMetric('count')}
-          >
-            Count
-          </button>
-          <button
-            type="button"
-            aria-pressed={metric === 'share'}
-            onClick={() => setMetric('share')}
-          >
-            Percentage
-          </button>
+    <article className="compact-example" aria-labelledby="summary-h">
+      <div className="example-input">
+        <div className="example-stat">
+          <strong>4</strong>
+          <span>states, one clear overview</span>
         </div>
-        <div aria-live="polite">
-          <p className="example-request">
-            {metric === 'count'
-              ? 'how many customers are in each state'
-              : 'what percentage of customers is in each state'}
-          </p>
-          <SqlBlock home sql={sql} />
-          <div
-            className="example-bars"
-            role="img"
-            aria-label={counts
-              .map(
-                (row) =>
-                  `${row.state}: ${metric === 'count' ? row.count + ' customers' : ((row.count / sampleCustomers.length) * 100).toFixed(1) + '%'}`,
-              )
-              .join(', ')}
-          >
-            {counts.map((row) => (
-              <div className="example-bar" key={row.state} aria-hidden="true">
-                <span>{row.state}</span>
-                <i>
-                  <b style={{ width: `${(row.count / 3) * 100}%` }} />
-                </i>
-                <strong>
-                  {metric === 'count'
-                    ? row.count
-                    : ((row.count / sampleCustomers.length) * 100).toFixed(1) + '%'}
-                </strong>
-              </div>
-            ))}
-          </div>
+        <h3 id="summary-h">See the bigger picture.</h3>
+        <p>Turn individual records into a useful overview.</p>
+        <div className="summary-toggle" role="group" aria-label="Summary measure">
+          {[
+            ['count', 'Count'],
+            ['share', 'Percentage'],
+          ].map(([value, label]) => (
+            <button
+              type="button"
+              key={value}
+              aria-pressed={metric === value}
+              onClick={() => setMetric(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="demo-label">Your request</p>
+        <p className="example-request">
+          {metric === 'count'
+            ? 'how many customers are in each state'
+            : 'what percentage of customers is in each state'}
+        </p>
+      </div>
+      <div className="example-output dark-surface" aria-live="polite">
+        <div className="example-output-heading">
+          <p className="demo-label">SQL translation</p>
+          <span className="chip st-executed">
+            <Icon name="check" />6 customers
+          </span>
+        </div>
+        <SqlBlock home sql={sql} />
+        <div
+          className="example-bars"
+          role="img"
+          aria-label={counts
+            .map(
+              (row) =>
+                `${row.state}: ${metric === 'count' ? row.count + ' customers' : ((row.count / sampleCustomers.length) * 100).toFixed(1) + '%'}`,
+            )
+            .join(', ')}
+        >
+          {counts.map((row) => (
+            <div className="example-bar" key={row.state} aria-hidden="true">
+              <span>{row.state}</span>
+              <i>
+                <b
+                  style={{
+                    width: `${(row.count / (metric === 'count' ? Math.max(...counts.map((item) => item.count)) : sampleCustomers.length)) * 100}%`,
+                  }}
+                />
+              </i>
+              <strong>
+                {metric === 'count'
+                  ? row.count
+                  : ((row.count / sampleCustomers.length) * 100).toFixed(1) + '%'}
+              </strong>
+            </div>
+          ))}
         </div>
       </div>
     </article>
   );
 }
-export function HomeExamples() {
+function ChangeExample() {
   return (
-    <section className="home-section home-examples dark-surface" id="ask" aria-labelledby="ask-h">
+    <article className="compact-example" aria-labelledby="change-h">
+      <div className="example-input">
+        <div className="example-stat">
+          <strong>1</strong>
+          <span>change, always your decision</span>
+        </div>
+        <h3 id="change-h">Move things forward.</h3>
+        <p>Preview a change, then approve or decline it.</p>
+        <span className="example-change-note">
+          <Icon name="check" />
+          Changes wait for your OK
+        </span>
+        <p className="demo-label">Your request</p>
+        <p className="example-request">{sampleUpdate.request}</p>
+      </div>
+      <div className="example-output dark-surface">
+        <HomeApproval compact />
+      </div>
+    </article>
+  );
+}
+const options = [
+  { label: 'Look up', icon: 'search', content: LookupExample },
+  { label: 'Summarize', icon: 'layers', content: SummaryExample },
+  { label: 'Make changes', icon: 'check', content: ChangeExample },
+];
+export function HomeExamples() {
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [reduced, setReduced] = useState(
+    () => matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
+  useEffect(() => {
+    const media = matchMedia('(prefers-reduced-motion: reduce)');
+    const changed = () => setReduced(media.matches);
+    media.addEventListener('change', changed);
+    return () => media.removeEventListener('change', changed);
+  }, []);
+  const running = !paused && !hovered && !focused && !reduced;
+  useEffect(() => {
+    if (!running) return;
+    const timer = setTimeout(() => setActive((value) => (value + 1) % options.length), 8000);
+    return () => clearTimeout(timer);
+  }, [active, running]);
+  const refs = useRef([]);
+  function onKey(event, index) {
+    let next;
+    if (event.key === 'ArrowRight') next = (index + 1) % options.length;
+    if (event.key === 'ArrowLeft') next = (index - 1 + options.length) % options.length;
+    if (event.key === 'Home') next = 0;
+    if (event.key === 'End') next = options.length - 1;
+    if (next !== undefined) {
+      event.preventDefault();
+      setPaused(true);
+      setActive(next);
+      refs.current[next]?.focus();
+    }
+  }
+  return (
+    <section className="home-section home-examples" id="ask" aria-labelledby="ask-h">
       <div className="wrap">
         <div className="section-heading centered">
           <p className="eyebrow">What you can ask</p>
           <h2 id="ask-h">
-            Your words in.
-            <br />
-            <em>SQL and rows</em> out.
+            See what your data <em>can tell you.</em>
           </h2>
-          <p>
-            Look things up, summarize, or make changes.
-            <br />
-            Every request shows its SQL.
-          </p>
+          <p>Try a request. Check the SQL. See what happens.</p>
         </div>
-        <div className="home-example-grid">
-          <LookupExample />
-          <SummaryExample />
-          <article className="example-card change-card" aria-labelledby="change-h">
-            <div className="example-card-top">
-              <span className="example-icon">
-                <Icon name="check" />
-              </span>
-              <span>Make changes</span>
+        <div
+          className="example-carousel"
+          onFocusCapture={(event) => setFocused(!event.target.closest('.example-playback'))}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
+          }}
+        >
+          <div className="example-selector">
+            {!reduced && (
+              <button
+                className="example-playback"
+                type="button"
+                aria-label={paused ? 'Resume example slideshow' : 'Pause example slideshow'}
+                aria-pressed={paused}
+                onClick={() => setPaused((value) => !value)}
+              >
+                <Icon name={paused ? 'play' : 'pause'} />
+              </button>
+            )}
+            <div className="example-tabs" role="tablist" aria-label="Try a sample request">
+              {options.map((option, index) => (
+                <button
+                  key={option.label}
+                  id={'example-tab-' + index}
+                  ref={(node) => {
+                    refs.current[index] = node;
+                  }}
+                  type="button"
+                  role="tab"
+                  aria-selected={active === index}
+                  aria-controls={'example-panel-' + index}
+                  tabIndex={active === index ? 0 : -1}
+                  onClick={() => {
+                    setPaused(true);
+                    setActive(index);
+                  }}
+                  onKeyDown={(event) => onKey(event, index)}
+                >
+                  <Icon name={option.icon} />
+                  {option.label}
+                  {active === index && (
+                    <span
+                      key={active + '-' + running}
+                      className="example-progress"
+                      data-running={running}
+                      aria-hidden="true"
+                    />
+                  )}
+                </button>
+              ))}
             </div>
-            <h3 id="change-h">Move things forward.</h3>
-            <p>
-              Add a record, update a detail or shape a table. Review the SQL and give it the
-              go-ahead.
-            </p>
-            <div className="example-playground">
-              <HomeApproval />
-            </div>
-          </article>
+          </div>
+          <div
+            className="example-stage"
+            aria-live={running ? 'off' : 'polite'}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+          >
+            {options.map(({ content: Content }, index) => (
+              <div
+                key={index}
+                id={'example-panel-' + index}
+                role="tabpanel"
+                aria-labelledby={'example-tab-' + index}
+                hidden={active !== index}
+                tabIndex="0"
+              >
+                <Content />
+              </div>
+            ))}
+          </div>
         </div>
-        <p className="examples-disclaimer">
-          Interactive examples · 6 sample customers · No connection to your database
-        </p>
+        <p className="examples-disclaimer">Interactive sample · No real database is changed</p>
       </div>
     </section>
   );
