@@ -30,6 +30,7 @@ class DeploymentVerificationTests(unittest.TestCase):
             "/assets/app.js": (b"console.log('ready');", "text/javascript"),
             "/assets/app.css": (b"body { color: navy; }", "text/css"),
             "/healthz": (b'{"status":"ok"}', "application/json"),
+            "/api/auth/providers": (b'{"microsoft":{"enabled":false}}', "application/json"),
             "/api/auth/session": (b'{"user":null}', "application/json; charset=utf-8"),
         }
 
@@ -102,6 +103,42 @@ class DeploymentVerificationTests(unittest.TestCase):
                     patch.object(verify_cloud, "urlopen", side_effect=self.fetch(resources)), \
                     self.assertRaises(ValueError):
                 verify_cloud.check_deployment(ORIGIN)
+
+    def test_public_provider_discovery_accepts_enabled_and_disabled_without_authentication(self):
+        for enabled in (False, True):
+            resources = self.resources()
+            resources["/api/auth/providers"] = (json.dumps({"microsoft": {"enabled": enabled}}).encode(),
+                                                 "application/json")
+            with self.subTest(enabled=enabled), \
+                    patch.object(verify_cloud, "urlopen", side_effect=self.fetch(resources)) as request:
+                verify_cloud.check_deployment(ORIGIN)
+            self.assertIn(ORIGIN + "/api/auth/providers", [call.args[0] for call in request.call_args_list])
+
+    def test_missing_or_nonboolean_provider_discovery_is_rejected_before_session_check(self):
+        for value in (None, [], {}, {"microsoft": None}, {"microsoft": {}},
+                      {"microsoft": {"enabled": "false"}}, {"microsoft": {"enabled": 0}}):
+            resources = self.resources()
+            resources["/api/auth/providers"] = (json.dumps(value).encode(), "application/json")
+            with self.subTest(value=value), \
+                    patch.object(verify_cloud, "urlopen", side_effect=self.fetch(resources)) as request, \
+                    self.assertRaisesRegex(ValueError, "public sign-in provider check failed"):
+                verify_cloud.check_deployment(ORIGIN)
+            self.assertNotIn(ORIGIN + "/api/auth/session", [call.args[0] for call in request.call_args_list])
+
+    def test_provider_discovery_requiring_login_fails_deployment_check(self):
+        resources = self.resources()
+        fetch = self.fetch(resources)
+
+        def require_provider_login(url, **kwargs):
+            if url == ORIGIN + "/api/auth/providers":
+                raise HTTPError(url, 401, "Log in to continue.", {}, None)
+            return fetch(url, **kwargs)
+
+        with patch.object(verify_cloud, "urlopen", side_effect=require_provider_login) as request, \
+                self.assertRaises(HTTPError) as caught:
+            verify_cloud.check_deployment(ORIGIN)
+        self.assertEqual(caught.exception.code, 401)
+        self.assertNotIn(ORIGIN + "/api/auth/session", [call.args[0] for call in request.call_args_list])
 
     def test_invalid_origin_is_rejected_before_any_request(self):
         with patch.object(verify_cloud, "urlopen") as request:
