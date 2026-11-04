@@ -1,0 +1,193 @@
+/* Shared interaction polish. Keep layout, scrolling and table rows stationary. */
+:is(.home-page, .faq-page, .workspace-page) {
+  transition:
+    background-color var(--motion-normal) var(--ease-out),
+    color var(--motion-normal) var(--ease-out);
+}
+
+:is(.home-page, .faq-page, .workspace-page)
+  :is(
+    .btn,
+    .icon-btn,
+    .icon-button,
+    .text-button,
+    .user-menu,
+    .copy,
+    .copy-sql,
+    input,
+    select,
+    textarea,
+    summary,
+    .nav a,
+    .nav button,
+    .tabs button,
+    .view-tabs button,
+    .auth-switch a,
+    .database-modes > label,
+    .result-view button,
+    .chips button,
+    .clarification-suggestions button,
+    .saved-database,
+    .user-menu-panel a,
+    .user-menu-panel button
+  ) {
+  transition:
+    color var(--motion-fast) var(--ease-out),
+    background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-normal) var(--ease-out),
+    opacity var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+
+:is(.home-page, .faq-page, .workspace-page)
+  :is(
+    .top,
+    .stage,
+    .gate-example,
+    .sqlblock,
+    .ask,
+    .sql-editor,
+    .composer,
+    .saved-database-entry,
+    .faq-group,
+    .search
+  ) {
+  transition:
+    background-color var(--motion-normal) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-normal) var(--ease-out);
+}
+
+/* Decoration stays quiet; controls have a stronger, independently readable edge. */
+.workspace-page input:not([type='checkbox']):not([type='radio']),
+.workspace-page select,
+.workspace-page textarea,
+.faq-page .search,
+.workspace-page .sql-editor,
+.workspace-page .ask {
+  border-color: var(--field-border, var(--control-border));
+}
+.workspace-page .ask textarea {
+  border: 0;
+}
+.workspace-page :is(input, select, textarea):focus-visible,
+.workspace-page .sql-editor:focus-within,
+.workspace-page .ask:focus-within {
+  --field-border: var(--lapis);
+}
+.workspace-page .ask:has(textarea[aria-invalid='true']) {
+  --field-border: var(--remove);
+}
+.workspace-page :is(input, select, textarea)[aria-invalid='true'] {
+  --field-border: var(--remove);
+}
+.workspace-page .saved-database-entry:focus-within {
+  outline: 2px solid var(--lapis);
+  outline-offset: 3px;
+}
+.workspace-page .saved-database-entry .saved-database:focus-visible {
+  outline-offset: -3px;
+}
+
+:is(.home-page, .faq-page, .workspace-page) :is(button, .btn):disabled:not([aria-current='true']),
+:is(.home-page, .faq-page, .workspace-page)
+  :is(button, .btn):disabled:not([aria-current='true']):is(:hover, :active) {
+  opacity: 1;
+  color: var(--ink-soft);
+  background: color-mix(in srgb, var(--ink-soft) 8%, var(--paper));
+  border-color: var(--rule);
+  box-shadow: none;
+  filter: none;
+  cursor: not-allowed;
+}
+
+.home-page .stage,
+.workspace-page .gate-example {
+  box-shadow: var(--shadow-raised);
+}
+.workspace-page .user-menu-panel {
+  box-shadow: var(--shadow-floating);
+  transform-origin: top right;
+  animation: surface-enter var(--motion-normal) var(--ease-out) both;
+}
+.workspace-page dialog {
+  border-radius: 16px;
+  box-shadow: var(--shadow-floating);
+}
+.workspace-page dialog[open] {
+  animation: surface-enter var(--motion-normal) var(--ease-out) both;
+}
+.workspace-page dialog::backdrop {
+  background: #0e142499;
+  backdrop-filter: blur(4px);
+  animation: backdrop-enter var(--motion-fast) ease-out both;
+}
+.workspace-page .sqlblock:focus-within .copy-sql {
+  opacity: 1;
+}
+.workspace-page .tw td,
+.home-page .rt td {
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+.workspace-page .tw tbody tr:is(:hover, :focus-within) td {
+  background: color-mix(in srgb, var(--lapis-wash) 65%, var(--paper));
+}
+.workspace-page .tw th {
+  box-shadow: inset 0 -1px var(--rule);
+}
+.faq-page summary span::after {
+  transition: transform var(--motion-fast) var(--ease-out);
+}
+.faq-page details[open] .answer {
+  animation: backdrop-enter var(--motion-normal) ease-out both;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :is(.home-page, .faq-page, .workspace-page)
+    :is(.btn-primary, .btn.pri, .btn.primary):not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--lapis) 22%, transparent);
+  }
+}
+:is(.home-page, .faq-page, .workspace-page) .btn:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+@keyframes surface-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-normal: 0ms;
+  }
+  :is(.home-page, .faq-page, .workspace-page) .btn {
+    transform: none !important;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :is(.home-page, .faq-page, .workspace-page) :is(.top, .composer),
+  .workspace-page dialog::backdrop {
+    backdrop-filter: none;
+  }
+  :is(.home-page, .faq-page, .workspace-page) :is(.top, .composer) {
+    background: var(--chalk);
+  }
+}

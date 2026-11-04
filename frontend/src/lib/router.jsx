@@ -30,7 +30,8 @@ export function Router({ children }) {
         target?.scrollIntoView();
         if (target?.hasAttribute('tabindex')) target.focus({ preventScroll: true });
       });
-    else window.scrollTo(0, 0);
+    // New pages start immediately at the top; smooth scrolling is for in-page links.
+    else window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [route]);
   return (
     <Context.Provider value={{ route, navigate, pathname: route.split(/[?#]/)[0] }}>

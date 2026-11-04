@@ -6,4 +6,5 @@ import './styles/home.css';
 import './styles/faq.css';
 import './styles/workspace.css';
 import './styles/usability.css';
+import './styles/interactions.css';
 createRoot(document.getElementById('root')).render(<App />);
