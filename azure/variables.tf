@@ -52,6 +52,43 @@ variable "gemini_model" {
   default = "gemini-3.5-flash-lite"
 }
 
+variable "microsoft_client_id" {
+  type        = string
+  default     = ""
+  description = "Optional Microsoft sign-in application ID. This is separate from the Terraform and DevOps identities."
+  validation {
+    condition     = var.microsoft_client_id == "" || can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", var.microsoft_client_id))
+    error_message = "Use the Microsoft sign-in application's UUID, or leave it empty to disable sign-in."
+  }
+}
+
+variable "microsoft_client_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Optional Microsoft sign-in client secret value. Supply through a sensitive workspace variable; it is stored in private Terraform state and Azure app settings."
+}
+
+variable "microsoft_tenant" {
+  type        = string
+  default     = "common"
+  description = "common supports personal and work/school Microsoft accounts. Use a tenant UUID to restrict sign-in to one directory. Match the app registration's supported account types."
+  validation {
+    condition     = var.microsoft_tenant == "common" || can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", var.microsoft_tenant))
+    error_message = "Use common or a Microsoft Entra tenant UUID."
+  }
+}
+
+variable "microsoft_redirect_uri" {
+  type        = string
+  default     = ""
+  description = "Exact registered Web callback on the hosted public origin, for example https://data-genie.space/api/auth/microsoft/callback. Leave empty when Microsoft sign-in is disabled."
+  validation {
+    condition     = var.microsoft_redirect_uri == "" || can(regex("^https://[a-z0-9]([a-z0-9.-]*[a-z0-9])?/api/auth/microsoft/callback$", var.microsoft_redirect_uri))
+    error_message = "Use an HTTPS URL ending in /api/auth/microsoft/callback, without a query or fragment."
+  }
+}
+
 variable "public_url" {
   type        = string
   default     = ""

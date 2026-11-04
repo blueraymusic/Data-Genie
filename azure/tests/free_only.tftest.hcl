@@ -105,3 +105,28 @@ run "invalid_public_origin" {
   variables { public_url = "http://data-genie.space/path" }
   expect_failures = [var.public_url]
 }
+
+run "microsoft_sign_in_settings" {
+  command = plan
+  variables {
+    public_url             = "https://data-genie.space"
+    microsoft_client_id    = "00000000-0000-0000-0000-000000000002"
+    microsoft_redirect_uri = "https://data-genie.space/api/auth/microsoft/callback"
+  }
+  assert {
+    condition     = azurerm_linux_web_app.app.app_settings["GENIE_MICROSOFT_CLIENT_ID"] == var.microsoft_client_id && azurerm_linux_web_app.app.app_settings["GENIE_MICROSOFT_TENANT"] == "common" && azurerm_linux_web_app.app.app_settings["GENIE_MICROSOFT_REDIRECT_URI"] == var.microsoft_redirect_uri
+    error_message = "Reviewed Microsoft sign-in settings must survive infrastructure applies."
+  }
+}
+
+run "invalid_microsoft_tenant" {
+  command = plan
+  variables { microsoft_tenant = "https://untrusted.example/tenant" }
+  expect_failures = [var.microsoft_tenant]
+}
+
+run "invalid_microsoft_callback" {
+  command = plan
+  variables { microsoft_redirect_uri = "http://data-genie.space/api/auth/microsoft/callback" }
+  expect_failures = [var.microsoft_redirect_uri]
+}

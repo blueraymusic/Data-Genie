@@ -107,6 +107,10 @@ resource "azurerm_linux_web_app" "app" {
     GEMINI_API_KEY                 = var.gemini_api_key
     GEMINI_MODEL                   = var.gemini_model
     GENIE_PUBLIC_URL               = var.public_url
+    GENIE_MICROSOFT_CLIENT_ID      = var.microsoft_client_id
+    GENIE_MICROSOFT_CLIENT_SECRET  = var.microsoft_client_secret
+    GENIE_MICROSOFT_TENANT         = var.microsoft_tenant
+    GENIE_MICROSOFT_REDIRECT_URI   = var.microsoft_redirect_uri
   }
   tags = local.tags
 }

@@ -19,6 +19,7 @@ import errno
 from . import workbench
 from . import settings
 from . import authentication
+from . import microsoft_auth
 from .connections import ConnectionFailure
 
 
@@ -45,6 +46,11 @@ STATIC_FILES = {
 
 
 class Handler(BaseHTTPRequestHandler):
+    def log_request(self, code="-", size="-"):
+        # OAuth authorization codes and state must not enter local request logs.
+        self.log_message('"%s %s %s" %s %s', self.command, urlparse(self.path).path,
+                         self.request_version, str(code), str(size))
+
     def send_body(self, body, content_type, status=200, filename=None, headers=None):
         self.send_response(status)
         for name, value in (headers or {}).items():
@@ -55,6 +61,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         if getattr(self, "response_cookie", None):
             self.send_header("Set-Cookie", self.response_cookie)
+        for cookie in getattr(self, "response_cookies", []):
+            self.send_header("Set-Cookie", cookie)
         if filename:
             safe = str(filename).replace('"', "_").replace("\r", "").replace("\n", "")
             safe = safe.encode("ascii", "replace").decode("ascii")
@@ -91,10 +99,13 @@ class Handler(BaseHTTPRequestHandler):
             return False
 
     def login_token(self):
+        return self.cookie_value(authentication.COOKIE_NAME)
+
+    def cookie_value(self, name):
         cookie = SimpleCookie()
         try:
             cookie.load(self.headers.get("Cookie", ""))
-            return cookie[authentication.COOKIE_NAME].value if authentication.COOKIE_NAME in cookie else ""
+            return cookie[name].value if name in cookie else ""
         except Exception:
             return ""
 
@@ -106,6 +117,90 @@ class Handler(BaseHTTPRequestHandler):
                                 f"Max-Age={authentication.LOGIN_LIFETIME if token else 0}")
         if settings.public_url():
             self.response_cookie += "; Secure"
+
+    def set_microsoft_cookie(self, token):
+        value = (f"{microsoft_auth.COOKIE_NAME}={token}; Path=/api/auth/microsoft; HttpOnly; SameSite=Lax; "
+                 f"Max-Age={microsoft_auth.FLOW_LIFETIME if token else 0}")
+        if settings.public_url():
+            value += "; Secure"
+        self.response_cookies = [value]
+
+    def redirect(self, location):
+        return self.send_body(b"", "text/plain; charset=utf-8", 303, headers={"Location": location,
+                              "Referrer-Policy": "no-referrer"})
+
+    def microsoft_config(self):
+        config = microsoft_auth.configuration()
+        if config and urlparse(config["redirect_uri"]).netloc.lower() == self.headers.get("Host", "").lower():
+            return config
+        return None
+
+    def microsoft_get(self, path, query):
+        config = self.microsoft_config()
+        record = None
+        try:
+            if not config:
+                raise microsoft_auth.MicrosoftError("unavailable")
+            if len(self.path) > 16 * 1024 or any(len(values) != 1 for values in query.values()):
+                raise microsoft_auth.MicrosoftError()
+            browser = self.cookie_value(microsoft_auth.COOKIE_NAME)
+            if path.endswith("/start"):
+                intent = query.get("intent", ["signin"])[0]
+                if intent not in {"signin", "link"}:
+                    raise microsoft_auth.MicrosoftError()
+                with microsoft_auth.durable():
+                    self.accounts()._reserve_attempt(self.client_address[0], "microsoft")
+                    store = microsoft_auth.FlowStore(workbench.get_repository())
+                    if intent == "link":
+                        record = store.consume(browser, grant=True)
+                        store.active_link(record)
+                        # This same-origin hop must still be made by the login
+                        # that confirmed its password, not a replacement login.
+                        if record["login_hash"] != authentication.token_hash(self.login_token()):
+                            raise microsoft_auth.MicrosoftError("link_expired")
+                flow = microsoft_auth.begin(config)  # Network outside cloud lock.
+                browser = microsoft_auth.new_browser_token()
+                with microsoft_auth.durable():
+                    store = microsoft_auth.FlowStore(workbench.get_repository())
+                    if record:
+                        store.active_link(record)
+                    store.save(browser, flow, intent=intent,
+                               account_id=record["account_id"] if record else None,
+                               login_hash=record["login_hash"] if record else (
+                                   authentication.token_hash(self.login_token()) if self.login_token() else None))
+                self.set_microsoft_cookie(browser)
+                return self.redirect(flow["auth_uri"])
+            with microsoft_auth.durable():
+                record = microsoft_auth.FlowStore(workbench.get_repository()).consume(
+                    browser, state=query.get("state", [None])[0])
+            identity = microsoft_auth.finish(config, record["payload"], {key: values[0] for key, values in query.items()})
+            with microsoft_auth.durable():
+                accounts = self.accounts()
+                if record["intent"] == "link":
+                    microsoft_auth.FlowStore(workbench.get_repository()).active_link(record)
+                    user = accounts.link_microsoft(record["account_id"], identity)
+                    # Replace the login that granted this link, even when the
+                    # Strict app cookie is absent on the cross-site callback.
+                    with workbench.get_repository()._connection(write=True) as connection:
+                        connection.execute("DELETE FROM browser_logins WHERE token_hash=?", (record["login_hash"],))
+                else:
+                    user = accounts.microsoft_login(identity, self.client_address[0])
+                    if record["login_hash"]:
+                        with workbench.get_repository()._connection(write=True) as connection:
+                            connection.execute("DELETE FROM browser_logins WHERE token_hash=?", (record["login_hash"],))
+                token = accounts.issue_login(user["account_id"], self.login_token())
+            self.set_login_cookie(token)
+            self.set_microsoft_cookie("")
+            return self.redirect("/account?microsoft=linked" if record["intent"] == "link" else "/databases")
+        except authentication.MicrosoftAccountError as error:
+            code = {"identity_in_use": "already_linked", "invalid_identity": "invalid"}.get(error.code, error.code)
+        except microsoft_auth.MicrosoftError as error:
+            code = error.code
+        except authentication.TooManyAttempts:
+            code = "rate_limited"
+        self.set_microsoft_cookie("")
+        target = "/account" if record and record["intent"] in {"link", "link_grant"} else "/signin"
+        return self.redirect(target + "?microsoft_error=" + code)
 
     def require_csrf(self):
         expected = authentication.csrf_token(self.login_token())
@@ -130,6 +225,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self.response_cookie = None
+        self.response_cookies = []
         # Keep old App Service bookmarks usable without allowing API writes on
         # a second origin. Only Azure's own configured hostname may redirect.
         public = settings.public_url()
@@ -162,6 +258,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_body((ROOT / name).read_bytes(), content_type)
             if not parsed.path.startswith("/api/"):
                 return self.json({"error": "Not found."}, 404)
+            if parsed.path == "/api/auth/providers":
+                return self.json({"microsoft": {"enabled": bool(self.microsoft_config())}})
+            if parsed.path in {"/api/auth/microsoft/start", microsoft_auth.CALLBACK_PATH}:
+                return self.microsoft_get(parsed.path, query)
             if parsed.path == "/api/auth/session":
                 try:
                     user = self.account()
@@ -237,6 +337,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         self.response_cookie = None
+        self.response_cookies = []
         if not self.local_host():
             return self.json({"error": "Use the local Data Genie address."}, 403)
         parsed = urlparse(self.path)
@@ -246,6 +347,22 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("Sec-Fetch-Site") == "cross-site" or (origin and origin != expected):
             return self.json({"error": "Cross-origin requests are blocked."}, 403)
         try:
+            if parsed.path == "/api/auth/microsoft/link":
+                if not self.microsoft_config():
+                    return self.json({"error": "Microsoft sign-in is unavailable right now."}, 503)
+                if not self.headers.get("Content-Type", "").startswith("application/json"):
+                    raise ValueError("Send account requests as JSON.")
+                payload = self.read_json(16 * 1024)
+                with microsoft_auth.durable():
+                    user = self.account()
+                    self.require_csrf()
+                    self.accounts().verify_password(user["account_id"], payload.get("password"), self.client_address[0])
+                    browser = microsoft_auth.new_browser_token()
+                    microsoft_auth.FlowStore(workbench.get_repository()).save(
+                        browser, {}, intent="link_grant", account_id=user["account_id"],
+                        login_hash=authentication.token_hash(self.login_token()))
+                self.set_microsoft_cookie(browser)
+                return self.json({"url": "/api/auth/microsoft/start?intent=link"})
             if parsed.path in {"/api/auth/register", "/api/auth/login"}:
                 accounts = self.accounts()
                 try:

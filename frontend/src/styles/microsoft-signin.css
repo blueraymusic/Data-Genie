@@ -1,0 +1,52 @@
+.workspace-page .microsoft-entry {
+  margin: 0 0 20px;
+}
+.workspace-page .microsoft-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 46px;
+  width: 100%;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+}
+.workspace-page .microsoft-button:hover {
+  border-color: var(--lapis);
+  background: var(--lapis-wash);
+}
+.workspace-page .microsoft-button[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: wait;
+}
+.workspace-page .microsoft-mark {
+  flex: none;
+}
+.workspace-page .auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+.workspace-page .auth-divider::before,
+.workspace-page .auth-divider::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: var(--rule);
+}
+.workspace-page .microsoft-account-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.workspace-page .microsoft-link-form .microsoft-button {
+  width: auto;
+}
+.workspace-page .microsoft-link-form p {
+  max-width: 58ch;
+}

@@ -579,6 +579,28 @@ export const faqGroups = [
         ),
       },
       {
+        question: 'Can I log in with Microsoft?',
+        search:
+          'When enabled on this installation, Continue with Microsoft appears on Log in and Sign up. It supports Microsoft accounts alongside Data Genie passwords. To connect Microsoft to an existing password account, log in first and use Connect Microsoft in Account & preferences. A matching email does not automatically connect accounts. Microsoft-only accounts manage their password with Microsoft. Logging out of Data Genie does not log you out of Microsoft everywhere.',
+        answer: (
+          <>
+            <p>
+              When enabled, <strong>Continue with Microsoft</strong> appears on Log in and Sign up.
+              Email and password login stays available.
+            </p>
+            <p>
+              To add it to an existing account, log in with your Data Genie password, then choose{' '}
+              <strong>Connect Microsoft</strong> in <strong>Account &amp; preferences</strong>. A
+              matching email never connects accounts automatically.
+            </p>
+            <p>
+              Microsoft-only accounts manage their password with Microsoft. Signing out of Data
+              Genie ends your Data Genie login; it does not sign you out of Microsoft everywhere.
+            </p>
+          </>
+        ),
+      },
+      {
         question: 'How are my account and password stored?',
         search:
           'Your name, email, password hash, and login records are stored in this Data Genie installation, separate from the databases you query. Passwords are salted and hashed; the app does not store the original password. Log in to access your own databases and history. You can change your password in Account & preferences. Other browser logins are signed out when you do. Login expires after 30 minutes of inactivity or 12 hours in total. There is no email-based password recovery in this version. History from before accounts were introduced stays on disk and is not automatically assigned by matching an email.',

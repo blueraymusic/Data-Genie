@@ -9,6 +9,8 @@ timeout = 180
 graceful_timeout = 180
 accesslog = "-"
 errorlog = "-"
+# Query strings can contain single-use OAuth authorization codes.
+access_log_format = '%(h)s %(t)s "%(m)s %(U)s %(H)s" %(s)s %(b)s'
 # This controls forwarded scheme headers, not REMOTE_ADDR. The WSGI adapter
 # uses Azure's overwritten Client-IP header only in verified App Service mode.
 forwarded_allow_ips = "127.0.0.1,::1"

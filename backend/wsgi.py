@@ -2,7 +2,7 @@
 from email.message import Message
 from http import HTTPStatus
 from io import BytesIO
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from .server import Handler
 from . import cloud_state
@@ -29,6 +29,7 @@ class Request(Handler):
         self.status = 200
         self.response_headers = []
         self.response_cookie = None
+        self.response_cookies = []
 
     def send_response(self, code, message=None):
         self.status = code
@@ -62,7 +63,13 @@ def application(environ, start_response):
             request.headers.get("Sec-Fetch-Site") == "cross-site"
             or (origin and origin != settings.public_url())
         )
-        if hosted and request.local_host() and not cross_origin and request.path.startswith("/api/"):
+        # OAuth exchanges can wait on Microsoft. Those handlers explicitly split
+        # their own short durable operations so other users aren't locked out.
+        manages_transaction = (request.command, urlsplit(request.path).path) in {
+            ("GET", "/api/auth/providers"), ("GET", "/api/auth/microsoft/start"),
+            ("GET", "/api/auth/microsoft/callback"), ("POST", "/api/auth/microsoft/link"),
+        }
+        if hosted and request.local_host() and not cross_origin and request.path.startswith("/api/") and not manages_transaction:
             with cloud_state.transaction():
                 request.run()
         else:
@@ -71,6 +78,7 @@ def application(environ, start_response):
         request.wfile = BytesIO()
         request.response_headers = []
         request.response_cookie = None
+        request.response_cookies = []
         request.json({"error": str(error), "code": "cloud_storage_unavailable",
                       "retry_safe": error.retry_safe,
                       "recovery": "retry" if error.retry_safe else "check_history"}, 503)
@@ -78,12 +86,14 @@ def application(environ, start_response):
         request.wfile = BytesIO()
         request.response_headers = []
         request.response_cookie = None
+        request.response_cookies = []
         request.json({"error": "The request could not be completed. Check History before retrying a change."}, 500)
     headers = request.response_headers + [
         ("X-Frame-Options", "DENY"),
-        ("Referrer-Policy", "same-origin"),
         ("Permissions-Policy", "camera=(), microphone=(), geolocation=()"),
     ]
+    if not any(name.lower() == "referrer-policy" for name, _ in headers):
+        headers.append(("Referrer-Policy", "same-origin"))
     if hosted:
         headers.append(("Strict-Transport-Security", "max-age=31536000"))
     start_response(str(request.status) + " " + HTTPStatus(request.status).phrase, headers)

@@ -4,7 +4,7 @@ Target: HCP Terraform organization `blueray321`, project `Blueray`, workspace `D
 
 The configured deployment uses **France Central**, app `data-genie-blueray321`, one **Linux B1** instance with Always On enabled, and SQL server `data-genie-blueray321-fr-sql` / database `data-genie-state`. The site is [data-genie.space](https://data-genie.space/). The [manual deployment pipeline](https://dev.azure.com/as4dc/blueray/_build?definitionId=1) is in `as4dc/blueray`; select `appServiceSku=B1` when running it.
 
-The workspace already has the four OIDC environment variables listed below and sensitive `TF_VAR_gemini_api_key`. Its Terraform-category values are `location=francecentral`, `app_service_sku=B1`, `sql_server_name=data-genie-blueray321-fr-sql`, and `public_url=https://data-genie.space`. No client secret or additional AI variable is needed. Future hosting changes still require a reviewed plan.
+The workspace already has the four deployment OIDC environment variables listed below and sensitive `TF_VAR_gemini_api_key`. Its Terraform-category values are `location=francecentral`, `app_service_sku=B1`, `sql_server_name=data-genie-blueray321-fr-sql`, and `public_url=https://data-genie.space`. The deployment identity needs no client secret. Optional [Microsoft user sign-in](microsoft-sign-in.md) uses a separate app registration and server secret. Future hosting changes still require a reviewed plan.
 
 This is a small development/demo deployment. Hosting defaults to **App Service Linux F1**, with **Azure SQL's free offer** for durable state. An explicitly selected **single Linux B1 instance** can use student credit when F1 cannot run the app. It does not create a VM, registry, Key Vault or paid logging workspace. There is no automatic tier upgrade or paid SQL fallback.
 
@@ -69,6 +69,10 @@ Optional **Terraform-category variables**:
 | `sql_server_name` | App name plus `-sql` | Optional globally unique name if an earlier failed deployment reserved the original name in another region. Deployment reads this server from the app's configured SQL host. |
 | `gemini_api_key` | Empty | Sensitive. Without a key, use SQL or Structure; AI billing/free quotas are separate. |
 | `gemini_model` | `gemini-3.5-flash-lite` | Only used when a key is supplied. |
+| `microsoft_client_id` | Empty | Optional Microsoft sign-in application ID; separate from deployment identities. |
+| `microsoft_client_secret` | Empty | Sensitive. Client secret value for the sign-in registration. |
+| `microsoft_tenant` | `common` | Personal and work/school accounts, or use a specific tenant UUID. |
+| `microsoft_redirect_uri` | Empty | Exact registered Web callback, `https://data-genie.space/api/auth/microsoft/callback`. |
 
 Confirm the plan contains only the selected F1 or B1 Linux service plan with one instance, SQL logical server, free SQL database, web app, and generated secrets. The database uses the ARM API through AzAPI because AzureRM's database resource does not expose the free-limit safeguards. The API must report both safeguards back. The database has deletion protection. The hosting plan’s original Azure name ends in `-free`; it is retained for in-place upgrades, so check the SKU itself when reviewing cost.
 

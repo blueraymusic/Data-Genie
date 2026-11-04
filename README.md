@@ -66,6 +66,8 @@ Copy `.env.example` to `.env` and add your `GEMINI_API_KEY`. The model is config
 
 Data Genie sends the configured AI service your database structure and recent conversation context, including request text, SQL, and clarifications. Result rows are not sent to the model.
 
+Microsoft sign-in is also optional. See the [Microsoft sign-in setup](docs/microsoft-sign-in.md) to add **Continue with Microsoft** alongside the existing password accounts.
+
 ## Connect PostgreSQL
 
 With Python 3.10+, install the optional connector in a virtual environment:

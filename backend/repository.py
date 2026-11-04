@@ -39,6 +39,24 @@ CREATE TABLE IF NOT EXISTS browser_logins (
     last_seen INTEGER NOT NULL,
     expires_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS external_identities (
+    provider TEXT NOT NULL CHECK(provider='microsoft'),
+    issuer TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    account_id INTEGER NOT NULL REFERENCES accounts(account_id),
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY(provider,issuer,subject),
+    UNIQUE(account_id,provider)
+);
+CREATE TABLE IF NOT EXISTS microsoft_auth_flows (
+    browser_hash TEXT PRIMARY KEY,
+    state_hash TEXT,
+    payload_json TEXT NOT NULL,
+    intent TEXT NOT NULL CHECK(intent IN ('signin','link_grant','link')),
+    account_id INTEGER REFERENCES accounts(account_id),
+    login_hash TEXT,
+    expires_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS login_attempts (
     attempt_key TEXT PRIMARY KEY,
     started_at INTEGER NOT NULL,
@@ -347,7 +365,8 @@ class Repository:
 
     def start_session(self, first_name, last_name, email, path, name, account_id=None):
         first_name, last_name, email = (str(value or "").strip() for value in (first_name, last_name, email))
-        if not first_name or not last_name or not email or "@" not in email:
+        if (not email or "@" not in email
+                or (account_id is None and (not first_name or not last_name))):
             raise RepositoryError("First name, last name, and a valid email are required.")
         email = email.lower()
         database_path = str(Path(path).expanduser().resolve())

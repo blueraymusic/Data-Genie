@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRouter, Link } from '../lib/router';
 import { AuthShell } from '../components/AuthShell';
+import { MicrosoftSignIn, microsoftError, useMicrosoftSignIn } from '../components/MicrosoftSignIn';
 export default function AuthPage() {
-  const { pathname, navigate } = useRouter(),
+  const { pathname, route, navigate } = useRouter(),
     { authenticate, refresh, error: authError, connectionError } = useAuth();
+  const microsoftEnabled = useMicrosoftSignIn();
   const signup = pathname === '/signup';
   const [show, setShow] = useState(false),
     [busy, setBusy] = useState(false),
@@ -65,6 +67,12 @@ export default function AuthPage() {
           Sign up
         </Link>
       </nav>
+      {microsoftError(route) && (
+        <p className="err" role="alert">
+          {microsoftError(route)}
+        </p>
+      )}
+      {microsoftEnabled && <MicrosoftSignIn disabled={busy || retrying} />}
       <form key={signup ? 'signup' : 'login'} onSubmit={submit}>
         <div className="fields">
           {signup && (

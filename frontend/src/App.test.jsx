@@ -117,12 +117,14 @@ describe('React pages and account flow', () => {
       history.replaceState({}, '', path);
       let reads = 0,
         finishCheck;
-      fetch.mockImplementation(() =>
-        ++reads === 1
-          ? response({ error: 'Cloud storage is starting. Please try again.' }, 503)
-          : new Promise((resolve) => {
-              finishCheck = resolve;
-            }),
+      fetch.mockImplementation((path) =>
+        path === '/api/auth/providers'
+          ? response({ microsoft: { enabled: false } })
+          : ++reads === 1
+            ? response({ error: 'Cloud storage is starting. Please try again.' }, 503)
+            : new Promise((resolve) => {
+                finishCheck = resolve;
+              }),
       );
       const events = userEvent.setup();
       render(<App />);
@@ -164,6 +166,7 @@ describe('React pages and account flow', () => {
       }
       expect(fetch.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
         ['/api/auth/session', 'GET'],
+        ['/api/auth/providers', 'GET'],
         ['/api/auth/session', 'GET'],
       ]);
     },
@@ -172,11 +175,13 @@ describe('React pages and account flow', () => {
   it('keeps the latest connection error when a read-only retry also fails', async () => {
     history.replaceState({}, '', '/signin');
     let reads = 0;
-    fetch.mockImplementation(() =>
-      response(
-        { error: ++reads === 1 ? 'Initial storage error' : 'Storage is still starting' },
-        503,
-      ),
+    fetch.mockImplementation((path) =>
+      path === '/api/auth/providers'
+        ? response({ microsoft: { enabled: false } })
+        : response(
+            { error: ++reads === 1 ? 'Initial storage error' : 'Storage is still starting' },
+            503,
+          ),
     );
     const events = userEvent.setup();
     render(<App />);
@@ -189,7 +194,11 @@ describe('React pages and account flow', () => {
       false,
     );
     expect(screen.getByRole('textbox', { name: 'Email', exact: true }).value).toBe(user.email);
-    expect(fetch.mock.calls.map(([, options]) => options.method)).toEqual(['GET', 'GET']);
+    expect(fetch.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
+      ['/api/auth/session', 'GET'],
+      ['/api/auth/providers', 'GET'],
+      ['/api/auth/session', 'GET'],
+    ]);
   });
 
   it('clears a stale connection error on login and never automatically replays a failed POST', async () => {
@@ -212,6 +221,7 @@ describe('React pages and account flow', () => {
     await events.click(screen.getByRole('button', { name: 'Show password', exact: true }));
     expect(fetch.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
       ['/api/auth/session', 'GET'],
+      ['/api/auth/providers', 'GET'],
       ['/api/auth/login', 'POST'],
     ]);
   });
@@ -237,6 +247,7 @@ describe('React pages and account flow', () => {
     expect(screen.getByLabelText('Password', { exact: true }).value).toBe('a long test passphrase');
     expect(fetch.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
       ['/api/auth/session', 'GET'],
+      ['/api/auth/providers', 'GET'],
       ['/api/auth/login', 'POST'],
       ['/api/auth/session', 'GET'],
     ]);
