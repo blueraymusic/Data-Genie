@@ -44,6 +44,11 @@ CREATE TABLE IF NOT EXISTS login_attempts (
     started_at INTEGER NOT NULL,
     failures INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS auth_rate_limits (
+    bucket_key TEXT PRIMARY KEY,
+    started_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
     first_name TEXT NOT NULL,

@@ -43,8 +43,10 @@ STATIC_FILES = {
 
 
 class Handler(BaseHTTPRequestHandler):
-    def send_body(self, body, content_type, status=200, filename=None):
+    def send_body(self, body, content_type, status=200, filename=None, headers=None):
         self.send_response(status)
+        for name, value in (headers or {}).items():
+            self.send_header(name, value)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("X-Content-Type-Options", "nosniff")
@@ -58,8 +60,8 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def json(self, value, status=200):
-        self.send_body(json.dumps(value, ensure_ascii=False, allow_nan=False).encode(), "application/json; charset=utf-8", status)
+    def json(self, value, status=200, headers=None):
+        self.send_body(json.dumps(value, ensure_ascii=False, allow_nan=False).encode(), "application/json; charset=utf-8", status, headers=headers)
 
     def read_body(self, maximum=MAX_JSON_BYTES):
         length = int(self.headers.get("Content-Length", "0"))
@@ -243,12 +245,17 @@ class Handler(BaseHTTPRequestHandler):
             return self.json({"error": "Cross-origin requests are blocked."}, 403)
         try:
             if parsed.path in {"/api/auth/register", "/api/auth/login"}:
-                if not self.headers.get("Content-Type", "").startswith("application/json"):
-                    raise ValueError("Send account requests as JSON.")
-                payload = self.read_json(16 * 1024)
                 accounts = self.accounts()
+                try:
+                    if not self.headers.get("Content-Type", "").startswith("application/json"):
+                        raise ValueError("Send account requests as JSON.")
+                    payload = self.read_json(16 * 1024)
+                except (ValueError, TypeError):
+                    # Invalid bodies still spend IP capacity without inventing an email key.
+                    accounts._reserve_attempt(self.client_address[0], parsed.path.rsplit("/", 1)[1])
+                    raise
                 if parsed.path.endswith("register"):
-                    user = accounts.register(payload.get("first_name"), payload.get("last_name"), payload.get("email"), payload.get("password"))
+                    user = accounts.register(payload.get("first_name"), payload.get("last_name"), payload.get("email"), payload.get("password"), self.client_address[0])
                 else:
                     user = accounts.login(payload.get("email"), payload.get("password"), self.client_address[0])
                 token = accounts.issue_login(user["account_id"], self.login_token())
@@ -335,7 +342,8 @@ class Handler(BaseHTTPRequestHandler):
         except PermissionError as exc:
             return self.json({"error": str(exc)}, 403)
         except authentication.TooManyAttempts as exc:
-            return self.json({"error": str(exc)}, 429)
+            return self.json({"error": str(exc), "retry_after": exc.retry_after}, 429,
+                             headers={"Retry-After": str(exc.retry_after)})
         except ConnectionFailure as exc:
             return self.json(exc.payload(), exc.status)
         except (ValueError, TypeError, binascii.Error, sqlite3.Error) as exc:

@@ -7,6 +7,7 @@ from urllib.parse import quote
 from .server import Handler
 from . import cloud_state
 from . import settings
+from .client_ip import client_ip
 
 
 class Request(Handler):
@@ -22,7 +23,7 @@ class Request(Handler):
         for name in ("CONTENT_TYPE", "CONTENT_LENGTH"):
             if environ.get(name):
                 self.headers[name.replace("_", "-")] = environ[name]
-        self.client_address = (environ.get("REMOTE_ADDR", "unknown"), 0)
+        self.client_address = (client_ip(environ), 0)
         self.rfile = environ["wsgi.input"]
         self.wfile = BytesIO()
         self.status = 200

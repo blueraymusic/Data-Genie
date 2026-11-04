@@ -9,5 +9,6 @@ timeout = 180
 graceful_timeout = 180
 accesslog = "-"
 errorlog = "-"
-# Do not trust forwarded headers from arbitrary clients.
+# This controls forwarded scheme headers, not REMOTE_ADDR. The WSGI adapter
+# uses Azure's overwritten Client-IP header only in verified App Service mode.
 forwarded_allow_ips = "127.0.0.1,::1"

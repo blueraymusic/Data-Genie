@@ -12,6 +12,8 @@ LOGIN_LIFETIME = 12 * 60 * 60
 IDLE_LIFETIME = 30 * 60
 ATTEMPT_WINDOW = 15 * 60
 MAX_ATTEMPTS = 5
+MAX_LOGIN_IP_ATTEMPTS = 30
+MAX_REGISTER_IP_ATTEMPTS = 5
 COOKIE_NAME = "data_genie_login"
 
 
@@ -20,7 +22,9 @@ class LoginRequired(PermissionError):
 
 
 class TooManyAttempts(ValueError):
-    pass
+    def __init__(self, retry_after):
+        self.retry_after = max(1, int(retry_after))
+        super().__init__("Too many account attempts. Try again in a few minutes.")
 
 
 def password_hash(password):
@@ -63,7 +67,41 @@ class Accounts:
     def __init__(self, repository):
         self.repository = repository
 
-    def register(self, first_name, last_name, email, password):
+    def _reserve_attempt(self, client, action, email=None):
+        """Commit admission before hashing, including invalid/duplicate requests.
+
+        BEGIN IMMEDIATE serializes admission across local threads/processes. The
+        hosted repository is additionally serialized and persisted by cloud_state.
+        An IP budget is never cleared by successful authentication.
+        """
+        now = int(time.time())
+        ip_key = token_hash(action + ":ip:" + client)
+        limit = MAX_REGISTER_IP_ATTEMPTS if action == "register" else MAX_LOGIN_IP_ATTEMPTS
+        retry_after = 0
+        with self.repository._connection(write=True) as connection:
+            connection.execute("DELETE FROM auth_rate_limits WHERE started_at<=?", (now - ATTEMPT_WINDOW,))
+            connection.execute("DELETE FROM login_attempts WHERE started_at<=?", (now - ATTEMPT_WINDOW,))
+            row = connection.execute("SELECT * FROM auth_rate_limits WHERE bucket_key=?", (ip_key,)).fetchone()
+            if row and row["attempts"] >= limit:
+                retry_after = row["started_at"] + ATTEMPT_WINDOW - now
+            else:
+                connection.execute("""INSERT INTO auth_rate_limits(bucket_key,started_at,attempts) VALUES(?,?,1)
+                    ON CONFLICT(bucket_key) DO UPDATE SET attempts=attempts+1""", (ip_key, now))
+                if action == "login" and email is not None:
+                    # Keep the existing hash so already-persisted lockouts remain effective.
+                    pair_key = token_hash(client + ":" + email)
+                    pair = connection.execute("SELECT * FROM login_attempts WHERE attempt_key=?", (pair_key,)).fetchone()
+                    if pair and pair["failures"] >= MAX_ATTEMPTS:
+                        retry_after = pair["started_at"] + ATTEMPT_WINDOW - now
+                    else:
+                        connection.execute("""INSERT INTO login_attempts(attempt_key,started_at,failures) VALUES(?,?,1)
+                            ON CONFLICT(attempt_key) DO UPDATE SET failures=failures+1""", (pair_key, now))
+        # Raise after committing: pair-denied requests still consume their IP budget.
+        if retry_after:
+            raise TooManyAttempts(retry_after)
+
+    def register(self, first_name, last_name, email, password, client="local"):
+        self._reserve_attempt(client, "register")
         names = [str(value or "").strip() for value in (first_name, last_name)]
         email = str(email or "").strip().lower()
         if any(not name or len(name) > 100 for name in names):
@@ -73,7 +111,7 @@ class Accounts:
         encoded = password_hash(password)
         with self.repository._connection(write=True) as connection:
             if connection.execute("SELECT 1 FROM accounts WHERE email=?", (email,)).fetchone():
-                raise ValueError("An account already uses that email. Log in instead.")
+                raise ValueError("Unable to create an account with these details. Try logging in or use different details.")
             cursor = connection.execute("INSERT INTO accounts(first_name,last_name,email,password_hash,created_at) VALUES(?,?,?,?,?)",
                                         (*names, email, encoded, int(time.time())))
             account = connection.execute("SELECT * FROM accounts WHERE account_id=?", (cursor.lastrowid,)).fetchone()
@@ -82,20 +120,13 @@ class Accounts:
     def login(self, email, password, client="local"):
         email = str(email or "").strip().lower()[:254]
         attempt_key = token_hash(client + ":" + email)
-        now = int(time.time())
+        self._reserve_attempt(client, "login", email)
         with self.repository._connection() as connection:
-            attempt = connection.execute("SELECT * FROM login_attempts WHERE attempt_key=?", (attempt_key,)).fetchone()
             account = connection.execute("SELECT * FROM accounts WHERE email=?", (email,)).fetchone()
-        if attempt and attempt["started_at"] > now - ATTEMPT_WINDOW and attempt["failures"] >= MAX_ATTEMPTS:
-            raise TooManyAttempts("Too many failed attempts. Try again in 15 minutes.")
         valid = password_matches(password, account["password_hash"] if account else None)
-        with self.repository._connection(write=True) as connection:
-            connection.execute("DELETE FROM login_attempts WHERE started_at<=?", (now - ATTEMPT_WINDOW,))
-            if valid:
+        if valid:
+            with self.repository._connection(write=True) as connection:
                 connection.execute("DELETE FROM login_attempts WHERE attempt_key=?", (attempt_key,))
-            else:
-                connection.execute("""INSERT INTO login_attempts(attempt_key,started_at,failures) VALUES(?,?,1)
-                    ON CONFLICT(attempt_key) DO UPDATE SET failures=failures+1""", (attempt_key, now))
         if not valid:
             raise LoginRequired("Email or password is incorrect.")
         return public_user(account)

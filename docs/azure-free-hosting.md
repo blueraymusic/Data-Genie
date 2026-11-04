@@ -148,3 +148,11 @@ python scripts/verify_cloud.py https://data-genie.space
 ```
 
 Finish Terraform applies and app-setting or logging changes before starting a code deployment. Those changes can restart Azure's containers and interrupt the remote build. The pipeline waits for publishing with a ten-minute timeout, then uses the public-origin checks above instead of Azure CLI's Linux startup tracker, which can continue polling after the app is already healthy.
+
+## Authentication limits and proxy verification
+
+Auth limits are saved in the same durable repository as accounts: five signup submissions per IP, 30 login submissions per IP across emails, and five failed logins per IP/email pair, each over 15 minutes. Counters are reserved atomically before password work; successful login never clears the IP budget. HTTP 429 includes the remaining window in `Retry-After`.
+
+The WSGI adapter takes the rate-limit identity from Azure's overwritten `Client-IP` header when `GENIE_CLOUD_STATE=azure_sql` and the platform's `WEBSITE_HOSTNAME` identifies App Service. It never uses arbitrary XFF entries. Gunicorn's `REMOTE_ADDR` is the proxy peer; its forwarded-header trust setting does not rewrite that value. Keep direct App Service ingress for this trust boundary. See [Azure's maintained header documentation](https://github.com/Azure/app-service-linux-docs/blob/master/Things_You_Should_Know/headers.md).
+
+After deployment, verify using a disposable nonexistent email from two controlled network sources. Five failed logins from source A should return 401; its next request should return 429 even when forged `Client-IP` and `X-Forwarded-For` values change. One request for the same email from source B should still return 401. This checks the actual production boundary without publishing client IPs or a diagnostic endpoint. Use a temporary Cloud Shell source for any test that exhausts a whole-IP budget, so the user's normal login allowance stays available. Unit tests also exercise the global budgets, simultaneous attempts, expiry and restart persistence.
