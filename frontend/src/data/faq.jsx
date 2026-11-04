@@ -22,6 +22,23 @@ export const faqGroups = [
         ),
       },
       {
+        question: 'Can I try Data Genie without an account?',
+        search:
+          'Yes. The homepage demo, workspace tour and interactive examples use sample data without an account. Try follow-ups, SQL explanations, sample approvals and history filters. These examples never connect to or change your database. Sign up or log in to use your own SQLite or PostgreSQL database.',
+        answer: (
+          <>
+            <p>
+              Yes. The homepage demo, workspace tour and interactive examples use sample data. Try
+              follow-ups, SQL explanations, approvals and history filters without an account.
+            </p>
+            <p>
+              These examples never connect to or change your database. Sign up or log in when you
+              want to work with your own SQLite or PostgreSQL database.
+            </p>
+          </>
+        ),
+      },
+      {
         question: 'Do I need to know SQL?',
         search:
           'No. In Data Genie AI mode, start with a request such as \u201cshow all customers from Missouri\u201d. The generated SQL appears beside your words so you can see how the request was interpreted. The Structure tab shows the tables and columns available in your database. Naming them in your request helps make your intent clear.',

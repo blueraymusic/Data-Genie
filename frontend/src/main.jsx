@@ -3,6 +3,8 @@ import App from './App';
 import './styles/design.css';
 import './styles/base.css';
 import './styles/home.css';
+import './styles/home-tour.css';
+import './styles/home-examples.css';
 import './styles/faq.css';
 import './styles/workspace.css';
 import './styles/usability.css';

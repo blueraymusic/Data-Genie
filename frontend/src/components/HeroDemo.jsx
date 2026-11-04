@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react';
 import { demos } from '../data/home';
 import { SqlBlock } from './SqlBlock';
 import { ResultTable } from './ResultTable';
+import { Brand } from './Brand';
 import { Icon } from './Icon';
+import { Link } from '../lib/router';
+
 export function HeroDemo() {
   const [active, setActive] = useState(0),
-    [replay, setReplay] = useState(0),
-    [typed, setTyped] = useState(demos[0].request),
-    [ready, setReady] = useState(true),
-    [decision, setDecision] = useState(null);
+    [replay, setReplay] = useState(0);
+  const [ready, setReady] = useState(true),
+    [typed, setTyped] = useState(demos[0].request);
+  const [decision, setDecision] = useState(null);
   const demo = demos[active];
   useEffect(() => {
     setDecision(null);
@@ -25,7 +28,7 @@ export function HeroDemo() {
       setTyped(demo.request.slice(0, index));
       if (index >= demo.request.length) clearInterval(interval);
     }, 24);
-    const timer = setTimeout(() => setReady(true), demo.request.length * 12 + 450);
+    const timer = setTimeout(() => setReady(true), demo.request.length * 12 + 200);
     return () => {
       clearInterval(interval);
       clearTimeout(timer);
@@ -37,58 +40,93 @@ export function HeroDemo() {
       : decision === 'declined'
         ? 'declined'
         : 'executed';
+  const choose = (index) => {
+    setActive(index);
+    setReplay((value) => value + 1);
+  };
   return (
     <div className="stage" id="demo" aria-label="Interactive sample demo" tabIndex="-1">
       <div className="stage-top">
-        <span className="stage-caption">
-          <Icon name="database" /> Interactive demo <span>· Sample data</span>
+        <Brand />
+        <span>
+          Interactive demo <span className="sample-dot">·</span> Sample data
         </span>
-        <code>shop.sqlite</code>
       </div>
-      <div className="stage-body">
-        <div className={'tx' + (ready ? ' drawn static' : '')}>
-          <div className="margin">
-            <span className="time">
-              {new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-            </span>
-            <span className={'chip st-' + status}>
-              <Icon name={status === 'pending' ? 'clock' : status === 'declined' ? 'x' : 'check'} />
-              {status}
-            </span>
+      <div className="demo-window-body">
+        <aside className="demo-sidebar" aria-label="Sample database">
+          <p className="demo-label">Database</p>
+          <div className="demo-database">
+            <Icon name="database" />
+            <code>shop.sqlite</code>
           </div>
-          <div className="demo-request">
+          <span className="demo-nav-current">
+            <Icon name="workspace" />
+            Ask
+          </span>
+          <Link href="/history">
+            <Icon name="clock" />
+            Your history
+          </Link>
+          <p className="demo-label">Tables</p>
+          {['customers', 'products', 'sales'].map((table, index) => (
+            <button key={table} type="button" onClick={() => choose(index === 0 ? 0 : 1)}>
+              <Icon name="table" />
+              {table}
+            </button>
+          ))}
+          <div className="demo-connected">
+            <span />
+            Sample connected
+          </div>
+        </aside>
+        <div className="stage-body">
+          <div className="demo-workspace-title">
+            <h2>Workspace</h2>
+            <span className="sample-label">Sample</span>
+          </div>
+          <div className="demo-translation">
             <p className="demo-label">Your request</p>
-            <p className={'req' + (!ready ? ' typing' : '')}>{typed}</p>
+            <p className={'demo-request' + (!ready ? ' typing' : '')}>{typed}</p>
+            <div className="demo-meta">
+              <span className={'chip st-' + status}>
+                <Icon
+                  name={status === 'pending' ? 'clock' : status === 'declined' ? 'x' : 'check'}
+                />
+                {status}
+              </span>
+              <span>shop.sqlite</span>
+            </div>
+            <div className="demo-sql">
+              <p className="demo-label">SQL translation</p>
+              {ready ? (
+                <SqlBlock home sql={demo.sql} operation={demo.operation} />
+              ) : (
+                <div className="demo-sql-loading" role="status">
+                  <span>Translating your request…</span>
+                  <i />
+                  <i />
+                </div>
+              )}
+            </div>
+            <p className="demo-note">{ready ? demo.note : 'Writing the SQL…'}</p>
           </div>
-          <svg
-            className="thread"
-            viewBox="0 0 100 64"
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            <path className="line" d="M0 16C55 16 45 47 100 47" />
-          </svg>
-          <div className="sqlcol">
-            <p className="demo-label">SQL translation</p>
-            <SqlBlock home sql={ready ? demo.sql : ''} operation={demo.operation} />
-          </div>
-          <p className="note">{ready ? demo.note : 'Writing the SQL…'}</p>
-          <div className="result" aria-live="polite">
+          <div className="demo-result" aria-live="polite">
             {ready &&
               (demo.operation === 'INSERT' ? (
                 decision ? (
-                  <p className={decision === 'declined' ? 'notrun' : 'msg'}>
-                    {decision === 'declined'
-                      ? 'Not run. You declined this.'
-                      : '1 row added to customers. Sample only.'}
-                  </p>
-                ) : (
-                  <div className="confirm">
-                    <p className="t">This will add Ana Lee to customers.</p>
-                    <p className="s">
-                      This sample only demonstrates the confirmation. No real database is changed.
+                  <div className="demo-decision">
+                    <Icon name={decision === 'declined' ? 'x' : 'check'} />
+                    <p>
+                      {decision === 'declined'
+                        ? 'Not run. You declined this.'
+                        : '1 row added to customers. Sample only.'}
                     </p>
-                    <div className="row">
+                  </div>
+                ) : (
+                  <div className="demo-confirm">
+                    <p>This will add Ana Lee to customers.</p>
+                    <p className="muted">Sample only. No real database is changed.</p>
+                    <div className="button-row">
                       <button className="btn btn-primary" onClick={() => setDecision('executed')}>
                         Add customer
                       </button>
@@ -100,11 +138,11 @@ export function HeroDemo() {
                 )
               ) : (
                 <>
-                  <p className="demo-answer">
+                  <h3 className="demo-answer">
                     {active === 0
                       ? '3 customers found in Missouri'
-                      : 'Average sale amount for 4 categories'}
-                  </p>
+                      : 'Average sale amount by category'}
+                  </h3>
                   <ResultTable home rows={demo.rows} />
                 </>
               ))}
@@ -117,13 +155,11 @@ export function HeroDemo() {
             className="pick"
             type="button"
             key={item.request}
+            aria-label={item.request}
             aria-pressed={active === index}
-            onClick={() => {
-              setActive(index);
-              setReplay((value) => value + 1);
-            }}
+            onClick={() => choose(index)}
           >
-            {item.request}
+            {['Look up', 'Summarize', 'Make a change'][index]}
           </button>
         ))}
         <button
