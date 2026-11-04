@@ -21,7 +21,7 @@ export default function DatabaseChooser({ workbench, onOpened }) {
     <AuthShell
       variant="databases"
       title="Choose your database."
-      lead="Reopen your work, start fresh, or explore a sample."
+      lead="Pick up where you left off, or open something new."
     >
       <p className="identity-note account-gate">
         <span>
@@ -39,17 +39,19 @@ export default function DatabaseChooser({ workbench, onOpened }) {
           </button>
         </span>
       </p>
-      <SavedDatabases
-        workbench={workbench}
-        onOpened={(data) => (onOpened ? onOpened(data) : navigate('/app', true))}
-        onReconnect={() => setFormVersion((value) => value + 1)}
-      />
-      <DatabaseForm
-        key={formVersion}
-        initialMode={formVersion ? 'postgresql' : 'create'}
-        onOpen={open}
-        busy={workbench.busy}
-      />
+      <div className="database-entry-layout">
+        <SavedDatabases
+          workbench={workbench}
+          onOpened={(data) => (onOpened ? onOpened(data) : navigate('/app', true))}
+          onReconnect={() => setFormVersion((value) => value + 1)}
+        />
+        <DatabaseForm
+          key={formVersion}
+          initialMode={formVersion ? 'postgresql' : 'create'}
+          onOpen={open}
+          busy={workbench.busy}
+        />
+      </div>
       <p className="err" role="status">
         {error || workbench.message}
       </p>

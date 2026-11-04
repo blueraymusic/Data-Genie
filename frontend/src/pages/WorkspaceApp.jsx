@@ -212,7 +212,6 @@ export default function WorkspaceApp() {
           <div className="main">
             {inWorkspace && (
               <div className="workspace-toolbar">
-                <span className="workspace-section-label">{titles[view]}</span>
                 <nav className="view-tabs" aria-label="Workspace views">
                   <button
                     className={view === 'ask' ? 'on' : undefined}

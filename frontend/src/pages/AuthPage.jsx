@@ -52,7 +52,7 @@ export default function AuthPage() {
   }
   return (
     <AuthShell
-      title={signup ? 'Make room for your next question.' : 'Welcome back.'}
+      title={signup ? 'Create your account.' : 'Welcome back.'}
       lead={
         signup
           ? 'Create an account for your databases and history.'
@@ -130,7 +130,7 @@ export default function AuthPage() {
         <p className="identity-note" id="passwordHelp">
           {signup
             ? 'Use 15 to 128 characters. A long, unique passphrase works well.'
-            : 'Your account belongs to this Data Genie installation.'}
+            : 'Use the account you created on this site.'}
         </p>
         <button className="btn pri start-button" disabled={busy || retrying}>
           {busy

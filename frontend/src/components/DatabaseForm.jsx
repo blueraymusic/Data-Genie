@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { encodeDatabase } from '../lib/api';
 import { PostgresConnectionFields } from './PostgresConnectionFields';
-import { Icon } from './Icon';
 export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
   const form = useRef(null);
   const [mode, setMode] = useState(initialMode),
@@ -52,15 +51,19 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
         setError('');
       }}
     >
+      <div className="database-form-heading">
+        <h2>Add a database</h2>
+        <p className="small muted">Choose where to start.</p>
+      </div>
       <fieldset className="database-choice" disabled={busy || reading}>
-        <legend>Choose your database</legend>
+        <legend className="sr-only">Choose your database</legend>
         <div className="database-modes">
           {[
-            ['create', 'Create new', 'Start empty', 'plus'],
-            ['upload', 'Upload SQLite', 'Your existing file', 'upload'],
-            ['sample', 'Try the sample', 'Explore safely', 'layers'],
-            ['postgresql', 'PostgreSQL', 'Connect a live database', 'database'],
-          ].map(([value, label, hint, icon]) => (
+            ['create', 'Create new', 'A blank SQLite database'],
+            ['upload', 'Upload SQLite', 'Work on a copy of your file'],
+            ['postgresql', 'PostgreSQL', 'Connect a live database'],
+            ['sample', 'Try the sample', 'Customers, products, and sales'],
+          ].map(([value, label, hint]) => (
             <label key={value}>
               <input
                 type="radio"
@@ -72,7 +75,6 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
                   setError('');
                 }}
               />
-              <Icon name={icon} />
               <span>
                 <b>{label}</b>
                 <small>{hint}</small>
@@ -81,68 +83,71 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
           ))}
         </div>
       </fieldset>
-      {mode === 'create' && (
-        <div className="database-fields">
-          <label htmlFor="databaseName">Database name</label>
-          <input
-            id="databaseName"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            maxLength={150}
-            required
-            disabled={busy || reading}
-          />
-          <label className="check-label">
+      <div className="database-details">
+        {mode === 'create' && (
+          <div className="database-fields">
+            <label htmlFor="databaseName">Database name</label>
             <input
-              type="checkbox"
-              checked={starter}
-              onChange={(event) => setStarter(event.target.checked)}
+              id="databaseName"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              maxLength={150}
+              required
               disabled={busy || reading}
             />
-            Include an example notes table
-          </label>
-        </div>
-      )}
-      {mode === 'upload' && (
-        <div className="database-fields">
-          <label htmlFor="databaseFile">SQLite file</label>
-          <input
-            id="databaseFile"
-            type="file"
-            accept=".db,.sqlite,.sqlite3"
-            onChange={(event) => setFile(event.target.files[0])}
-            required={!file}
+            <p className="small muted database-field-note">You can add tables after opening it.</p>
+            <label className="check-label">
+              <input
+                type="checkbox"
+                checked={starter}
+                onChange={(event) => setStarter(event.target.checked)}
+                disabled={busy || reading}
+              />
+              Include an example notes table
+            </label>
+          </div>
+        )}
+        {mode === 'upload' && (
+          <div className="database-fields">
+            <label htmlFor="databaseFile">SQLite file</label>
+            <input
+              id="databaseFile"
+              type="file"
+              accept=".db,.sqlite,.sqlite3"
+              onChange={(event) => setFile(event.target.files[0])}
+              required={!file}
+              disabled={busy || reading}
+            />
+            {file && <p className="small muted">Selected: {file.name}</p>}
+            <p className="small muted">
+              Drop a SQLite file here, or choose one. Up to 25 MB. You work on a copy and can
+              download your changes.
+            </p>
+          </div>
+        )}
+        {mode === 'sample' && (
+          <p className="small muted">
+            The sample contains customers, products, and sales. Ask “show all customers from
+            Missouri”.
+          </p>
+        )}
+        {mode === 'postgresql' && (
+          <PostgresConnectionFields
+            value={postgres}
+            onChange={setPostgres}
             disabled={busy || reading}
           />
-          {file && <p className="small muted">Selected: {file.name}</p>}
-          <p className="small muted">
-            Drop a SQLite file here, or choose one. Up to 25 MB. You work on a copy and can download
-            your changes.
-          </p>
-        </div>
-      )}
-      {mode === 'sample' && (
-        <p className="small muted">
-          The sample contains customers, products, and sales. Ask “show all customers from
-          Missouri”.
-        </p>
-      )}
-      {mode === 'postgresql' && (
-        <PostgresConnectionFields
-          value={postgres}
-          onChange={setPostgres}
-          disabled={busy || reading}
-        />
-      )}
+        )}
+      </div>
       <button className="btn pri start-button" disabled={busy || reading}>
         {busy || reading
           ? 'Opening database…'
           : mode === 'postgresql'
             ? 'Connect PostgreSQL'
             : mode === 'create'
-              ? 'Create database & start'
+              ? 'Create database'
               : mode === 'upload'
-                ? 'Attach database'
+                ? 'Open SQLite file'
                 : 'Open sample database'}
       </button>
       <p className="err" role="status">

@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import './styles/fonts.css';
 import './styles/design.css';
 import './styles/base.css';
 import './styles/home.css';
@@ -10,6 +11,10 @@ import './styles/contact.css';
 import './styles/faq.css';
 import './styles/workspace.css';
 import './styles/usability.css';
+import './styles/workspace-shell.css';
+import './styles/conversation.css';
+import './styles/entry.css';
+import './styles/account.css';
 import './styles/interactions.css';
 import './styles/public-header.css';
 import './styles/motion.css';

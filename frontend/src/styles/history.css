@@ -3,13 +3,16 @@
   top: 0;
   z-index: 6;
   background: var(--chalk);
-  padding: 8px 0 12px;
+  padding: 12px 0 16px;
   border-bottom: 1px solid var(--rule);
 }
 .workspace-page .history-page .history-filters {
   display: block;
-  padding: 12px;
-  margin-bottom: 10px;
+  padding: 0;
+  margin: 0 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 .workspace-page .history-search-row,
 .workspace-page .history-filter-fields {
@@ -27,16 +30,16 @@
   width: 100%;
 }
 .workspace-page .history-filter-options {
-  margin-top: 10px;
+  margin-top: 14px;
 }
 .workspace-page .history-filter-options > summary {
   cursor: pointer;
   overflow-wrap: anywhere;
   color: var(--ink-soft);
-  font-size: 13px;
+  font-size: 12px;
 }
 .workspace-page .history-filter-fields {
-  padding-top: 12px;
+  padding-top: 14px;
 }
 .workspace-page .history-filter-fields label:first-child {
   flex: 2;
@@ -46,22 +49,34 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 10px 18px;
   margin-top: 12px;
 }
 .workspace-page .history-page-count {
   color: var(--ink-soft);
-  font-size: 13px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 .workspace-page .history-page-buttons {
   display: flex;
   gap: 8px;
 }
 .workspace-page .history-page .history-meta {
-  margin-top: 14px;
+  margin: 18px 0 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  max-width: 80ch;
 }
 .workspace-page .history-results {
   scroll-margin-top: 210px;
+}
+.workspace-page .history-page .history-entry {
+  margin: 0;
+  padding: 26px 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
 }
 .workspace-page .history-entry-heading {
   display: flex;
@@ -69,12 +84,21 @@
   align-items: start;
   gap: 16px;
 }
-.workspace-page .history-entry-heading > h3 {
+.workspace-page .history-page .history-entry-heading > h3 {
   min-width: 0;
   flex: 1;
+  margin: 0 0 8px;
+  font: 400 22px/1.35 var(--serif);
 }
 .workspace-page .history-entry-heading > button {
   flex-shrink: 0;
+}
+.workspace-page .history-entry-meta {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.workspace-page .history-entry-meta > span {
+  text-transform: capitalize;
 }
 .workspace-page .history-full-request {
   margin: 12px 0;
@@ -90,12 +114,34 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.workspace-page .history-page .history-command {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+.workspace-page .history-page .history-command > summary {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.workspace-page .history-empty {
+  padding: 36px 0;
+}
+.workspace-page .history-error {
+  border-left: 2px solid var(--remove);
+  padding: 8px 16px;
+  margin-block: 20px;
+}
 @media (max-width: 640px) {
   .workspace-page .history-entry-heading {
-    display: block;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .workspace-page .history-entry-heading > h3 {
+    flex-basis: 100%;
   }
   .workspace-page .history-entry-heading > button {
-    margin-bottom: 12px;
+    padding-inline: 0;
+    margin-bottom: 8px;
   }
   .workspace-page .history-page .history-filter-fields label,
   .workspace-page .history-page .history-search-row label {
@@ -108,7 +154,7 @@
     gap: 8px;
   }
   .workspace-page .history-search-row label {
-    flex-basis: calc(100% - 170px);
+    flex-basis: 100%;
   }
   .workspace-page .history-page-buttons {
     gap: 6px;

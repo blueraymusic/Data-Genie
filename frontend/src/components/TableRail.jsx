@@ -124,7 +124,7 @@ export function TableRail({
         Browse structure and relationships
       </button>
       <div className="rail-foot">
-        <Link href="/faq">Questions? Read the FAQ</Link>
+        <Link href="/faq">Help &amp; FAQ</Link>
       </div>
     </aside>
   );

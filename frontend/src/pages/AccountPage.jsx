@@ -61,77 +61,85 @@ export default function AccountPage({ workbench, mode, setMode }) {
     }
   }
   return (
-    <section>
-      <h1>Account &amp; preferences</h1>
-      <p className="lead">Your account, appearance, and database connection.</p>
-      <div className="account-ledger">
-        <p>
-          <span>Name</span>
-          <strong style={{ textTransform: 'capitalize' }}>
-            {user.first_name} {user.last_name}
-          </strong>
-        </p>
-        <p>
-          <span>Email</span>
-          <strong>{user.email}</strong>
-        </p>
-        <p>
-          <span>Appearance</span>
-          <button className="btn" onClick={toggle}>
-            <strong style={{ textTransform: 'capitalize' }}>{theme}</strong>
-          </button>
-        </p>
-        {workbench.session && (
-          <>
-            <p>
-              <span>Default workspace view</span>
-              <label className="sr-only" htmlFor="requestMode">
-                Default workspace view
-              </label>
-              <select
-                id="requestMode"
-                value={mode}
-                onChange={(event) => setMode(event.target.value)}
-                aria-describedby="requestModeHelp"
-              >
-                <option value="gemini" disabled={!workbench.session.ai?.enabled}>
-                  Data Genie AI
-                </option>
-                <option value="sql">SQL</option>
-              </select>
-            </p>
-            <p id="requestModeHelp" className="small muted">
-              Data Genie AI accepts plain English. SQL runs statements directly without an AI
-              service or AI key. Local SQLite works offline while Data Genie is running; PostgreSQL
-              still needs its database connection. Your choice applies when you next open a
-              database.
-              {!workbench.session.ai?.enabled &&
-                ' Data Genie AI is unavailable, so new sessions open in SQL.'}
-            </p>
-            {workbench.session.source === 'postgresql' ? (
+    <section className="account-page">
+      <header className="page-heading">
+        <div>
+          <h1>Account &amp; preferences</h1>
+          <p className="lead">Manage your profile, appearance, and how you sign in.</p>
+        </div>
+      </header>
+      <section className="account-section" aria-labelledby="accountDetailsTitle">
+        <h2 id="accountDetailsTitle">Account details</h2>
+        <div className="account-ledger">
+          <p>
+            <span>Name</span>
+            <strong>
+              {user.first_name} {user.last_name}
+            </strong>
+          </p>
+          <p>
+            <span>Email</span>
+            <strong>{user.email}</strong>
+          </p>
+          <p>
+            <span>Appearance</span>
+            <span className="account-current-theme">{theme} theme</span>
+            <button className="btn" onClick={toggle}>
+              Use {theme === 'dark' ? 'light' : 'dark'} theme
+            </button>
+          </p>
+          {workbench.session && (
+            <>
               <p>
-                <span>PostgreSQL access</span>
-                <strong>
-                  {workbench.session.read_only ? 'Read-only' : 'Changes require confirmation'}
-                </strong>
-              </p>
-            ) : (
-              <p>
-                <span>Database copy</span>
-                <a
-                  className="btn"
-                  href={
-                    '/api/download?session_id=' + encodeURIComponent(workbench.session.session_id)
-                  }
-                  download
+                <span>Default workspace view</span>
+                <label className="sr-only" htmlFor="requestMode">
+                  Default workspace view
+                </label>
+                <select
+                  id="requestMode"
+                  value={mode}
+                  onChange={(event) => setMode(event.target.value)}
+                  aria-describedby="requestModeHelp"
                 >
-                  Download SQLite file
-                </a>
+                  <option value="gemini" disabled={!workbench.session.ai?.enabled}>
+                    Data Genie AI
+                  </option>
+                  <option value="sql">SQL</option>
+                </select>
               </p>
-            )}
-          </>
-        )}
-      </div>
+              <p id="requestModeHelp" className="small muted">
+                Data Genie AI accepts plain English. SQL runs statements directly without an AI
+                service or AI key. Local SQLite works offline while Data Genie is running;
+                PostgreSQL still needs its database connection. Your choice applies when you next
+                open a database.
+                {!workbench.session.ai?.enabled &&
+                  ' Data Genie AI is unavailable, so new sessions open in SQL.'}
+              </p>
+              {workbench.session.source === 'postgresql' ? (
+                <p>
+                  <span>PostgreSQL access</span>
+                  <strong>
+                    {workbench.session.read_only ? 'Read-only' : 'Changes require confirmation'}
+                  </strong>
+                </p>
+              ) : (
+                <p>
+                  <span>Database copy</span>
+                  <a
+                    className="btn"
+                    href={
+                      '/api/download?session_id=' + encodeURIComponent(workbench.session.session_id)
+                    }
+                    download
+                  >
+                    Download SQLite file
+                  </a>
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      </section>
       {!workbench.session && (
         <p className="small muted">
           <Link href="/databases">Choose a database</Link> to change your default workspace view or
@@ -145,7 +153,7 @@ export default function AccountPage({ workbench, mode, setMode }) {
         </p>
       )}
       {(user.microsoft_linked || !passwordEnabled) && (
-        <div className="password-form">
+        <div className="password-form account-section">
           <h2>Microsoft sign-in</h2>
           <p className="microsoft-account-note">
             <MicrosoftMark /> Microsoft account connected
@@ -164,7 +172,7 @@ export default function AccountPage({ workbench, mode, setMode }) {
       )}
       {microsoftEnabled && passwordEnabled && !user.microsoft_linked && (
         <form
-          className="password-form microsoft-link-form"
+          className="password-form account-section microsoft-link-form"
           aria-label="Connect Microsoft account"
           onSubmit={connectMicrosoft}
         >
@@ -198,7 +206,7 @@ export default function AccountPage({ workbench, mode, setMode }) {
         </p>
       )}
       {passwordEnabled && (
-        <form className="password-form" onSubmit={submit}>
+        <form className="password-form account-section" onSubmit={submit}>
           <h2>Change password</h2>
           <label>
             Current password
@@ -236,7 +244,7 @@ export default function AccountPage({ workbench, mode, setMode }) {
               required
             />
           </label>
-          <button className="btn" disabled={busy || linkBusy}>
+          <button className="btn pri" disabled={busy || linkBusy}>
             {busy ? 'Updating password…' : 'Update password'}
           </button>
           <p className={error ? 'err' : 'ok'} role="status">
@@ -244,7 +252,7 @@ export default function AccountPage({ workbench, mode, setMode }) {
           </p>
         </form>
       )}
-      <p className="small muted">
+      <p className="small muted account-storage-note">
         Accounts and history are saved where Data Genie runs.
         {passwordEnabled && ' Changing your password signs out other browser logins.'}
       </p>

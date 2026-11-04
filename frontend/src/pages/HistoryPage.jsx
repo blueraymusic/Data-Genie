@@ -46,7 +46,7 @@ function HistoryEntry({ request, active, id, workbench, onDecide, onReuse }) {
       <div className="history-entry-heading">
         <h3>{text.length > 220 ? text.slice(0, 220) + '…' : text}</h3>
         <button
-          className="btn"
+          className="btn quiet history-reuse"
           disabled={
             !id || workbench.pending || workbench.busy || workbench.workingCommands.size > 0
           }
@@ -55,8 +55,9 @@ function HistoryEntry({ request, active, id, workbench, onDecide, onReuse }) {
           {active ? 'Use request' : 'Use in current database'}
         </button>
       </div>
-      <p className="small muted">
-        {formatTime(request.submitted_at)} · {request.status}
+      <p className="small muted history-entry-meta">
+        <time dateTime={request.submitted_at}>{formatTime(request.submitted_at)}</time> ·{' '}
+        <span>{request.status}</span>
       </p>
       {shortened && (
         <details
@@ -131,7 +132,8 @@ export default function HistoryPage({ workbench, onReuse }) {
     [error, setError] = useState(''),
     [sessionsError, setSessionsError] = useState(''),
     [revision, setRevision] = useState(0);
-  const results = useRef(null);
+  const results = useRef(null),
+    controls = useRef(null);
   useEffect(() => {
     setTarget(id || '');
     setOffset(0);
@@ -201,6 +203,10 @@ export default function HistoryPage({ workbench, onReuse }) {
   }
   function changePage(next) {
     setOffset(next);
+    if (results.current) {
+      const height = controls.current?.getBoundingClientRect().height;
+      if (height) results.current.style.scrollMarginTop = `${Math.ceil(height) + 16}px`;
+    }
     results.current?.scrollIntoView({ block: 'start' });
   }
   const choices =
@@ -217,9 +223,13 @@ export default function HistoryPage({ workbench, onReuse }) {
   };
   return (
     <section className="history-page">
-      <h1>On the record.</h1>
-      <p className="lead">Your requests, their SQL, and the results you saw.</p>
-      <div className="history-controls">
+      <header className="page-heading">
+        <div>
+          <h1>History</h1>
+          <p className="lead">Find an earlier request, check its result, or use it again.</p>
+        </div>
+      </header>
+      <div className="history-controls" ref={controls}>
         <form
           className="history-filters"
           onSubmit={(event) => {
@@ -239,10 +249,14 @@ export default function HistoryPage({ workbench, onReuse }) {
                 placeholder="Search your words or SQL"
               />
             </label>
-            <button className="btn" disabled={!target}>
+            <button className="btn pri" disabled={!target}>
               Search
             </button>
-            <button className="btn" type="button" onClick={() => setRevision((value) => value + 1)}>
+            <button
+              className="btn quiet"
+              type="button"
+              onClick={() => setRevision((value) => value + 1)}
+            >
               Refresh
             </button>
           </div>
@@ -315,7 +329,7 @@ export default function HistoryPage({ workbench, onReuse }) {
       </p>
       <div className="history-results" ref={results} aria-busy={page === null}>
         {(error || sessionsError) && (
-          <div role="alert">
+          <div className="history-error" role="alert">
             <p className="err">{error || sessionsError}</p>
             <button className="btn" onClick={() => setRevision((value) => value + 1)}>
               Try again
@@ -324,7 +338,7 @@ export default function HistoryPage({ workbench, onReuse }) {
         )}
         {page === null ? null : error || (!target && sessionsError) ? null : !page.requests
             .length ? (
-          <p className="muted">No saved requests match these filters.</p>
+          <p className="muted history-empty">No saved requests match these filters.</p>
         ) : (
           page.requests.map((request) => (
             <HistoryEntry

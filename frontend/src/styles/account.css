@@ -1,0 +1,109 @@
+.workspace-page .account-page {
+  max-width: 900px;
+}
+.workspace-page .account-page .account-section {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.85fr) minmax(0, 2fr);
+  gap: 8px 44px;
+  margin: 0;
+  padding: 28px 0;
+  max-width: none;
+  border: 0;
+  border-top: 1px solid var(--rule);
+  border-radius: 0;
+  background: transparent;
+}
+.workspace-page .account-page .account-section > h2 {
+  margin: 3px 0 0;
+  font: 400 23px/1.3 var(--serif);
+}
+.workspace-page .account-page .account-section > :not(h2) {
+  grid-column: 2;
+}
+.workspace-page .account-page .account-ledger {
+  min-width: 0;
+  max-width: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.workspace-page .account-page .account-ledger > p {
+  padding: 15px 0;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.workspace-page .account-page .account-ledger > p:first-child {
+  padding-top: 0;
+}
+.workspace-page .account-page .account-ledger > p > span:first-child {
+  min-width: 136px;
+}
+.workspace-page .account-page .account-current-theme {
+  min-width: 0;
+  width: auto;
+  color: var(--ink);
+  text-transform: capitalize;
+}
+.workspace-page .account-page .account-ledger .btn {
+  margin-left: auto;
+  white-space: normal;
+}
+.workspace-page .account-page .account-ledger select {
+  max-width: 220px;
+}
+.workspace-page .account-page #requestModeHelp {
+  display: block;
+  border: 0;
+  padding-top: 0;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.workspace-page .account-page .password-form label {
+  margin: 0 0 12px;
+  max-width: 480px;
+  font-size: 13px;
+}
+.workspace-page .account-page .password-form button {
+  justify-self: start;
+  margin-top: 4px;
+}
+.workspace-page .account-page .password-form > p {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.workspace-page .account-page .password-form > p:empty {
+  display: none;
+}
+.workspace-page .account-page .account-storage-note {
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+  font-size: 12px;
+  line-height: 1.65;
+}
+@media (max-width: 760px) {
+  .workspace-page .account-page .account-section {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    padding-block: 24px;
+  }
+  .workspace-page .account-page .account-section > :not(h2) {
+    grid-column: 1;
+  }
+  .workspace-page .account-page .account-ledger > p {
+    flex-wrap: wrap;
+  }
+  .workspace-page .account-page .account-ledger > p > span:first-child {
+    width: 100%;
+    min-width: 0;
+  }
+  .workspace-page .account-page .account-ledger .btn {
+    margin-left: 0;
+  }
+  .workspace-page .account-page .account-ledger select {
+    max-width: none;
+  }
+}

@@ -1,0 +1,651 @@
+/* Requests read like a conversation; SQL and data retain their own surfaces. */
+.workspace-page #v-ask {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: 1050px;
+  margin: 0 auto;
+}
+.workspace-page .workspace-intro {
+  padding: 36px 0 28px;
+}
+.workspace-page .workspace-intro h1 {
+  font-size: 36px;
+  line-height: 42px;
+}
+.workspace-page .workspace-intro .lead {
+  margin-bottom: 24px;
+}
+.workspace-page #v-ask.has-requests .workspace-intro {
+  padding: 0;
+}
+.workspace-page #v-ask.has-requests .workspace-intro > :not(h1) {
+  display: none;
+}
+.workspace-page #v-ask.has-requests .workspace-intro h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  margin: 0;
+}
+.workspace-page .chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 24px;
+}
+.workspace-page .chips button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+.workspace-page .chips button > span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.workspace-page .chips strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.workspace-page .chips button span span {
+  color: var(--ink-soft);
+  font: 400 12px/19px var(--sans);
+  overflow-wrap: anywhere;
+}
+.workspace-page .chips .suggestion-arrow {
+  flex-shrink: 0;
+  width: 14px;
+  margin-left: auto;
+  color: var(--ink-soft);
+}
+.workspace-page .chips button:hover {
+  border-color: var(--lapis);
+  background: transparent;
+  color: var(--lapis);
+}
+.workspace-page .chips button:hover .suggestion-arrow {
+  color: var(--lapis);
+}
+.workspace-page .empty-inline {
+  color: var(--ink-soft);
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+.workspace-page #feed {
+  flex: 1;
+}
+.workspace-page .exchange {
+  position: relative;
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr);
+  gap: 18px;
+  padding: 28px 0;
+  border-top: 1px solid var(--rule);
+}
+.workspace-page .exchange-margin {
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 18px;
+  padding-top: 5px;
+}
+.workspace-page .exchange-status {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 7px;
+  font-size: 11px;
+}
+.workspace-page .exchange-status::before {
+  content: '◷';
+  font-size: 13px;
+}
+.workspace-page .exchange[data-status='executed'] .exchange-status::before {
+  content: '✓';
+  color: var(--add);
+}
+.workspace-page .exchange[data-status='declined'] .exchange-status::before,
+.workspace-page .exchange[data-status='rejected'] .exchange-status::before {
+  content: '×';
+  color: var(--remove);
+}
+.workspace-page .exchange-content {
+  min-width: 0;
+}
+.workspace-page .translation {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) 54px minmax(0, 6fr);
+  align-items: start;
+}
+.workspace-page .request-panel {
+  grid-column: 1;
+  min-width: 0;
+  padding: 4px 18px 12px;
+  border: 0;
+  border-left: 1px solid var(--rule);
+  border-radius: 0;
+  background: transparent;
+}
+.workspace-page .exchange-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 0 14px;
+  color: var(--ink-soft);
+  font: 500 12px/18px var(--sans);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.workspace-page .exchange-label > span {
+  margin-left: auto;
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.workspace-page .request-panel .exchange-label {
+  color: var(--ink);
+}
+.workspace-page .request-text {
+  margin: 0;
+  font: 400 22px/30px var(--serif);
+  overflow-wrap: anywhere;
+}
+.workspace-page .translation-thread {
+  grid-column: 2;
+  grid-row: 1;
+  height: 64px;
+  width: 100%;
+  overflow: visible;
+  margin-top: 34px;
+}
+.workspace-page .translation-thread path {
+  fill: none;
+  stroke: var(--brass);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.workspace-page .exchange.ready .translation-thread {
+  clip-path: inset(0);
+  animation: draw-thread 0.45s ease-out;
+}
+.workspace-page .exchange.pending .translation-thread {
+  opacity: 0;
+}
+@keyframes draw-thread {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+.workspace-page .translation-commands {
+  grid-column: 3;
+  min-width: 0;
+  padding-top: 2px;
+}
+.workspace-page .clarification {
+  padding: 2px 0 2px 16px;
+  border: 0;
+  border-left: 2px solid var(--rule);
+  border-radius: 0;
+  background: transparent;
+  line-height: 22px;
+}
+.workspace-page .clarification .clarification-title {
+  color: var(--ink);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.workspace-page .clarification small {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+.workspace-page .clarification-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+.workspace-page .clarification-suggestions button {
+  padding: 6px 10px;
+  text-align: left;
+  overflow-wrap: anywhere;
+  color: var(--lapis);
+  background: var(--lapis-wash);
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  font-size: 12px;
+}
+.workspace-page .sqlblock {
+  position: relative;
+  background: var(--sunken);
+  border: 1px solid color-mix(in srgb, var(--rule) 65%, transparent);
+  border-radius: 6px;
+  min-width: 0;
+}
+.workspace-page .sqlhead {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 36px;
+  padding: 4px 6px 0 10px;
+}
+.workspace-page .sqlblock pre {
+  margin: 0;
+  padding: 6px 14px 14px;
+  overflow-x: auto;
+}
+.workspace-page .sqlblock code {
+  font: 400 13px/22px var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.workspace-page .k {
+  color: var(--lapis);
+}
+.workspace-page .s {
+  color: var(--add);
+}
+.workspace-page .n {
+  color: var(--change);
+}
+.workspace-page .copy-sql {
+  display: grid;
+  place-items: center;
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-soft);
+  opacity: 1;
+}
+.workspace-page .sqlblock:hover .copy-sql,
+.workspace-page .copy-sql:focus-visible {
+  opacity: 1;
+}
+.workspace-page .copy-sql:hover {
+  background: var(--lapis-wash);
+}
+.workspace-page .tag {
+  --operation-color: var(--lapis);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--operation-color) 12%, transparent);
+  color: var(--operation-color);
+  font: 500 11px/16px var(--mono);
+  white-space: nowrap;
+}
+.workspace-page .tag.op-insert,
+.workspace-page .tag.op-replace {
+  --operation-color: var(--add);
+}
+.workspace-page .tag.op-update {
+  --operation-color: var(--change);
+}
+.workspace-page .tag.op-delete,
+.workspace-page .tag.op-drop {
+  --operation-color: var(--remove);
+}
+.workspace-page .tag.op-create,
+.workspace-page .tag.op-alter,
+.workspace-page .tag.op-ddl {
+  --operation-color: var(--structure);
+}
+.workspace-page .command-explanation {
+  color: var(--ink-soft);
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+.workspace-page .exchange-results {
+  margin-top: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  min-width: 0;
+}
+.workspace-page .exchange-results > .exchange-label {
+  color: var(--ink-soft);
+}
+.workspace-page .exchange-results p:last-child {
+  margin-bottom: 0;
+}
+.workspace-page .command-result + .command-result {
+  margin-top: 24px;
+}
+.workspace-page .command + .command {
+  margin-top: 24px;
+}
+.workspace-page .tw {
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.workspace-page table {
+  border-collapse: collapse;
+  width: 100%;
+  font: 400 13px/20px var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+.workspace-page th,
+.workspace-page td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  white-space: nowrap;
+}
+.workspace-page th {
+  position: sticky;
+  top: 0;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-weight: 500;
+  z-index: 1;
+}
+.workspace-page td:first-child,
+.workspace-page th:first-child {
+  position: sticky;
+  left: 0;
+}
+.workspace-page th:first-child {
+  z-index: 2;
+}
+.workspace-page td {
+  background: var(--paper);
+  max-width: 350px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.workspace-page tr:last-child td {
+  border-bottom: 0;
+}
+.workspace-page .num {
+  text-align: right;
+}
+.workspace-page .null {
+  color: var(--ink-soft);
+  font-style: italic;
+}
+.workspace-page .result-meta {
+  margin: 9px 0 0;
+}
+.workspace-page .result-message {
+  font: 400 15px/24px var(--sans);
+}
+.workspace-page .summary-values {
+  display: flex;
+  gap: 32px;
+  padding: 12px 0;
+}
+.workspace-page .summary-value {
+  font: 400 34px/42px var(--serif);
+}
+.workspace-page .summary-value small {
+  display: block;
+  font: 13px/20px var(--sans);
+  color: var(--ink-soft);
+}
+.workspace-page .err {
+  color: var(--remove);
+}
+.workspace-page .ok {
+  color: var(--add);
+}
+.workspace-page .notice {
+  padding: 12px 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.workspace-page .skeleton {
+  background: var(--sunken);
+  border-radius: 6px;
+  padding: 16px;
+}
+.workspace-page .skeleton i {
+  display: block;
+  height: 8px;
+  background: var(--rule);
+  margin: 8px 0;
+}
+.workspace-page .skeleton i:nth-child(1) {
+  width: 70%;
+}
+.workspace-page .skeleton i:nth-child(2) {
+  width: 90%;
+}
+.workspace-page .skeleton i:nth-child(3) {
+  width: 45%;
+}
+.workspace-page .confirm {
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--remove);
+  padding: 16px;
+  border-radius: 6px;
+  margin-top: 14px;
+  background: var(--paper);
+}
+.workspace-page .confirm b {
+  font-weight: 600;
+}
+.workspace-page .confirm p {
+  margin: 8px 0;
+  font-size: 13px;
+}
+.workspace-page .confirm .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.workspace-page .confirm .drop-label {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+.workspace-page .declined-sql {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+.workspace-page .notrun {
+  color: var(--ink-soft);
+  font: 400 15px/24px var(--sans);
+}
+.workspace-page .composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  background: var(--chalk);
+  backdrop-filter: none;
+  padding: 12px 0 16px;
+  margin-top: 28px;
+  border-top: 1px solid var(--rule);
+}
+.workspace-page .composer-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.workspace-page .conversation-tools {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px 20px;
+  margin-bottom: 8px;
+  padding-bottom: 0;
+  border-bottom: 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 16px;
+}
+.workspace-page .conversation-tools button {
+  white-space: nowrap;
+  font-size: 12px;
+}
+.workspace-page .composer-label {
+  color: var(--ink);
+  margin-right: auto;
+}
+.workspace-page .request-validation {
+  color: var(--remove);
+  font-size: 12px;
+  line-height: 18px;
+  margin: 8px 0 0;
+}
+.workspace-page .ask textarea[aria-invalid='true'] {
+  border-color: var(--remove);
+}
+.workspace-page .ask:has(textarea[aria-invalid='true']) {
+  border-color: var(--remove);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--remove) 12%, transparent);
+}
+.workspace-page .ask {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: none;
+}
+.workspace-page .ask:focus-within {
+  border-color: var(--lapis);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lapis) 12%, transparent);
+}
+.workspace-page .ask textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  max-height: 150px;
+  resize: none;
+  padding: 12px 14px;
+  line-height: 22px;
+  background: transparent;
+  border: 0;
+}
+.workspace-page .ask textarea:focus-visible {
+  outline: none;
+}
+.workspace-page .ask .btn {
+  height: 48px;
+  padding: 0 18px;
+  border-radius: 5px;
+}
+.workspace-page .composer-hint {
+  font-size: 11px;
+  margin: 6px 0 0;
+  color: var(--ink-soft);
+}
+.workspace-page .dependency-note {
+  font-size: 12px;
+}
+
+/* Stack the translation before either side becomes too narrow to read. */
+@media (max-width: 1100px) {
+  .workspace-page .translation {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .workspace-page .translation-thread {
+    display: none;
+  }
+  .workspace-page .translation-commands {
+    grid-column: 1;
+    padding-top: 0;
+  }
+  .workspace-page .chips {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .workspace-page .chips button {
+    min-height: 56px;
+  }
+}
+@media (max-width: 620px) {
+  .workspace-page .workspace-intro {
+    padding: 28px 0 24px;
+  }
+  .workspace-page .workspace-intro h1 {
+    font-size: 31px;
+    line-height: 37px;
+  }
+  .workspace-page .workspace-intro .lead {
+    font-size: 15px;
+    line-height: 24px;
+  }
+  .workspace-page .exchange {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    padding: 24px 0;
+  }
+  .workspace-page .request-panel {
+    padding: 0 0 0 14px;
+    margin: 0;
+  }
+  .workspace-page .request-text {
+    font-size: 21px;
+    line-height: 29px;
+  }
+  .workspace-page .translation {
+    display: grid;
+    padding: 0;
+  }
+  .workspace-page .translation-commands {
+    padding-left: 14px;
+    border-left: 1px solid var(--brass);
+  }
+  .workspace-page .translation.without-sql .translation-commands {
+    border-left-color: var(--rule);
+  }
+  .workspace-page .clarification {
+    padding: 0;
+    border-left: 0;
+  }
+  .workspace-page .exchange-results {
+    margin-top: 20px;
+    padding: 0;
+  }
+  .workspace-page .sqlblock code {
+    font-size: 12px;
+    line-height: 21px;
+  }
+  .workspace-page .conversation-tools {
+    align-items: flex-start;
+  }
+  .workspace-page .conversation-tools button {
+    font-size: 11px;
+  }
+  .workspace-page .composer {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}

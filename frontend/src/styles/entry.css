@@ -1,0 +1,391 @@
+/* Entry screens use the homepage's type and a quieter, working layout. */
+.workspace-page .entry-gate {
+  max-width: 1160px;
+  padding: 0 32px 56px;
+}
+.workspace-page .entry-gate .gate-header {
+  height: 76px;
+}
+.workspace-page .entry-gate .gate-header .icon-button {
+  flex: 0 0 44px;
+}
+.workspace-page .entry-gate .gate-header > a:nth-child(2) {
+  min-width: 0;
+  line-height: 1.4;
+}
+.workspace-page .entry-gate .gate-header .brand {
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+.workspace-page .entry-gate .gate-header > a:nth-child(2):hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.workspace-page .entry-gate .gate-layout {
+  grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
+  gap: clamp(48px, 7vw, 96px);
+  padding: 64px 0 36px;
+}
+.workspace-page .entry-gate .gate-form {
+  max-width: none;
+}
+.workspace-page .entry-gate .gate-form h1 {
+  max-width: 17ch;
+  font-size: clamp(36px, 4vw, 48px);
+  line-height: 1.1;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+.workspace-page .entry-gate .gate-form > .lead {
+  max-width: 48ch;
+  margin: 16px 0 28px;
+  font-size: 15px;
+  line-height: 1.65;
+}
+.workspace-page .entry-gate .auth-switch {
+  gap: 28px;
+  margin: 0 0 28px;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+.workspace-page .entry-gate .auth-switch a {
+  flex: none;
+  padding: 12px 0;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.workspace-page .entry-gate .auth-switch a[aria-current='page'] {
+  background: transparent;
+  border-bottom-color: var(--lapis);
+  color: var(--ink);
+}
+.workspace-page .entry-gate .fields {
+  gap: 20px 16px;
+}
+.workspace-page .entry-gate .fields label,
+.workspace-page .entry-gate .fields > div > label {
+  font-size: 13px;
+  font-weight: 500;
+}
+.workspace-page .entry-gate .fields input {
+  min-height: 48px;
+  border-radius: 6px;
+  font-weight: 400;
+}
+.workspace-page .entry-gate .identity-note {
+  margin-top: 14px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.workspace-page .entry-gate .start-button {
+  min-height: 48px;
+  margin-top: 8px;
+  border-radius: 6px;
+}
+.workspace-page .entry-gate .err:empty,
+.workspace-page .database-page .err:empty {
+  display: none;
+}
+.workspace-page .entry-gate .gate-example {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 0 8px 48px;
+  margin: 0;
+  border: 0;
+  border-left: 1px solid var(--rule);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.workspace-page .entry-gate .gate-example .eyebrow {
+  margin-bottom: 16px;
+}
+.workspace-page .entry-gate .gate-example h2 {
+  max-width: 19ch;
+  margin-bottom: 32px;
+  font-size: 30px;
+  line-height: 1.2;
+}
+.workspace-page .entry-gate .gate-example .human-example {
+  max-width: 25ch;
+  font-size: 26px;
+  line-height: 1.35;
+}
+.workspace-page .entry-gate .gate-example .example-label {
+  margin-bottom: 10px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.workspace-page .entry-gate .gate-example .sqlblock {
+  margin-top: 0;
+}
+.workspace-page .entry-gate .gate-example > .small {
+  max-width: 42ch;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+/* Reopening and adding sit together; neither is buried below the other. */
+.workspace-page .entry-gate.gate-databases .gate-layout {
+  display: block;
+  max-width: none;
+  padding-top: 44px;
+}
+.workspace-page .entry-gate.gate-databases .gate-form h1 {
+  max-width: none;
+}
+.workspace-page .entry-gate .account-gate {
+  padding: 0 0 22px;
+  margin: 0 0 32px;
+  border-bottom: 1px solid var(--rule);
+}
+.workspace-page .database-entry-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: clamp(32px, 5vw, 64px);
+  align-items: start;
+}
+.workspace-page .entry-gate.gate-databases .saved-databases,
+.workspace-page .database-page .saved-databases {
+  display: block;
+  margin: 0;
+}
+.workspace-page .database-entry-layout h2 {
+  margin: 0 0 12px;
+  font-size: 26px;
+  line-height: 1.3;
+}
+.workspace-page .database-entry-layout .saved-database-list {
+  max-height: min(520px, 60dvh);
+  overflow: auto;
+  padding: 4px;
+  margin: 0 -4px;
+  scrollbar-gutter: stable;
+}
+.workspace-page .database-entry-layout .saved-database-entry {
+  overflow: visible;
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.workspace-page .database-entry-layout .saved-database-entry:first-child {
+  border-top: 1px solid var(--rule);
+}
+.workspace-page .database-entry-layout .saved-database-entry:hover {
+  border-color: var(--rule);
+  box-shadow: none;
+}
+.workspace-page .database-entry-layout .saved-database-entry .saved-database {
+  gap: 18px;
+  min-height: 78px;
+  padding: 16px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+}
+.workspace-page .database-entry-layout .saved-database-entry .saved-database:hover {
+  background: var(--paper);
+}
+.workspace-page .database-entry-layout .saved-database[aria-current='true'] {
+  background: var(--lapis-wash);
+}
+.workspace-page .database-entry-layout .saved-database > span {
+  font-size: 14px;
+  font-weight: 500;
+}
+.workspace-page .database-entry-layout .saved-database small {
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+.workspace-page .database-entry-layout .saved-database b {
+  font-size: 12px;
+}
+.workspace-page .database-entry-layout .saved-database-error {
+  margin-bottom: 12px;
+  padding: 12px;
+  border-left: 2px solid var(--remove);
+}
+.workspace-page .database-entry-layout .database-form {
+  min-width: 0;
+  padding: 0 0 0 32px;
+  border: 0;
+  border-left: 1px solid var(--rule);
+  border-radius: 0;
+  background: transparent;
+}
+.workspace-page .database-form .database-form-heading {
+  margin-bottom: 18px;
+}
+.workspace-page .database-form .database-form-heading h2 {
+  margin-bottom: 6px;
+}
+.workspace-page .database-form .database-form-heading > p {
+  margin-bottom: 0;
+}
+.workspace-page .database-form .database-modes {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+.workspace-page .database-form .database-modes > label {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  background: transparent;
+}
+.workspace-page .database-form .database-modes > label:first-child {
+  border-top: 1px solid var(--rule);
+}
+.workspace-page .database-form .database-modes > label:has(input:checked) {
+  background: var(--lapis-wash);
+}
+.workspace-page .database-form .database-modes > label:hover {
+  background: color-mix(in srgb, var(--lapis-wash) 45%, var(--chalk));
+}
+.workspace-page .database-form .database-modes input {
+  grid-column: 1;
+  grid-row: 1;
+  width: 16px;
+  height: 16px;
+  margin: 3px 0 0;
+  justify-self: start;
+  accent-color: var(--lapis);
+}
+.workspace-page .database-form .database-modes > label > span {
+  grid-column: 2;
+  grid-row: 1;
+}
+.workspace-page .database-form .database-modes b {
+  font-size: 13px;
+  line-height: 20px;
+}
+.workspace-page .database-form .database-modes small {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 19px;
+}
+.workspace-page .database-form .database-details {
+  min-width: 0;
+  margin-top: 22px;
+}
+.workspace-page .database-form .database-field-note {
+  margin-top: 8px;
+}
+.workspace-page .database-form .database-fields .check-label {
+  margin-top: 16px;
+  font-size: 12px;
+}
+.workspace-page .database-form .start-button {
+  width: auto;
+  min-width: 180px;
+  margin-top: 24px;
+  border-radius: 6px;
+}
+.workspace-page .database-page {
+  max-width: 1100px;
+  padding-block: 32px 48px;
+}
+.workspace-page .database-page .database-page-heading {
+  padding-bottom: 28px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--rule);
+}
+.workspace-page .database-page .database-page-heading .lead {
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+.workspace-page .database-page .database-page-heading .small {
+  margin-bottom: 0;
+}
+
+@media (max-width: 950px) {
+  .workspace-page .entry-gate .gate-layout {
+    gap: 40px;
+  }
+  .workspace-page .entry-gate .gate-example {
+    padding-left: 32px;
+  }
+  .workspace-page .database-entry-layout {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+  .workspace-page .database-entry-layout .database-form {
+    padding: 28px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
+  .workspace-page .database-entry-layout .saved-database-list {
+    max-height: 340px;
+  }
+}
+@media (max-width: 850px) {
+  .workspace-page .entry-gate .gate-layout {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+    padding-top: 44px;
+  }
+  .workspace-page .entry-gate .gate-example {
+    display: none;
+  }
+  .workspace-page .entry-gate.gate-databases .gate-layout {
+    max-width: none;
+  }
+}
+@media (max-width: 620px) {
+  .workspace-page .entry-gate {
+    padding: 0 20px 32px;
+  }
+  .workspace-page .entry-gate .gate-header {
+    gap: 10px;
+    height: 68px;
+  }
+  .workspace-page .entry-gate .gate-header .brand {
+    font-size: 21px;
+  }
+  .workspace-page .entry-gate .gate-header > a:nth-child(2) {
+    font-size: 11px;
+  }
+  .workspace-page .entry-gate .gate-form h1 {
+    font-size: 36px;
+  }
+  .workspace-page .entry-gate .gate-layout {
+    padding-block: 36px 20px;
+  }
+  .workspace-page .entry-gate .account-gate {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 20px;
+  }
+  .workspace-page .entry-gate .gate-account-actions {
+    gap: 20px;
+  }
+  .workspace-page .database-form .start-button {
+    width: 100%;
+  }
+  .workspace-page .database-page {
+    padding-top: 24px;
+  }
+  .workspace-page .database-entry-layout .saved-database-entry .saved-database {
+    align-items: flex-start;
+    min-height: 74px;
+    padding-inline: 4px;
+  }
+}

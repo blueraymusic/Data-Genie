@@ -3,33 +3,87 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
-.workspace-page .schema-table-heading {
+.workspace-page .structure-page .schema-table-heading {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 20px;
   margin-bottom: 18px;
 }
-.workspace-page .schema-table-heading h3 {
+.workspace-page .structure-page .schema-table-heading h3 {
   min-width: 0;
+  margin: 0;
   overflow-wrap: anywhere;
-  margin-bottom: 0;
+  font: 500 17px/1.5 var(--mono);
 }
-.workspace-page .schema-table-heading .schema-actions {
+.workspace-page .structure-page .schema-count {
+  display: block;
+  margin: 4px 0 0;
+  font: 400 12px/20px var(--sans);
+}
+.workspace-page .structure-page .schema-table-heading .schema-actions {
   flex-shrink: 0;
 }
 .workspace-page .schema-column-actions {
   flex-wrap: nowrap;
-  gap: 16px;
+  gap: 18px;
+}
+.workspace-page .structure-page .schema-delete:not(:disabled) {
+  color: var(--remove);
+}
+.workspace-page .structure-page .schema-delete.btn:hover {
+  background: color-mix(in srgb, var(--remove) 7%, transparent);
+}
+.workspace-page .structure-page .tbl {
+  margin: 0;
+  padding: 28px 0;
+  border: 0;
+  border-top: 1px solid var(--rule);
+  border-radius: 0;
+  background: transparent;
+}
+.workspace-page .structure-page #schema {
+  margin-top: 24px;
+}
+.workspace-page .structure-page .schema-columns {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.workspace-page .structure-page .schema-columns table {
+  min-width: 620px;
+}
+.workspace-page .structure-page .schema-columns td:first-child {
+  font: 500 13px/1.5 var(--mono);
+}
+.workspace-page .structure-page .schema-columns td:nth-child(2) {
+  font: 400 12px/1.5 var(--mono);
+  color: var(--ink-soft);
+}
+.workspace-page .structure-page .constraint-chip {
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+  background: transparent;
+  font: 400 11px/1.5 var(--mono);
+}
+.workspace-page .structure-page .constraint-chip + .constraint-chip::before {
+  content: '·';
+  margin-inline: 6px;
+}
+.workspace-page .structure-page .schema-sample-action {
+  margin: 16px 0 0;
 }
 .workspace-page .schema-edit-note {
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.65;
+  margin: 12px 0;
+  max-width: 76ch;
 }
 .workspace-page .schema-review {
-  scroll-margin-top: 24px;
+  scroll-margin-top: 140px;
 }
 .workspace-page .schema-review > section {
   margin-top: 26px;
@@ -48,16 +102,16 @@
   align-items: end;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 12px 0;
+  gap: 12px 24px;
+  padding: 14px 0;
   border-bottom: 1px solid var(--rule);
   background: var(--chalk);
 }
 .workspace-page .schema-toolbar > label {
   display: grid;
-  gap: 5px;
+  gap: 6px;
   flex: 1 1 180px;
-  max-width: 320px;
+  max-width: 300px;
   min-width: 0;
   font-size: 12px;
   color: var(--ink-soft);
@@ -69,11 +123,12 @@
 .workspace-page .tbl[id^='schema-table-'] {
   scroll-margin-top: 140px;
 }
-.workspace-page .schema-last-change {
+.workspace-page .structure-page .schema-last-change {
   margin: 16px 0;
-  padding: 12px 14px;
-  border: 1px solid var(--rule);
-  border-radius: 8px;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
 }
 .workspace-page .schema-last-change > summary {
   cursor: pointer;
@@ -85,18 +140,30 @@
   margin: 12px 0 20px;
 }
 @media (max-width: 900px) {
-  .workspace-page .schema-table-heading {
+  .workspace-page .structure-page .schema-table-heading {
     flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
-  .workspace-page .schema-table-heading .schema-actions {
+  .workspace-page .structure-page .schema-table-heading .schema-actions {
     flex-shrink: 1;
   }
 }
 @media (max-width: 600px) {
-  .workspace-page .page-heading > .schema-actions {
+  .workspace-page .schema-review {
+    scroll-margin-top: 180px;
+  }
+  .workspace-page .schema-toolbar > label {
+    max-width: none;
+    flex-basis: 100%;
+  }
+  .workspace-page .schema-toolbar > .schema-actions {
     width: 100%;
   }
-  .workspace-page .schema-actions .btn {
+  .workspace-page .schema-toolbar > .schema-actions .btn {
     flex: 1 1 auto;
+  }
+  .workspace-page .structure-page .tbl {
+    padding-block: 22px;
   }
 }

@@ -95,9 +95,9 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
   return (
     <section id="v-ask" className={workbench.feed.length ? 'has-requests' : undefined}>
       <div className="workspace-intro">
-        <h1>Ask in plain English.</h1>
+        <h1>Ask your database.</h1>
         <p className="lead">
-          Data Genie turns your request into SQL. Review the SQL and see the result here.
+          Ask a question, see the SQL, and work with the answer. You can follow up here.
         </p>
         {!aiAvailable && (
           <p className="status-note" role="status">
@@ -133,11 +133,6 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
                 textarea.current?.focus();
               }}
             >
-              <Icon
-                name={
-                  selected ? ['table', 'layers', 'database'][index] : ['database', 'plus'][index]
-                }
-              />
               <span>
                 <strong>
                   {selected

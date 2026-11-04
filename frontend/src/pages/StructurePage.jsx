@@ -53,7 +53,6 @@ function SchemaTable({ table, sessionId, index, disabled, dialect, onChange }) {
         <h3 tabIndex="-1">
           {table.name}
           <span className="schema-count">
-            ·{' '}
             {table.row_count == null
               ? 'Row count unavailable'
               : (table.row_count_estimated ? '~ ' : '') +
@@ -70,7 +69,14 @@ function SchemaTable({ table, sessionId, index, disabled, dialect, onChange }) {
             <button
               key={action}
               type="button"
-              className={'btn' + (action === 'delete-table' ? ' warn' : '')}
+              className={
+                'btn' +
+                (action === 'delete-table'
+                  ? ' quiet schema-delete'
+                  : action === 'rename-table'
+                    ? ' quiet'
+                    : '')
+              }
               aria-label={label + (action === 'add-column' ? ' to ' : ' ') + table.name}
               disabled={disabled}
               onClick={() => onChange({ action, table })}
@@ -125,7 +131,7 @@ function SchemaTable({ table, sessionId, index, disabled, dialect, onChange }) {
                       Rename
                     </button>
                     <button
-                      className="text-button"
+                      className="text-button schema-delete"
                       type="button"
                       disabled={
                         disabled ||
@@ -180,7 +186,7 @@ function SchemaTable({ table, sessionId, index, disabled, dialect, onChange }) {
           ))}
         </div>
       )}
-      <p>
+      <p className="schema-sample-action">
         <button className="btn" disabled={busy} onClick={sample}>
           {busy ? 'Loading…' : 'Sample rows'}
         </button>
@@ -218,7 +224,8 @@ export default function StructurePage({ workbench }) {
     !reviewRequests.length && latestSchema && ['executed', 'declined'].includes(latestSchema.status)
       ? latestSchema
       : null;
-  const review = useRef(null);
+  const review = useRef(null),
+    toolbar = useRef(null);
   useEffect(() => {
     setChange(null);
     setJumpTable('');
@@ -244,17 +251,21 @@ export default function StructurePage({ workbench }) {
     if (disabled) return;
     setChange(null);
     workbench.submit(sql, true);
+    if (review.current) {
+      const height = toolbar.current?.getBoundingClientRect().height;
+      if (height) review.current.style.scrollMarginTop = `${Math.ceil(height) + 16}px`;
+    }
     review.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
   }
   return (
-    <section>
+    <section className="structure-page">
       <header className="page-heading">
         <div>
           <h1>Structure</h1>
-          <p className="lead">The tables, columns, and links behind your data.</p>
+          <p className="lead">Browse your tables and make changes to their columns.</p>
         </div>
       </header>
-      <div className="schema-toolbar" role="group" aria-label="Structure tools">
+      <div className="schema-toolbar" ref={toolbar} role="group" aria-label="Structure tools">
         <label>
           Jump to table
           <select

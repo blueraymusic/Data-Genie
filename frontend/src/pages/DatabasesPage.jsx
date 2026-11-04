@@ -4,42 +4,33 @@ import { SavedDatabases } from '../components/SavedDatabases';
 export default function DatabasesPage({ workbench, onOpened }) {
   const [formVersion, setFormVersion] = useState(0);
   return (
-    <section>
-      <h1>Your databases</h1>
-      <div role="note" aria-label="Current database">
-        <p className="lead">
-          Currently connected to <strong>{workbench.session.database}</strong>. Opening another
-          database starts a new session. Your earlier history stays saved.
-        </p>
-      </div>
-      <SavedDatabases
-        workbench={workbench}
-        onOpened={onOpened}
-        onReconnect={() => setFormVersion((value) => value + 1)}
-      />
-      <div className="connection-options">
-        <div>
-          <DatabaseForm
-            key={formVersion}
-            initialMode={formVersion ? 'postgresql' : 'create'}
-            busy={workbench.busy || workbench.pending || workbench.workingCommands.size > 0}
-            onOpen={async (payload) => {
-              const data = await workbench.open(payload);
-              onOpened(data);
-            }}
-          />
-        </div>
-        <div className="drop">
-          <h2>Bring your data</h2>
-          <p>
-            Upload a SQLite file, start an empty SQLite database, or connect a live PostgreSQL
-            database.
+    <section className="database-page">
+      <header className="database-page-heading">
+        <h1>Your databases</h1>
+        <div role="note" aria-label="Current database">
+          <p className="lead">
+            You’re using <strong>{workbench.session.database}</strong>.
           </p>
           <p className="small muted">
-            SQLite uploads use a copy you can download. PostgreSQL works on your connected database;
-            enable changes only when you want to confirm edits there.
+            Open another database to start a new session. Your history stays saved.
           </p>
         </div>
+      </header>
+      <div className="database-entry-layout">
+        <SavedDatabases
+          workbench={workbench}
+          onOpened={onOpened}
+          onReconnect={() => setFormVersion((value) => value + 1)}
+        />
+        <DatabaseForm
+          key={formVersion}
+          initialMode={formVersion ? 'postgresql' : 'create'}
+          busy={workbench.busy || workbench.pending || workbench.workingCommands.size > 0}
+          onOpen={async (payload) => {
+            const data = await workbench.open(payload);
+            onOpened(data);
+          }}
+        />
       </div>
     </section>
   );
