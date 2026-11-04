@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWorkbench } from '../hooks/useWorkbench';
+import { useEnterMotion } from '../hooks/useMotion';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from '../lib/router';
 import { schemaStatement } from '../lib/schemaSql';
@@ -70,6 +71,7 @@ export default function WorkspaceApp() {
     view = viewFromRoute(route),
     session = workbench.session;
   const inWorkspace = ['ask', 'schema', 'sql'].includes(view);
+  useEnterMotion(content, `${view}:${session?.session_id || ''}:${workbench.loading}`);
   const mode = session && !session.ai?.enabled ? 'sql' : savedMode;
   const disabled = workbench.busy || workbench.pending || workbench.workingCommands.size > 0;
   useEffect(() => {

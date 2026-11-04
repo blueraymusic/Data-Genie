@@ -12,4 +12,5 @@ import './styles/workspace.css';
 import './styles/usability.css';
 import './styles/interactions.css';
 import './styles/public-header.css';
+import './styles/motion.css';
 createRoot(document.getElementById('root')).render(<App />);

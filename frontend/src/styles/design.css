@@ -14,9 +14,10 @@
   --control-border: #79859f;
   --shadow-raised: 0 2px 4px #16213a04, 0 12px 36px #16213a0d;
   --shadow-floating: 0 8px 16px #16213a0a, 0 24px 64px #16213a24;
-  --motion-fast: 150ms;
-  --motion-normal: 220ms;
-  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-fast: 160ms;
+  --motion-normal: 240ms;
+  --motion-slow: 440ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --remove: #b52d23;
   --on-remove: #ffffff;
   --structure: #6b3fa0;

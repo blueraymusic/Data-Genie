@@ -231,18 +231,13 @@ describe('interactive homepage', () => {
     expect(screen.queryByRole('button', { name: 'Pause example slideshow' })).toBeNull();
   });
 
-  it('pauses and resumes the logo strip with no duplicate accessible links', async () => {
+  it('keeps the moving logo strip free of playback buttons and duplicate accessible links', async () => {
     const events = userEvent.setup();
     render(<HomeConnections />);
     expect(screen.getAllByRole('link').length).toBe(1);
-    await events.click(screen.getByRole('button', { name: 'Pause logo animation' }));
-    expect(
-      screen.getByRole('button', { name: 'Resume logo animation' }).getAttribute('aria-pressed'),
-    ).toBe('true');
-    await events.click(screen.getByRole('button', { name: 'Resume logo animation' }));
-    expect(
-      screen.getByRole('button', { name: 'Pause logo animation' }).getAttribute('aria-pressed'),
-    ).toBe('false');
+    expect(screen.queryByRole('button')).toBeNull();
+    await events.tab();
+    expect(document.activeElement).toBe(screen.getByRole('link', { name: /GitHub source code/ }));
   });
 
   it('routes Try Data Genie to signup and offers Contact us through the mobile menu', async () => {

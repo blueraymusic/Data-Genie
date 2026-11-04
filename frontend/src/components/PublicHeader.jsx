@@ -13,7 +13,7 @@ export function ThemeToggle({ className = 'icon-btn' }) {
       onClick={toggle}
       aria-label={'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' theme'}
     >
-      <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
+      <Icon key={theme} name={theme === 'dark' ? 'sun' : 'moon'} className="ic theme-glyph" />
     </button>
   );
 }

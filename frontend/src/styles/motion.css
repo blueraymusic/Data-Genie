@@ -1,0 +1,218 @@
+/* Motion is decorative: all content remains visible without animation support. */
+body {
+  transition:
+    background-color var(--motion-normal) var(--ease-out),
+    color var(--motion-normal) var(--ease-out);
+}
+
+.home-page .hero-copy > * {
+  animation: hero-content-enter var(--motion-slow) var(--ease-out) backwards;
+}
+.home-page .hero-copy h1 {
+  animation-delay: 45ms;
+}
+.home-page .hero-copy .hero-lede {
+  animation-delay: 90ms;
+}
+.home-page .hero-copy .cta-row {
+  animation-delay: 135ms;
+}
+.home-page .hero-copy .hero-hint {
+  animation-delay: 170ms;
+}
+.home-page .hero-preview {
+  animation: preview-enter 560ms var(--ease-out) 100ms backwards;
+}
+.home-page .hero-copy:focus-within > *,
+.home-page .hero-preview:focus-within {
+  animation: none;
+}
+
+/* Header, authentication and supporting pages share the same quiet entrance. */
+:is(.home-page, .faq-page) .public-mobile-nav {
+  transform-origin: top right;
+  animation: surface-enter var(--motion-normal) var(--ease-out) backwards;
+}
+.workspace-page .gate-form,
+.workspace-page .gate-example,
+.faq-page .intro,
+.contact-page .contact-intro .wrap,
+.contact-page .contact-form,
+.contact-page .contact-help {
+  animation: soft-content-enter var(--motion-slow) var(--ease-out) backwards;
+}
+.workspace-page .gate-example {
+  animation-delay: 70ms;
+}
+.workspace-page .gate-form:focus-within,
+.contact-page .contact-form:focus-within {
+  animation: none;
+}
+.theme-glyph {
+  animation: theme-glyph-enter 320ms var(--ease-out);
+}
+
+/* Navigation and action feedback move only the decorative glyph or underline. */
+:is(.home-page, .faq-page) .nav > a {
+  position: relative;
+}
+:is(.home-page, .faq-page) .nav > a::after {
+  content: '';
+  position: absolute;
+  inset: auto 8px 3px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--motion-normal) var(--ease-out);
+}
+:is(.home-page, .faq-page) .nav > a:is(:hover, :focus-visible, [aria-current='page'])::after {
+  transform: scaleX(1);
+}
+.home-page :is(.btn, .inline-link, .inline-action) [data-icon='arrow'],
+.workspace-page .suggestion-arrow {
+  transition: transform var(--motion-normal) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .home-page :is(.btn, .inline-link, .inline-action):hover [data-icon='arrow'],
+  .workspace-page .chips button:hover .suggestion-arrow {
+    transform: translateX(3px);
+  }
+  .workspace-page .saved-database-entry:hover {
+    border-color: color-mix(in srgb, var(--lapis) 45%, var(--rule));
+    box-shadow: var(--shadow-raised);
+  }
+}
+
+.home-page .demo-sql > .sqlblock,
+.home-page .demo-result > *,
+.home-page .demo-decision,
+.workspace-page .sql-tool-panel {
+  animation: soft-content-enter var(--motion-normal) var(--ease-out) backwards;
+}
+.home-page .demo-sql-loading i {
+  animation: loading-breathe 700ms ease-in-out infinite alternate;
+}
+.home-page .demo-sql-loading i:last-child {
+  animation-delay: 100ms;
+}
+.workspace-page .rail-table summary::before {
+  transition: transform var(--motion-normal) var(--ease-out);
+}
+.home-page .copy[data-copied='true'],
+.workspace-page .copy-sql[data-copied='true'] {
+  color: var(--add);
+}
+.home-page .copy[data-copied='true'] .ic,
+.workspace-page .copy-sql[data-copied='true'] .ic {
+  animation: copy-confirm var(--motion-normal) var(--ease-out);
+}
+.workspace-page .bar-track i {
+  transform-origin: left;
+  animation: chart-fill var(--motion-slow) var(--ease-out) backwards;
+  transition:
+    width var(--motion-normal) var(--ease-out),
+    left var(--motion-normal) var(--ease-out);
+}
+.workspace-page .bar-track i.negative {
+  transform-origin: right;
+}
+
+/* Native accordion height animation where available; normal details is the fallback. */
+@supports (interpolate-size: allow-keywords) and (transition-behavior: allow-discrete) {
+  .home-page .home-faq-list details,
+  .faq-page .faq-group details {
+    interpolate-size: allow-keywords;
+  }
+  .home-page .home-faq-list details::details-content,
+  .faq-page .faq-group details::details-content {
+    block-size: 0;
+    opacity: 0;
+    overflow: clip;
+    transition:
+      block-size var(--motion-normal) var(--ease-out),
+      opacity var(--motion-fast) ease-out,
+      content-visibility var(--motion-normal) allow-discrete;
+  }
+  .home-page .home-faq-list details[open]::details-content,
+  .faq-page .faq-group details[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+}
+
+@keyframes hero-content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes preview-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes soft-content-enter {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes theme-glyph-enter {
+  from {
+    opacity: 0;
+    transform: rotate(-25deg) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes loading-breathe {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 0.9;
+  }
+}
+@keyframes copy-confirm {
+  from {
+    opacity: 0.5;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes chart-fill {
+  from {
+    transform: scaleX(0.05);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-page [data-icon='arrow'],
+  .workspace-page .suggestion-arrow {
+    transform: none !important;
+  }
+  .home-page .home-faq-list details[open]::details-content,
+  .faq-page .faq-group details[open]::details-content {
+    opacity: 1;
+  }
+}

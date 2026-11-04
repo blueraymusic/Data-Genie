@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { SqlBlock } from './SqlBlock';
 import { HomeApproval } from './HomeApproval';
+import { useReducedMotion } from '../hooks/useMotion';
 import { sampleCustomers, sampleStates, customerLookup, sampleUpdate } from '../data/homeSamples';
 
 function LookupExample() {
@@ -168,15 +169,7 @@ export function HomeExamples() {
   const [paused, setPaused] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
-  const [reduced, setReduced] = useState(
-    () => matchMedia('(prefers-reduced-motion: reduce)').matches,
-  );
-  useEffect(() => {
-    const media = matchMedia('(prefers-reduced-motion: reduce)');
-    const changed = () => setReduced(media.matches);
-    media.addEventListener('change', changed);
-    return () => media.removeEventListener('change', changed);
-  }, []);
+  const reduced = useReducedMotion();
   const running = !paused && !hovered && !focused && !reduced;
   useEffect(() => {
     if (!running) return;

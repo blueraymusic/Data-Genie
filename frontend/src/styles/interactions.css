@@ -27,6 +27,16 @@
     .result-view button,
     .chips button,
     .clarification-suggestions button,
+    .pick,
+    .tour-tabs button,
+    .example-tabs button,
+    .example-playback,
+    .summary-toggle button,
+    .history-demo-filters button,
+    .history-demo-list button,
+    .inline-link,
+    .inline-action,
+    .public-mobile-nav a,
     .saved-database,
     .user-menu-panel a,
     .user-menu-panel button
@@ -177,6 +187,7 @@
   :root {
     --motion-fast: 0ms;
     --motion-normal: 0ms;
+    --motion-slow: 0ms;
   }
   :is(.home-page, .faq-page, .workspace-page) .btn {
     transform: none !important;

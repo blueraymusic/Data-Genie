@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Icon } from './Icon';
 
 function PlatformList({ duplicate = false }) {
@@ -49,7 +48,6 @@ function PlatformList({ duplicate = false }) {
   );
 }
 export function HomeConnections() {
-  const [paused, setPaused] = useState(false);
   return (
     <section className="home-connections dark-surface" aria-label="Connections and platforms">
       <div className="wrap connection-strip">
@@ -58,23 +56,12 @@ export function HomeConnections() {
           <br />
           Built on familiar tools.
         </p>
-        <div className={'connection-marquee' + (paused ? ' is-paused' : '')} id="platform-marquee">
+        <div className="connection-marquee">
           <div className="connection-track">
             <PlatformList />
             <PlatformList duplicate />
           </div>
         </div>
-        <button
-          className="marquee-toggle"
-          type="button"
-          aria-controls="platform-marquee"
-          aria-pressed={paused}
-          onClick={() => setPaused((value) => !value)}
-          aria-label={paused ? 'Resume logo animation' : 'Pause logo animation'}
-        >
-          <Icon name={paused ? 'play' : 'pause'} />
-          <span>{paused ? 'Play' : 'Pause'}</span>
-        </button>
       </div>
     </section>
   );

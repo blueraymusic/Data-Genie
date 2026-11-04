@@ -5,8 +5,10 @@ import { ResultTable } from './ResultTable';
 import { Brand } from './Brand';
 import { Icon } from './Icon';
 import { Link } from '../lib/router';
+import { useReducedMotion } from '../hooks/useMotion';
 
 export function HeroDemo() {
+  const reduced = useReducedMotion();
   const [active, setActive] = useState(0),
     [replay, setReplay] = useState(0);
   const [ready, setReady] = useState(true),
@@ -15,7 +17,9 @@ export function HeroDemo() {
   const demo = demos[active];
   useEffect(() => {
     setDecision(null);
-    if (matchMedia('(prefers-reduced-motion:reduce)').matches) {
+  }, [active, replay]);
+  useEffect(() => {
+    if (reduced) {
       setTyped(demo.request);
       setReady(true);
       return;
@@ -33,7 +37,7 @@ export function HeroDemo() {
       clearInterval(interval);
       clearTimeout(timer);
     };
-  }, [active, replay, demo.request]);
+  }, [active, replay, demo.request, reduced]);
   const status =
     !ready || (demo.operation === 'INSERT' && !decision)
       ? 'pending'

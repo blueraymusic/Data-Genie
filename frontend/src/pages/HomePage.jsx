@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useScrollReveal } from '../hooks/useMotion';
 import { useAuth } from '../context/AuthContext';
 import { PublicHeader, EntryLink } from '../components/PublicHeader';
 import { Brand } from '../components/Brand';
@@ -44,11 +45,13 @@ const questions = [
 ];
 export default function HomePage() {
   const { user } = useAuth();
+  const page = useRef(null);
+  useScrollReveal(page, '.section-heading, .home-steps > li, .home-closing .wrap');
   useEffect(() => {
     document.title = 'Data Genie: ask your database in plain English';
   }, []);
   return (
-    <div className="home-page" data-authenticated={user ? 'true' : undefined}>
+    <div className="home-page" ref={page} data-authenticated={user ? 'true' : undefined}>
       <a className="skip" href="#main">
         Skip to content
       </a>
@@ -95,7 +98,7 @@ export default function HomePage() {
             </div>
             <ol className="home-steps" role="list">
               {steps.map(([title, copy], index) => (
-                <li key={title}>
+                <li key={title} data-motion-delay={index * 70}>
                   <span className="step-number" aria-hidden="true">
                     0{index + 1}
                   </span>
