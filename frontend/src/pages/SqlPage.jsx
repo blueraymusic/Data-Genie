@@ -4,6 +4,7 @@ import { RequestWindowControls } from '../components/RequestWindowControls';
 import { useRequestWindow } from '../hooks/useRequestWindow';
 import { quoteIdentifier } from '../lib/api';
 import '../styles/sql.css';
+import { databaseAccess } from '../lib/access';
 
 export default function SqlPage({ workbench, selected, draft, setDraft, onNewTable }) {
   const textarea = useRef(null),
@@ -13,6 +14,7 @@ export default function SqlPage({ workbench, selected, draft, setDraft, onNewTab
     wasWorking = useRef(false);
   const [openPanel, setOpenPanel] = useState(null);
   const { session } = workbench;
+  const canChangeStructure = databaseAccess(session).permissions.structure;
   const requestWindow = useRequestWindow(workbench.feed, session.session_id);
   const activeTable = session.tables.includes(selected) ? selected : session.tables[0] || '';
   const postgres = session.dialect === 'postgresql' || session.source === 'postgresql';
@@ -56,7 +58,7 @@ export default function SqlPage({ workbench, selected, draft, setDraft, onNewTab
           },
         ]
       : []),
-    ...(!session.read_only ? [{ label: 'Create a notes table', sql: createExample }] : []),
+    ...(canChangeStructure ? [{ label: 'Create a notes table', sql: createExample }] : []),
   ];
   useLayoutEffect(() => {
     if (!textarea.current) return;
@@ -232,7 +234,7 @@ export default function SqlPage({ workbench, selected, draft, setDraft, onNewTab
             <button
               className="text-button"
               type="button"
-              disabled={blocked || session.read_only}
+              disabled={blocked || !canChangeStructure}
               onClick={onNewTable}
             >
               Create a table

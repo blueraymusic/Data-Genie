@@ -1,0 +1,85 @@
+import { useEffect, useId, useRef } from 'react';
+import { Icon } from './Icon';
+
+export function WorkspaceDialog({ title, description, busy, onClose, children, wide = false }) {
+  const titleId = useId(),
+    descriptionId = useId(),
+    panel = useRef(null);
+  useEffect(() => {
+    const previous = document.activeElement;
+    const first =
+      panel.current?.querySelector(
+        'input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
+      ) || panel.current?.querySelector('button:not([disabled])');
+    (first || panel.current)?.focus();
+    return () => {
+      if (previous?.isConnected) previous.focus();
+    };
+  }, []);
+  return (
+    <div
+      className="workspace-dialog-backdrop"
+      onClick={(event) => {
+        if (event.target === event.currentTarget && !busy) onClose();
+      }}
+    >
+      <section
+        ref={panel}
+        className={'workspace-dialog' + (wide ? ' workspace-dialog-wide' : '')}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
+        tabIndex={-1}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && !busy) {
+            event.stopPropagation();
+            onClose();
+          }
+          if (event.key !== 'Tab') return;
+          const focusable = [
+            ...panel.current.querySelectorAll(
+              'button, input, select, textarea, a[href], [tabindex]',
+            ),
+          ].filter((node) => !node.disabled && node.tabIndex >= 0 && node.type !== 'hidden');
+          const first = focusable[0],
+            last = focusable.at(-1);
+          if (!first) {
+            event.preventDefault();
+            panel.current.focus();
+          } else if (
+            event.shiftKey &&
+            (document.activeElement === first || document.activeElement === panel.current)
+          ) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }}
+      >
+        <header className="workspace-dialog-heading">
+          <div>
+            <h2 id={titleId}>{title}</h2>
+            {description && (
+              <p id={descriptionId} className="muted">
+                {description}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            className="btn quiet workspace-close"
+            aria-label="Close dialog"
+            disabled={busy}
+            onClick={onClose}
+          >
+            <Icon name="x" />
+          </button>
+        </header>
+        {children}
+      </section>
+    </div>
+  );
+}

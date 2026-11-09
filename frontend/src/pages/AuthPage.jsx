@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useRouter, Link } from '../lib/router';
 import { AuthShell } from '../components/AuthShell';
 import { MicrosoftSignIn, microsoftError, useMicrosoftSignIn } from '../components/MicrosoftSignIn';
+import { readWorkspaceInvitation } from '../lib/workspaceInvites';
 export default function AuthPage() {
   const { pathname, route, navigate } = useRouter(),
     { authenticate, refresh, error: authError, connectionError } = useAuth();
@@ -31,7 +32,7 @@ export default function AuthPage() {
     try {
       await authenticate(signup ? 'register' : 'login', values);
       form.reset();
-      navigate('/databases', true);
+      navigate(readWorkspaceInvitation() ? '/workspaces' : '/databases', true);
     } catch (error) {
       setError(error.message);
     } finally {

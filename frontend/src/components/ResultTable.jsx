@@ -22,6 +22,7 @@ export function ResultTable({
   recovery = [],
   filename = 'data-genie-results',
   compactTools = false,
+  canExport = true,
 }) {
   const [sort, setSort] = useState(null),
     [message, setMessage] = useState('');
@@ -65,7 +66,7 @@ export function ResultTable({
   const columns = Object.keys(rows[0]);
   return (
     <>
-      {!home && (
+      {!home && (!compactTools || canExport) && (
         <div className={'result-tools' + (compactTools ? ' compact-tools' : '')}>
           {!compactTools && (
             <span>
@@ -73,14 +74,16 @@ export function ResultTable({
               {truncated ? ' shown' : ''}
             </span>
           )}
-          <div>
-            <button type="button" className="text-button" onClick={copy}>
-              Copy results
-            </button>
-            <button type="button" className="text-button" onClick={download}>
-              Download CSV
-            </button>
-          </div>
+          {canExport && (
+            <div>
+              <button type="button" className="text-button" onClick={copy}>
+                Copy results
+              </button>
+              <button type="button" className="text-button" onClick={download}>
+                Download CSV
+              </button>
+            </div>
+          )}
         </div>
       )}
       <div

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, rememberSession, savedSession } from '../lib/api';
+import { databaseAccess } from '../lib/access';
 
 export function normalizeCommand(command) {
   return {
@@ -43,6 +44,7 @@ export function useWorkbench(user) {
   const [workingCommands, setWorkingCommands] = useState(new Set());
   const active = useRef(null),
     version = useRef(0),
+    statusVersion = useRef(0),
     inFlight = useRef(false),
     commandLocks = useRef(new Set());
   const pending = feed.some((request) =>
@@ -57,6 +59,7 @@ export function useWorkbench(user) {
     setSession(data);
     setFeed([]);
     setMessage('');
+    if (!databaseAccess(data).canRead) return;
     try {
       const history = await api('/api/history?limit=50&include_pending=1', {
         sessionId: data.session_id,
@@ -77,11 +80,16 @@ export function useWorkbench(user) {
     }
     api('/api/status', { sessionId: id })
       .then((data) => {
-        if (live && !data.session_required && !data.ended_at) return adopt(data);
+        if (!live) return;
+        if (!data.session_required && !data.ended_at) return adopt(data);
+        rememberSession(null);
+        setMessage('Choose a database to continue. Your previous session has ended.');
       })
       .catch((error) => {
-        rememberSession(null);
-        if (live) setMessage('Choose a database to continue. ' + error.message);
+        if (live) {
+          rememberSession(null);
+          setMessage('Choose a database to continue. ' + error.message);
+        }
       })
       .finally(() => {
         if (live) setLoading(false);
@@ -94,9 +102,54 @@ export function useWorkbench(user) {
   }, [user.account_id, adopt]);
   const refresh = useCallback(async (id) => {
     const revision = version.current;
-    const data = await api('/api/status', { sessionId: id });
-    if (active.current === id && version.current === revision) setSession(data);
+    const statusRevision = ++statusVersion.current;
+    const current = () => active.current === id && version.current === revision;
+    const forget = (message) => {
+      version.current++;
+      active.current = null;
+      rememberSession(null);
+      setFeed([]);
+      setSession(null);
+      setMessage(message);
+    };
+    try {
+      const data = await api('/api/status', { sessionId: id });
+      if (current() && statusVersion.current === statusRevision) {
+        if (data.session_required || data.ended_at) {
+          forget('Your previous session has ended. Choose a database to continue.');
+          return;
+        }
+        setSession(data);
+        if (!databaseAccess(data).canRead) setFeed([]);
+      }
+    } catch (error) {
+      if (!current() || statusVersion.current !== statusRevision) return;
+      if (error.status === 403) {
+        forget('Your access to this database has changed. Choose a database you can access.');
+        return;
+      }
+      if (error.code === 'session_unavailable') {
+        forget('Your previous session has ended. Choose a database to continue.');
+        return;
+      }
+      throw error;
+    }
   }, []);
+  useEffect(() => {
+    if (!session?.session_id) return;
+    const check = () => {
+      if (document.visibilityState === 'hidden') return;
+      refresh(session.session_id).catch((error) => {
+        if (error.status !== 403) setMessage(error.message);
+      });
+    };
+    window.addEventListener('focus', check);
+    document.addEventListener('visibilitychange', check);
+    return () => {
+      window.removeEventListener('focus', check);
+      document.removeEventListener('visibilitychange', check);
+    };
+  }, [session?.session_id, refresh]);
   const open = useCallback(
     async (payload, resumeId) => {
       if (inFlight.current) throw new Error('Wait for the current request to finish.');
@@ -106,17 +159,21 @@ export function useWorkbench(user) {
       setBusy(true);
       setMessage('');
       try {
+        const destination =
+          payload.workspace_id === undefined && session?.access?.role === 'owner'
+            ? { ...payload, workspace_id: session.access.workspace_id }
+            : payload;
         const data = resumeId
           ? await api('/api/sessions/resume', {
               method: 'POST',
               sessionId: active.current,
               body: { session_id: resumeId },
             })
-          : payload.database_mode === 'postgresql'
+          : payload.workspace_id || session?.access || payload.database_mode === 'postgresql'
             ? await api('/api/sessions', {
                 method: 'POST',
                 sessionId: active.current,
-                body: payload,
+                body: destination,
               })
             : active.current
               ? await api(
@@ -136,7 +193,30 @@ export function useWorkbench(user) {
                           : payload,
                   },
                 )
-              : await api('/api/sessions', { method: 'POST', body: payload });
+              : await api('/api/sessions', { method: 'POST', body: destination });
+        await adopt(data);
+        return data;
+      } finally {
+        inFlight.current = false;
+        setBusy(false);
+      }
+    },
+    [adopt, pending, session?.access?.workspace_id, session?.access?.role],
+  );
+  const openShared = useCallback(
+    async (workspaceId, databaseId) => {
+      if (inFlight.current) throw new Error('Wait for the current request to finish.');
+      if (pending || commandLocks.current.size)
+        throw new Error('Confirm or decline the pending change before switching databases.');
+      inFlight.current = true;
+      setBusy(true);
+      setMessage('');
+      try {
+        const data = await api('/api/workspaces/' + encodeURIComponent(workspaceId) + '/open', {
+          method: 'POST',
+          sessionId: active.current,
+          body: { database_id: databaseId },
+        });
         await adopt(data);
         return data;
       } finally {
@@ -373,6 +453,7 @@ export function useWorkbench(user) {
     pending,
     workingCommands,
     open,
+    openShared,
     submit,
     decide,
     end,

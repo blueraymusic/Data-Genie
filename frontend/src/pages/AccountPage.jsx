@@ -4,6 +4,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Link, useRouter } from '../lib/router';
 import { api } from '../lib/api';
 import { MicrosoftMark, microsoftError, useMicrosoftSignIn } from '../components/MicrosoftSignIn';
+import { databaseAccess } from '../lib/access';
 export default function AccountPage({ workbench, mode, setMode }) {
   const { user, changePassword, refresh } = useAuth(),
     { theme, toggle } = useTheme();
@@ -122,7 +123,7 @@ export default function AccountPage({ workbench, mode, setMode }) {
                     {workbench.session.read_only ? 'Read-only' : 'Changes require confirmation'}
                   </strong>
                 </p>
-              ) : (
+              ) : databaseAccess(workbench.session).permissions.export ? (
                 <p>
                   <span>Database copy</span>
                   <a
@@ -135,7 +136,7 @@ export default function AccountPage({ workbench, mode, setMode }) {
                     Download SQLite file
                   </a>
                 </p>
-              )}
+              ) : null}
             </>
           )}
         </div>

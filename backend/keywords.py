@@ -180,15 +180,46 @@ def result_plan(sql, summary, visualization="table"):
 def metadata_plan(question, tables):
     if re.fullmatch(r"(?:tables|what\s+tables|list\s+tables|show\s+tables)\??", question.strip(), re.IGNORECASE):
         return result_plan("SELECT name AS table_name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name", "Tables in this database.")
-    match = re.fullmatch(rf"show\s+(?:columns|schema)\s+(?:(?:from|in|of)\s+)?({TABLE_NAME})", question.strip(), re.IGNORECASE)
+    match = re.fullmatch(rf"show\s+(?:columns|schema)\s+(?:(?:from|in|of)\s+)?({TABLE_NAME})\??", question.strip(), re.IGNORECASE)
     match = match or re.fullmatch(
-        rf"(?:show|describe|display)(?: me)? (?:the )?(?:structure|schema|columns) (?:of|for|in|from) (?:the )?({TABLE_NAME})(?: table)?\??",
+        rf"(?:show|describe|display|list|what are)(?: me)? (?:the )?(?:structure|schema|columns|fields|attributes) (?:of|for|in|from) (?:the )?({TABLE_NAME})(?: table)?\??",
         question.strip(), re.IGNORECASE,
     )
+    match = match or re.fullmatch(rf"describe (?:the )?({TABLE_NAME})(?: table)?\??", question.strip(), re.IGNORECASE)
     if match:
         table = resolve_table(match[1], tables)
         table_literal = "'" + table.replace("'", "''") + "'"
         return {**result_plan(f"SELECT name,type,pk AS primary_key FROM pragma_table_info({table_literal})", f"Columns in {table}."), "table": table}
+    return None
+
+
+def column_count_request(question):
+    """Return a schema-count scope, without generating database-specific SQL.
+
+    Keep the phrases anchored so a data query containing a column called
+    ``count`` is never silently turned into a schema inspection.
+    """
+    text = re.sub(r"\s+", " ", str(question or "").strip()).rstrip("?.!")
+    text = re.sub(r"^please ", "", text, flags=re.IGNORECASE)
+    column = r"(?:columns?|fields?|attributes?)"
+    quantity = rf"(?:{column} counts?|(?:the )?(?:number|count|total number|total) of (?:the )?{column}|count {column})"
+    prefix = r"(?:(?:(?:show|list|display|give|tell)(?: me)?|what is|what's) (?:the )?)?"
+    database = r"(?:the |this |my |our |current |connected )?(?:database|db|schema)"
+    all_tables = rf"(?:(?:for|in|of|across|from) (?:all |the )?tables|(?:per|by) table|(?:for|in) each table|(?:in|of|across|for) {database})"
+    if re.fullmatch(rf"{prefix}{quantity} {all_tables}", text, re.IGNORECASE):
+        return {"all_tables": True}
+    if re.fullmatch(rf"how many {column} (?:are )?(?:there )?{all_tables}", text, re.IGNORECASE):
+        return {"all_tables": True}
+    if re.fullmatch(rf"how many {column} (?:does|do) (?:{database}|all tables) (?:have|contain)", text, re.IGNORECASE):
+        return {"all_tables": True}
+    target = rf"(?:the )?(?:table )?({TABLE_NAME})(?: table)?"
+    match = re.fullmatch(rf"{prefix}{quantity} (?:for|in|of|from|on) {target}", text, re.IGNORECASE)
+    match = match or re.fullmatch(rf"how many {column} (?:does|do) {target} (?:have|contain)", text, re.IGNORECASE)
+    match = match or re.fullmatch(rf"how many {column} (?:are )?(?:there )?(?:in|on|for) {target}", text, re.IGNORECASE)
+    if match:
+        return {"table": match[1]}
+    if re.fullmatch(rf"{prefix}{quantity}|how many {column}(?: are there)?", text, re.IGNORECASE):
+        return {"needs_table": True}
     return None
 
 
@@ -197,10 +228,13 @@ def wants_table_inventory(question):
     text = re.sub(r"\s+", " ", str(question or "").strip().lower().replace(",", " ")).rstrip("?.!")
     scope = r"(?: (?:in|of|from) (?:the |this |my |our )?(?:database|db))?"
     return bool(re.fullmatch(
-        rf"(?:tables|(?:show|list|display|name)(?: me)? (?:all |the |my |existing |available )?tables){scope}|"
+        rf"(?:tables|(?:what|which) tables|(?:show|list|display|name)(?: me)? (?:all |the |my |existing |available )?tables){scope}|"
         rf"(?:what|which) (?:are )?(?:the )?(?:table names|names of (?:the |my |all )?tables){scope}|"
+        rf"(?:what|which) are (?:the )?tables{scope}|"
         rf"(?:what|which) tables (?:do (?:i|we) have|are there){scope}|"
-        rf"how many tables (?:do (?:i|we) have|are there|are in (?:the |this |my |our )?(?:database|db)){scope}"
+        rf"(?:what|which) tables are in (?:the |this |my |our |connected )?(?:database|db)|"
+        rf"(?:show|list|display)(?: me)? (?:all |the )?table names{scope}|"
+        rf"how many tables(?: (?:do (?:i|we) have|are there|are in (?:the |this |my |our )?(?:database|db)))?{scope}"
         r"(?: (?:and |, )?(?:what|which) (?:are )?(?:their|the) names)?|"
         rf"(?:count|number of) (?:the |my |all )?tables{scope}", text
     ))
@@ -212,7 +246,9 @@ def wants_database_structure(question):
     return bool(re.fullmatch(
         r"(?:show|describe|display|what is|what's|give me|list) (?:me )?(?:the )?(?:database|db)(?:'s)? (?:structure|schema)|"
         r"(?:show|describe|display|what is|what's|give me|list) (?:me )?(?:the )?(?:structure|schema) (?:of|for|in) (?:the )?(?:database|db)|"
-        r"(?:database|db) (?:structure|schema)|schema", text
+        r"(?:database|db) (?:structure|schema)|schema|"
+        r"(?:show|describe|display|list)(?: me)? (?:the )?(?:structure|schema|columns|fields|attributes) "
+        r"(?:of|for|in|from) (?:all|the) tables", text
     ))
 
 

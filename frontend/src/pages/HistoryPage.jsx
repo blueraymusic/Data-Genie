@@ -4,10 +4,20 @@ import { normalizeRequest } from '../hooks/useWorkbench';
 import { SqlBlock } from '../components/SqlBlock';
 import { CommandOutput, operationOf } from '../components/CommandResult';
 import '../styles/history.css';
+import { canConfirmCommand, databaseAccess } from '../lib/access';
 
 const PAGE_SIZE = 20;
 
-function HistoryCommand({ command, request, index, active, sessionId, workbench, onDecide }) {
+function HistoryCommand({
+  command,
+  request,
+  index,
+  active,
+  sessionId,
+  workbench,
+  accessSession,
+  onDecide,
+}) {
   const pending = command.requires_confirmation && command.status === 'pending';
   const [expanded, setExpanded] = useState(Boolean(pending && active));
   return (
@@ -30,6 +40,8 @@ function HistoryCommand({ command, request, index, active, sessionId, workbench,
             onDecide={onDecide}
             busy={workbench.workingCommands.has(command.command_id)}
             actionable={Boolean(sessionId && active)}
+            canExport={databaseAccess(accessSession).permissions.export}
+            permitted={canConfirmCommand(workbench.session, command)}
           />
         </div>
       )}
@@ -37,7 +49,7 @@ function HistoryCommand({ command, request, index, active, sessionId, workbench,
   );
 }
 
-function HistoryEntry({ request, active, id, workbench, onDecide, onReuse }) {
+function HistoryEntry({ request, active, id, workbench, accessSession, onDecide, onReuse }) {
   const text = request.text.replace(/\s+/g, ' ').trim();
   const shortened = text.length > 220 || request.text.includes('\n');
   const [fullRequest, setFullRequest] = useState(false);
@@ -72,7 +84,7 @@ function HistoryEntry({ request, active, id, workbench, onDecide, onReuse }) {
       {request.commands.map((command, index) => (
         <HistoryCommand
           key={command.command_id}
-          {...{ command, request, index, active, workbench, onDecide }}
+          {...{ command, request, index, active, workbench, accessSession, onDecide }}
           sessionId={id}
         />
       ))}
@@ -344,6 +356,7 @@ export default function HistoryPage({ workbench, onReuse }) {
             <HistoryEntry
               key={request.request_id}
               {...{ request, id, workbench, onReuse }}
+              accessSession={target === id ? workbench.session : current}
               active={target === id}
               onDecide={decide}
             />

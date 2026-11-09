@@ -6,6 +6,7 @@ import { SchemaChangeDialog } from '../components/SchemaChangeDialog';
 import { schemaDialect } from '../lib/schemaSql';
 import { Link } from '../lib/router';
 import '../styles/structure.css';
+import { databaseAccess } from '../lib/access';
 const identifierList = (value) => (Array.isArray(value) ? value.join(', ') : value);
 const isSchemaRequest = (request) =>
   /^(CREATE|ALTER|DROP)\s+TABLE\b/i.test(request.text?.trim() || '') ||
@@ -205,7 +206,10 @@ export default function StructurePage({ workbench }) {
     [openedReview, setOpenedReview] = useState(null);
   const session = workbench.session;
   const disabled = Boolean(
-    workbench.busy || workbench.pending || workbench.workingCommands?.size || session.read_only,
+    workbench.busy ||
+    workbench.pending ||
+    workbench.workingCommands?.size ||
+    !databaseAccess(session).permissions.structure,
   );
   const schemaRequests = (workbench.feed || []).filter(isSchemaRequest);
   const schemaOutcomes = schemaRequests
@@ -306,9 +310,9 @@ export default function StructurePage({ workbench }) {
           </button>
         </div>
       </div>
-      {session.read_only ? (
+      {!databaseAccess(session).permissions.structure ? (
         <p className="schema-edit-note muted">
-          This connection is read-only. Add a connection with changes enabled to edit its structure.
+          Your current database access does not allow changes to tables or columns.
         </p>
       ) : (
         <p className="schema-edit-note muted">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from '../lib/router';
 import { Icon } from './Icon';
+import { DatabaseAccess } from './DatabaseAccess';
 export function TableRail({
   session,
   selected,
@@ -51,6 +52,7 @@ export function TableRail({
             {session.schema_name} · {session.read_only ? 'Read-only' : 'Changes need confirmation'}
           </p>
         )}
+        <DatabaseAccess session={session} />
       </div>
       <div className="rail-search">
         <Icon name="search" />

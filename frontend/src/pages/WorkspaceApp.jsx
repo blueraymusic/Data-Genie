@@ -17,6 +17,9 @@ import HistoryPage from './HistoryPage';
 import AccountPage from './AccountPage';
 import DatabasesPage from './DatabasesPage';
 import SqlPage from './SqlPage';
+import WorkspacesPage from './WorkspacesPage';
+import { databaseAccess } from '../lib/access';
+import { DatabaseAccess } from '../components/DatabaseAccess';
 export const viewRoutes = {
   ask: '/app?view=ask',
   schema: '/app?view=structure',
@@ -24,8 +27,10 @@ export const viewRoutes = {
   account: '/account',
   connect: '/databases',
   sql: '/app?view=sql',
+  workspaces: '/workspaces',
 };
 export function viewFromRoute(route) {
+  if (route.startsWith('/workspaces')) return 'workspaces';
   if (route.startsWith('/history')) return 'history';
   if (route.startsWith('/account')) return 'account';
   if (route.startsWith('/databases')) return 'connect';
@@ -39,6 +44,7 @@ const titles = {
   account: 'Account',
   connect: 'Databases',
   sql: 'SQL',
+  workspaces: 'Workspaces',
 };
 
 export default function WorkspaceApp() {
@@ -71,6 +77,7 @@ export default function WorkspaceApp() {
     view = viewFromRoute(route),
     session = workbench.session;
   const inWorkspace = ['ask', 'schema', 'sql'].includes(view);
+  const access = databaseAccess(session);
   useEnterMotion(content, `${view}:${session?.session_id || ''}:${workbench.loading}`);
   const mode = session && !session.ai?.enabled ? 'sql' : savedMode;
   const disabled = workbench.busy || workbench.pending || workbench.workingCommands.size > 0;
@@ -104,12 +111,17 @@ export default function WorkspaceApp() {
     navigate(viewRoutes[savedMode === 'sql' || !data.ai?.enabled ? 'sql' : 'ask'], replace);
   }
   function newTable() {
+    if (!access.permissions.structure) {
+      workbench.setMessage('Your current database access does not allow changes to tables.');
+      return;
+    }
     setDialogError('');
     setTableName('');
     setModal('table');
   }
   async function prepareTable(event) {
     event.preventDefault();
+    if (!access.permissions.structure || disabled) return;
     let sql;
     try {
       sql = schemaStatement({
@@ -157,6 +169,23 @@ export default function WorkspaceApp() {
         <p role="status">Loading…</p>
       </AuthShell>
     );
+  if (
+    view === 'workspaces' ||
+    (session && !access.canRead && !['connect', 'account'].includes(view))
+  )
+    return (
+      <PersonalWorkspace user={user} view="workspaces" onNavigate={go} logout={logout}>
+        <WorkspacesPage workbench={workbench} onOpened={opened} />
+      </PersonalWorkspace>
+    );
+  if (session && !access.canRead && view === 'account')
+    return (
+      <PersonalWorkspace user={user} view={view} onNavigate={go} logout={logout}>
+        <AccountPage {...{ workbench, mode, setMode }} />
+      </PersonalWorkspace>
+    );
+  if (session && !access.canRead && view === 'connect')
+    return <DatabaseChooser workbench={workbench} onOpened={opened} />;
   if (!session) {
     if (['history', 'account'].includes(view))
       return (
@@ -207,7 +236,7 @@ export default function WorkspaceApp() {
             open={railOpen}
             onNewTable={newTable}
             onNavigate={go}
-            disabled={disabled || session.read_only}
+            disabled={disabled || !access.permissions.structure}
           />
           <div className="main">
             {inWorkspace && (
@@ -286,7 +315,7 @@ export default function WorkspaceApp() {
                         type="button"
                         aria-label="Create a new table"
                         aria-haspopup="dialog"
-                        disabled={disabled || session.read_only}
+                        disabled={disabled || !access.permissions.structure}
                         onClick={newTable}
                       >
                         +
@@ -296,6 +325,7 @@ export default function WorkspaceApp() {
                   {session.source === 'demo' && (
                     <p className="demo-notice">Sample data. Your own files stay separate.</p>
                   )}
+                  <DatabaseAccess session={session} />
                 </div>
               )}
               {workbench.message && (
@@ -322,7 +352,7 @@ export default function WorkspaceApp() {
           </div>
         </div>
       </div>
-      <WorkspaceTabs view={view} onNavigate={go} />
+      <WorkspaceTabs view={view} onNavigate={go} session={session} />
       {modal === 'table' && (
         <Modal titleId="newTableTitle" onClose={() => setModal(null)}>
           <form onSubmit={prepareTable}>

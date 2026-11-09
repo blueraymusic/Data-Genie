@@ -6,6 +6,7 @@ import { requestProblem } from '../lib/requestValidation';
 import { Icon } from '../components/Icon';
 import { useRequestWindow } from '../hooks/useRequestWindow';
 import { RequestWindowControls } from '../components/RequestWindowControls';
+import { databaseAccess } from '../lib/access';
 export default function AskPage({ workbench, selected, draft, setDraft, onNewTable }) {
   const textarea = useRef(null),
     feed = useRef(null),
@@ -14,6 +15,7 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
   const [validation, setValidation] = useState('');
   const requestWindow = useRequestWindow(workbench.feed, workbench.session.session_id);
   const aiAvailable = Boolean(workbench.session.ai?.enabled);
+  const canChangeStructure = databaseAccess(workbench.session).permissions.structure;
   const blocked =
     !aiAvailable || workbench.busy || workbench.pending || workbench.workingCommands?.size > 0;
   const context = workbench.session.conversation_context;
@@ -66,7 +68,7 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
         `count ${quoteIdentifier(selected)}`,
         `show columns from ${quoteIdentifier(selected)}`,
       ]
-    : workbench.session.read_only
+    : !canChangeStructure
       ? ['show the structure of the database']
       : ['show the structure of the database', 'create a table notes with a body'];
   async function ask(event) {
@@ -107,8 +109,8 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
         )}
         {!workbench.session.tables.length && (
           <p className="empty-inline">
-            {workbench.session.read_only ? (
-              'This schema has no readable tables. Choose another schema, or add a connection with changes enabled.'
+            {!canChangeStructure ? (
+              'This database has no tables yet. A workspace owner can add one or give you permission to change its structure.'
             ) : (
               <>
                 This database is empty.{' '}

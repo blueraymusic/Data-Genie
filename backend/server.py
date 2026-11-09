@@ -20,6 +20,8 @@ from . import workbench
 from . import settings
 from . import authentication
 from . import microsoft_auth
+from . import workspace_api
+from .access_control import session_access
 from .connections import ConnectionFailure
 
 
@@ -40,6 +42,7 @@ STATIC_FILES = {
     "/databases": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/history": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/account": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/workspaces": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/static/design.css": ("frontend/src/styles/design.css", "text/css; charset=utf-8"),
     "/static/favicon.svg": ("frontend/public/favicon.svg", "image/svg+xml"),
 }
@@ -208,10 +211,12 @@ class Handler(BaseHTTPRequestHandler):
         if len(supplied) != 64 or any(char not in "0123456789abcdef" for char in supplied) or not hmac.compare_digest(supplied, expected):
             raise PermissionError("Reload the page before sending this request.")
 
-    def owned_session(self, session_id, user, active_only=False):
+    def owned_session(self, session_id, user, active_only=False, check_access=True):
         session = workbench.get_repository().get_session(session_id, active_only=active_only)
         if session.get("account_id") != user["account_id"]:
             raise PermissionError("This session is not available for your account.")
+        if check_access:
+            session_access(workbench.get_repository(), session)
         return session
 
     def session_id(self, query=None, user=None):
@@ -269,19 +274,31 @@ class Handler(BaseHTTPRequestHandler):
                 except authentication.LoginRequired:
                     return self.json({"user": None})
             user = self.account()
+            if workspace_api.get(self, parsed.path, user):
+                return
             if parsed.path == "/api/sessions":
-                return self.json({"sessions": workbench.get_repository().list_sessions(account_id=user["account_id"])})
+                sessions = []
+                for session in workbench.get_repository().list_sessions(account_id=user["account_id"]):
+                    try:
+                        access = session_access(workbench.get_repository(), session)
+                    except PermissionError:
+                        continue
+                    sessions.append({**session, "access": access})
+                return self.json({"sessions": sessions})
             if parsed.path == "/api/status":
                 if not self.headers.get("X-Session-ID"):
                     return self.json({"session_required": True, "database": None, "tables": [], "ai": settings.public_ai_settings()})
-                with workbench.session_scope(self.session_id(user=user)):
-                    return self.json(workbench.database_info())
+                try:
+                    with workbench.session_scope(self.session_id(user=user)):
+                        return self.json(workbench.database_info())
+                except workbench.RepositoryError as error:
+                    return self.json({"error": str(error), "code": "session_unavailable", "recovery": "choose_database"}, 400)
             if parsed.path == "/api/history":
                 explicit = query.get("history_session_id", [None])[0]
                 session_id = self.headers.get("X-Session-ID") or explicit
                 if not session_id:
                     raise ValueError("Choose a saved session to view its history.")
-                self.owned_session(session_id, user)
+                self.owned_session(session_id, user, check_access=not bool(explicit))
                 if explicit:
                     self.owned_session(explicit, user)
                 search, operation = query.get("search", [""])[0], query.get("operation", [None])[0]
@@ -320,6 +337,7 @@ class Handler(BaseHTTPRequestHandler):
                     return self.json({"table": table, "rows": rows})
             if parsed.path == "/api/download":
                 session = workbench.get_repository().get_session(session_id)
+                session_access(workbench.get_repository(), session, "export")
                 with tempfile.TemporaryDirectory(prefix="data-genie-export-") as directory:
                     path = workbench.export_database(session_id, Path(directory) / "download.sqlite3")
                     return self.send_body(path.read_bytes(), "application/vnd.sqlite3", filename=session["database"])
@@ -347,6 +365,8 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("Sec-Fetch-Site") == "cross-site" or (origin and origin != expected):
             return self.json({"error": "Cross-origin requests are blocked."}, 403)
         try:
+            if workspace_api.invite(self, parsed.path):
+                return
             if parsed.path == "/api/auth/microsoft/link":
                 if not self.microsoft_config():
                     return self.json({"error": "Microsoft sign-in is unavailable right now."}, 503)
@@ -392,22 +412,31 @@ class Handler(BaseHTTPRequestHandler):
                 token = self.accounts().issue_login(user["account_id"])
                 self.set_login_cookie(token)
                 return self.json({"user": user, "csrf_token": authentication.csrf_token(token), "message": "Password updated. Other logins have been signed out."})
+            if workspace_api.post(self, parsed.path, user):
+                return
+            if parsed.path == "/api/sessions/end":
+                # Ending an owned session also works after its database grant was revoked.
+                current = self.owned_session(self.headers.get("X-Session-ID"), user, check_access=False)
+                return self.json(workbench.end_session(current["session_id"]))
             if parsed.path == "/api/sessions/resume":
                 payload = self.read_json()
                 previous = self.owned_session(payload.get("session_id"), user)
-                current = self.owned_session(self.headers["X-Session-ID"], user) if self.headers.get("X-Session-ID") else None
+                current = self.owned_session(self.headers["X-Session-ID"], user, check_access=False) if self.headers.get("X-Session-ID") else None
                 result = workbench.resume_session(previous["session_id"])
                 if current and current["session_id"] != result["session_id"]:
                     workbench.end_session(current["session_id"])
                 return self.json(result)
             if parsed.path == "/api/connections/test":
-                return self.json(workbench.test_postgres_connection(self.read_json(16 * 1024)))
+                payload = self.read_json(16 * 1024)
+                workspace_api.owned_workspace(user["account_id"], payload.get("workspace_id"))
+                return self.json(workbench.test_postgres_connection(payload))
             if parsed.path == "/api/sessions":
                 payload = self.read_json()
                 # Browser clients choose a file through upload, never an arbitrary server path.
                 identity = (user["first_name"], user["last_name"], user["email"])
                 mode = payload.get("database_mode")
-                previous = self.owned_session(self.headers["X-Session-ID"], user) if self.headers.get("X-Session-ID") else None
+                workspace_id = workspace_api.owned_workspace(user["account_id"], payload.get("workspace_id"))
+                previous = self.owned_session(self.headers["X-Session-ID"], user, check_access=False) if self.headers.get("X-Session-ID") else None
                 if mode is None and payload.get("use_demo") is True:
                     mode = "demo"
                 if mode == "postgresql":
@@ -421,11 +450,14 @@ class Handler(BaseHTTPRequestHandler):
                     result = workbench.start_uploaded_session(*identity, payload.get("name", "connected.sqlite3"), contents, account_id=user["account_id"])
                 else:
                     raise ValueError("Choose a database: create a new one, attach a SQLite file, or explicitly use the demo.")
+                result = workspace_api.attach_session(user["account_id"], workspace_id, result)
                 if previous and previous["session_id"] != result["session_id"]:
                     workbench.end_session(previous["session_id"])
                 return self.json(result, 201)
             session_id = self.session_id(user=user)
             if parsed.path == "/api/connect":
+                current_access = session_access(workbench.get_repository(), self.owned_session(session_id, user))
+                workspace_id = workspace_api.owned_workspace(user["account_id"], current_access["workspace_id"])
                 if self.headers.get("Content-Type", "").startswith("application/octet-stream"):
                     contents = self.read_body(workbench.MAX_DATABASE_BYTES)
                     name = unquote(self.headers.get("X-Filename", "connected.sqlite3"))
@@ -433,16 +465,23 @@ class Handler(BaseHTTPRequestHandler):
                     payload = self.read_json()
                     contents = base64.b64decode(payload.get("contents", ""), validate=True)
                     name = str(payload.get("name", "connected.sqlite3"))
-                return self.json(workbench.connect_upload(session_id, name, contents))
+                result = workbench.connect_upload(session_id, name, contents)
+                return self.json(workspace_api.attach_session(user["account_id"], workspace_id, result))
             payload = self.read_json()
             if parsed.path == "/api/sessions/end":
                 return self.json(workbench.end_session(session_id))
             if parsed.path == "/api/conversation/reset":
                 return self.json(workbench.reset_conversation(session_id))
             if parsed.path == "/api/reset":
-                return self.json(workbench.reset_session(session_id, sample=payload.get("sample") is True))
+                access = session_access(workbench.get_repository(), self.owned_session(session_id, user))
+                workspace_id = workspace_api.owned_workspace(user["account_id"], access["workspace_id"])
+                result = workbench.reset_session(session_id, sample=payload.get("sample") is True)
+                return self.json(workspace_api.attach_session(user["account_id"], workspace_id, result))
             if parsed.path == "/api/databases":
-                return self.json(workbench.create_for_session(session_id, payload.get("name"), starter=payload.get("starter", False) is True), 201)
+                access = session_access(workbench.get_repository(), self.owned_session(session_id, user))
+                workspace_id = workspace_api.owned_workspace(user["account_id"], access["workspace_id"])
+                result = workbench.create_for_session(session_id, payload.get("name"), starter=payload.get("starter", False) is True)
+                return self.json(workspace_api.attach_session(user["account_id"], workspace_id, result), 201)
             if parsed.path == "/api/ask":
                 return self.json(workbench.submit_request(
                     session_id, payload.get("question", ""), interpreter=payload.get("interpreter", "keywords"),

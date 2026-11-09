@@ -28,6 +28,7 @@ export default function DatabaseChooser({ workbench, onOpened }) {
           {user.first_name} {user.last_name} · {user.email}
         </span>
         <span className="gate-account-actions">
+          <Link href="/workspaces">Workspaces</Link>
           <Link href="/history">History</Link>
           <Link href="/account">Account</Link>
           <button

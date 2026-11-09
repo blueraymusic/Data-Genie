@@ -1,4 +1,4 @@
-import { Component, useEffect } from 'react';
+import { Component, useEffect, useLayoutEffect } from 'react';
 import { Router, useRouter } from './lib/router';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -8,13 +8,18 @@ import FaqPage from './pages/FaqPage';
 import ContactPage from './pages/ContactPage';
 import AuthPage from './pages/AuthPage';
 import WorkspaceApp from './pages/WorkspaceApp';
+import { captureWorkspaceInvitation, readWorkspaceInvitation } from './lib/workspaceInvites';
 
 function ProtectedPages() {
   const { user, loading } = useAuth(),
-    { pathname, navigate } = useRouter();
+    { pathname, route, navigate } = useRouter();
+  useLayoutEffect(() => {
+    if (captureWorkspaceInvitation(route)) navigate('/workspaces', true);
+  }, [route, navigate]);
   useEffect(() => {
     if (!loading && !user && !['/signin', '/signup'].includes(pathname)) navigate('/signin', true);
-    if (!loading && user && ['/signin', '/signup'].includes(pathname)) navigate('/databases', true);
+    if (!loading && user && ['/signin', '/signup'].includes(pathname))
+      navigate(readWorkspaceInvitation() ? '/workspaces' : '/databases', true);
   }, [loading, user, pathname, navigate]);
   if (loading)
     return (

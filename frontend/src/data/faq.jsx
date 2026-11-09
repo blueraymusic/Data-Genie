@@ -92,6 +92,49 @@ export const faqGroups = [
           </>
         ),
       },
+      {
+        question: 'Can I share a database with my team?',
+        search:
+          'Open Teams after logging in, create a workspace, and add or move a database into it. The workspace owner invites teammates as Members or Viewers. Members need explicit permission for each database; joining alone does not grant access. Viewers cannot open raw databases in this version. Shared database changes affect the same underlying data, while each person keeps private chats and History.',
+        answer: (
+          <>
+            <p>
+              Open <strong>Teams</strong>, create a workspace, and add or move a database into it.
+              The owner can invite teammates as <strong>Members</strong> or <strong>Viewers</strong>
+              .
+            </p>
+            <p>
+              Members need permission for each database; joining alone does not grant access.
+              Viewers cannot open raw databases in this version. Confirmed changes affect the same
+              shared data, while each person keeps private chats and History.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'How do workspace invitation emails work?',
+        search:
+          'When invitation email is configured, the workspace owner can choose Send invitation. Otherwise choose Create invitation link and share the private link with the teammate. Email sent means the provider accepted the message, not confirmed inbox delivery. Check inbox and spam, and check with the recipient before resending an uncertain send. Invitations expire after seven days. Resending invalidates the old link. Recipients sign in or sign up with the invited email and choose Join workspace.',
+        answer: (
+          <>
+            <p>
+              When email is configured, choose <strong>Send invitation</strong>. Otherwise choose{' '}
+              <strong>Create invitation link</strong> and share the private link with your teammate.
+              You can copy the link after creating an invitation even when email is available.
+            </p>
+            <p>
+              <strong>Email sent</strong> means the provider accepted the message. Ask your teammate
+              to check their inbox and spam folder. If the send status is uncertain, check with them
+              before resending. Resending invalidates the old invitation link.
+            </p>
+            <p>
+              Invitations expire after seven days. The recipient signs in or creates an account
+              using the invited email, opens the private link, and chooses{' '}
+              <strong>Join workspace</strong>.
+            </p>
+          </>
+        ),
+      },
     ],
   },
   {

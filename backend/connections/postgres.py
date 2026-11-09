@@ -375,7 +375,62 @@ class PostgresConnector:
         finally:
             self._schema = original
 
-    def execute(self, sql, operation="read", limit=500, offset=None):
+    def check_workspace_effects(self, sql, access, connection=None):
+        """Fail closed for limited members when PostgreSQL can add hidden writes.
+
+        A table with triggers, write rules, cascading actions, inheritance, RLS,
+        or custom expression functions needs its database owner to review the
+        operation. Workspace grants never increase the underlying role's access.
+        """
+        if access is None or access["role"] == "owner":
+            return
+        permissions = access["permissions"]
+        if all(permissions.get(key) for key in ("write", "delete", "structure")):
+            return
+        root, details = self._parsed(sql)
+        if details["access"] == "read":
+            return
+        from sqlglot import exp
+        if (any(item.this == exp.DataType.Type.USERDEFINED for item in root.find_all(exp.DataType))
+                or any(isinstance(item, exp.Operator) for item in root.walk())):
+            # Domain checks/type coercions and user-defined operators may call
+            # functions hidden from the query's ordinary function/table nodes.
+            raise PermissionError("Custom SQL types and operators require the workspace owner to review and run this change.")
+        # Limited structure access supports table/column changes through the
+        # parser, but cannot install custom functions, triggers, or server rules.
+        names = sorted({target["table_name"] for target in details["targets"]})
+        query = """SELECT c.relkind,c.relrowsecurity,
+            EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t WHERE t.tgrelid=c.oid AND NOT t.tgisinternal AND t.tgenabled<>'D') AS triggers,
+            EXISTS(SELECT 1 FROM pg_catalog.pg_rewrite r WHERE r.ev_class=c.oid AND r.ev_type<>'1') AS rules,
+            EXISTS(SELECT 1 FROM pg_catalog.pg_constraint k WHERE k.confrelid=c.oid AND
+                (k.confdeltype IN ('c','n','d') OR k.confupdtype IN ('c','n','d'))) AS cascades,
+            EXISTS(SELECT 1 FROM pg_catalog.pg_inherits i WHERE i.inhparent=c.oid OR i.inhrelid=c.oid) AS inheritance,
+            EXISTS(SELECT 1 FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_type t ON t.oid=a.atttypid
+                JOIN pg_catalog.pg_namespace n ON n.oid=t.typnamespace
+                WHERE a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped AND n.nspname<>'pg_catalog') AS custom_types,
+            EXISTS(SELECT 1 FROM pg_catalog.pg_depend d JOIN pg_catalog.pg_proc p ON p.oid=d.refobjid
+                JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+                WHERE d.refclassid='pg_catalog.pg_proc'::pg_catalog.regclass AND n.nspname<>'pg_catalog' AND
+                ((d.classid='pg_catalog.pg_attrdef'::pg_catalog.regclass AND d.objid IN
+                    (SELECT a.oid FROM pg_catalog.pg_attrdef a WHERE a.adrelid=c.oid)) OR
+                 (d.classid='pg_catalog.pg_constraint'::pg_catalog.regclass AND d.objid IN
+                    (SELECT k.oid FROM pg_catalog.pg_constraint k WHERE k.conrelid=c.oid)))) AS custom_functions
+            FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+            WHERE n.nspname=%s AND c.relname=%s"""
+        if connection is None:
+            with self.connection() as checking:
+                self.check_workspace_effects(sql, access, connection=checking)
+            return
+        if details["kind"] == "DDL" and connection.execute(
+                "SELECT EXISTS(SELECT 1 FROM pg_catalog.pg_event_trigger WHERE evtenabled<>'D') AS enabled").fetchone()["enabled"]:
+            raise PermissionError("Database event triggers require the workspace owner to review and run this structure change.")
+        for name in names:
+            row = connection.execute(query, (self.config["schema_name"], name)).fetchone()
+            if row and (row["relkind"] != "r" or row["relrowsecurity"] or any(
+                    row[key] for key in ("triggers", "rules", "cascades", "inheritance", "custom_types", "custom_functions"))):
+                raise PermissionError("This table has database-side rules or functions. Ask the workspace owner to review and run this change.")
+
+    def execute(self, sql, operation="read", limit=500, offset=None, workspace_access=None):
         if isinstance(limit, bool) or not isinstance(limit, int) or not 0 <= limit <= 500:
             raise ValueError("Choose a result page size between 0 and 500.")
         if offset is not None and (isinstance(offset, bool) or not isinstance(offset, int) or offset < 0):
@@ -389,6 +444,20 @@ class PostgresConnector:
             # are rendered here; SQL percent literals must never become DB-API placeholders.
             statement = f"SELECT * FROM ({statement}) AS result_page LIMIT {limit + 1} OFFSET {offset or 0}"
         with self.connection(read_only=operation == "read") as connection:
+            if (operation == "write" and workspace_access is not None and workspace_access["role"] != "owner"
+                    and not all(workspace_access["permissions"].get(key) for key in ("write", "delete", "structure"))):
+                from psycopg import sql as pg_sql
+                # Hold relation locks through the catalog check and mutation. An
+                # external trigger/rule/schema change cannot slip between them.
+                locked = set()
+                for target in sorted(details["targets"], key=lambda item: item["table_name"]):
+                    name = target["table_name"]
+                    if name in locked or (details["operation"] == "CREATE" and target["access_type"] == "define"):
+                        continue
+                    connection.execute(pg_sql.SQL("LOCK TABLE {}.{} IN ROW EXCLUSIVE MODE").format(
+                        pg_sql.Identifier(self.config["schema_name"]), pg_sql.Identifier(name)))
+                    locked.add(name)
+                self.check_workspace_effects(sql, workspace_access, connection=connection)
             cursor = connection.cursor(row_factory=_result_row)
             cursor.execute(statement)
             columns = unique_columns([item.name for item in cursor.description]) if cursor.description else []

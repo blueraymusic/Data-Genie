@@ -93,6 +93,69 @@ CREATE TABLE IF NOT EXISTS sessions (
     started_at TEXT NOT NULL,
     ended_at TEXT
 );
+CREATE TABLE IF NOT EXISTS workspaces (
+    workspace_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK(kind IN ('personal','team')),
+    owner_account_id INTEGER NOT NULL REFERENCES accounts(account_id),
+    created_at INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS workspace_personal_owner
+    ON workspaces(owner_account_id) WHERE kind='personal';
+CREATE TABLE IF NOT EXISTS workspace_members (
+    workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+    account_id INTEGER NOT NULL REFERENCES accounts(account_id),
+    role TEXT NOT NULL CHECK(role IN ('owner','member','viewer')),
+    joined_at INTEGER NOT NULL,
+    PRIMARY KEY(workspace_id,account_id)
+);
+CREATE INDEX IF NOT EXISTS workspace_member_account ON workspace_members(account_id,workspace_id);
+CREATE TABLE IF NOT EXISTS workspace_databases (
+    database_id INTEGER PRIMARY KEY REFERENCES databases(database_id),
+    workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
+    owner_account_id INTEGER NOT NULL REFERENCES accounts(account_id),
+    attached_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS workspace_database_workspace ON workspace_databases(workspace_id,database_id);
+CREATE TABLE IF NOT EXISTS workspace_grants (
+    workspace_id TEXT NOT NULL,
+    account_id INTEGER NOT NULL,
+    database_id INTEGER NOT NULL REFERENCES workspace_databases(database_id) ON DELETE CASCADE,
+    can_read INTEGER NOT NULL DEFAULT 0 CHECK(can_read IN (0,1)),
+    can_write INTEGER NOT NULL DEFAULT 0 CHECK(can_write IN (0,1)),
+    can_delete INTEGER NOT NULL DEFAULT 0 CHECK(can_delete IN (0,1)),
+    can_structure INTEGER NOT NULL DEFAULT 0 CHECK(can_structure IN (0,1)),
+    can_export INTEGER NOT NULL DEFAULT 0 CHECK(can_export IN (0,1)),
+    PRIMARY KEY(workspace_id,account_id,database_id),
+    FOREIGN KEY(workspace_id,account_id) REFERENCES workspace_members(workspace_id,account_id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS workspace_invitations (
+    invitation_id TEXT PRIMARY KEY,
+    token_hash TEXT NOT NULL,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+    email TEXT NOT NULL COLLATE NOCASE,
+    role TEXT NOT NULL CHECK(role IN ('member','viewer')),
+    invited_by INTEGER NOT NULL REFERENCES accounts(account_id),
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    accepted_at INTEGER,
+    revoked_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS workspace_invitation_email ON workspace_invitations(email,expires_at);
+CREATE TABLE IF NOT EXISTS workspace_invitation_emails (
+    invitation_id TEXT PRIMARY KEY REFERENCES workspace_invitations(invitation_id) ON DELETE CASCADE,
+    status TEXT NOT NULL CHECK(status IN ('sending','sent','failed','not_configured')),
+    attempted_at INTEGER,
+    completed_at INTEGER,
+    provider_message_id TEXT,
+    error_code TEXT
+);
+CREATE TABLE IF NOT EXISTS workspace_email_rate_limits (
+    bucket_key TEXT PRIMARY KEY,
+    started_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS schema_tables (
     table_id INTEGER PRIMARY KEY,
     database_id INTEGER NOT NULL REFERENCES databases(database_id),
@@ -317,6 +380,10 @@ class Repository:
                     connection.execute("ALTER TABLE requests ADD COLUMN clarification_json TEXT")
                 if "connection_id" not in {row[1] for row in connection.execute("PRAGMA table_info(databases)")}:
                     connection.execute("ALTER TABLE databases ADD COLUMN connection_id TEXT")
+                if "token_hash" not in {row[1] for row in connection.execute("PRAGMA table_info(workspace_invitations)")}:
+                    # Pre-token invitations cannot be accepted; owners issue a
+                    # fresh invite rather than promoting an email claim.
+                    connection.execute("ALTER TABLE workspace_invitations ADD COLUMN token_hash TEXT")
                 connection.execute("CREATE INDEX IF NOT EXISTS sessions_account ON sessions(account_id,started_at)")
                 connection.commit()
                 self.path.chmod(0o600)

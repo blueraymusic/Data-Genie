@@ -5,6 +5,7 @@ import { formatTime } from '../lib/api';
 import { api } from '../lib/api';
 import { resultHeadline, chartNumber, isNumeric } from '../lib/resultData';
 import '../styles/sql-review.css';
+import { canConfirmCommand, databaseAccess } from '../lib/access';
 export const operationOf = (command) =>
   command.sql_operation ||
   (!['read', 'write'].includes(command.operation) && command.operation) ||
@@ -73,7 +74,7 @@ function Chart({ rows, type }) {
   );
 }
 
-export function ResultOutput({ command, sessionId, onUseSuggestion }) {
+export function ResultOutput({ command, sessionId, onUseSuggestion, canExport = true }) {
   const data = command.result?.payload || command,
     initialRows = data.rows || [],
     type =
@@ -106,6 +107,7 @@ export function ResultOutput({ command, sessionId, onUseSuggestion }) {
     }
   }
   const tableProps = {
+    canExport,
     rows,
     truncated: hasMore,
     loadingMore,
@@ -213,7 +215,13 @@ export function ResultOutput({ command, sessionId, onUseSuggestion }) {
   );
 }
 
-export function Confirmation({ command, predecessors = [], onDecide, busy = false }) {
+export function Confirmation({
+  command,
+  predecessors = [],
+  onDecide,
+  busy = false,
+  permitted = true,
+}) {
   const [typed, setTyped] = useState('');
   const operation = operationOf(command),
     target =
@@ -281,10 +289,19 @@ export function Confirmation({ command, predecessors = [], onDecide, busy = fals
           changes.
         </p>
       )}
+      {!permitted && (
+        <p className="muted">Your current database permissions do not allow this change.</p>
+      )}
       <div className="row">
         <button
           className={'btn ' + (destructive ? 'warn' : 'pri')}
-          disabled={busy || blocked || Boolean(command.preview_error) || (drop && typed !== target)}
+          disabled={
+            !permitted ||
+            busy ||
+            blocked ||
+            Boolean(command.preview_error) ||
+            (drop && typed !== target)
+          }
           onClick={() => onDecide(command, false)}
         >
           {busy ? 'Working…' : label}
@@ -305,13 +322,15 @@ export function CommandOutput({
   actionable = true,
   sessionId,
   onUseSuggestion,
+  canExport = true,
+  permitted = true,
 }) {
   if (command.error || command.status === 'failed')
     return <p className="err">{command.error || 'This command failed.'}</p>;
   if (command.status === 'declined') return <p className="notrun">Not run. You declined this.</p>;
   if (command.requires_confirmation && command.status === 'pending')
     return actionable ? (
-      <Confirmation {...{ command, predecessors, onDecide, busy }} />
+      <Confirmation {...{ command, predecessors, onDecide, busy, permitted }} />
     ) : (
       <p className="muted">
         This command was not executed. Prepare the request in your current session to review it.
@@ -321,7 +340,14 @@ export function CommandOutput({
     return (
       <p className="muted">Waiting for the command to finish. Check History before retrying.</p>
     );
-  return <ResultOutput command={command} sessionId={sessionId} onUseSuggestion={onUseSuggestion} />;
+  return (
+    <ResultOutput
+      command={command}
+      sessionId={sessionId}
+      onUseSuggestion={onUseSuggestion}
+      canExport={canExport}
+    />
+  );
 }
 
 function SavedResultDetails({ children }) {
@@ -365,6 +391,8 @@ export function Translation({ request, workbench, onUseSuggestion, compactResult
             busy={workbench.workingCommands.has(command.command_id)}
             sessionId={workbench.session?.session_id}
             onUseSuggestion={onUseSuggestion}
+            canExport={databaseAccess(workbench.session).permissions.export}
+            permitted={canConfirmCommand(workbench.session, command)}
           />
         </div>
       ))

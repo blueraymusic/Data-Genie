@@ -15,6 +15,7 @@ import './styles/workspace-shell.css';
 import './styles/conversation.css';
 import './styles/entry.css';
 import './styles/account.css';
+import './styles/workspaces.css';
 import './styles/interactions.css';
 import './styles/public-header.css';
 import './styles/motion.css';
