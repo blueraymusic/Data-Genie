@@ -3,7 +3,7 @@
   top: 0;
   z-index: 6;
   background: var(--chalk);
-  padding: 12px 0 16px;
+  padding: 8px 0 12px;
   border-bottom: 1px solid var(--rule);
 }
 .workspace-page .history-page .history-filters {
@@ -62,7 +62,7 @@
   gap: 8px;
 }
 .workspace-page .history-page .history-meta {
-  margin: 18px 0 8px;
+  margin: 12px 0 6px;
   font-size: 12px;
   line-height: 1.6;
   max-width: 80ch;
@@ -72,7 +72,7 @@
 }
 .workspace-page .history-page .history-entry {
   margin: 0;
-  padding: 26px 0;
+  padding: 18px 0;
   background: transparent;
   border: 0;
   border-bottom: 1px solid var(--rule);
@@ -124,7 +124,7 @@
   line-height: 1.6;
 }
 .workspace-page .history-empty {
-  padding: 36px 0;
+  padding: 24px 0;
 }
 .workspace-page .history-error {
   border-left: 2px solid var(--remove);

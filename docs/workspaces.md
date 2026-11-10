@@ -1,26 +1,29 @@
 # Workspaces and database access
 
-Open **Teams** after logging in to manage your workspaces and invitations.
+On [Choose your database](https://data-genie.space/databases), choose **Create team workspace** to start a team before opening a database. Enter a **New workspace name** and choose **Create workspace**. The new workspace opens in **Teams** with that team selected.
+
+You can also create a team from **Databases** while a database is open, or choose **New workspace** in [Teams](https://data-genie.space/workspaces). Creating a workspace keeps your current connection; it does not move that database automatically.
+
 Existing databases stay in your **Personal workspace**; their files and history are preserved.
 Accounts and workspaces belong to the installation you are using; the hosted site and a local installation are separate.
 
 ## Share a database
 
-1. Create a workspace for your team or project.
-2. Create, upload, or connect a database there. You can also move one of your personal databases into the workspace.
-3. Enter your teammate's account email, choose **Member** or **Viewer**, and create an invitation.
+1. Create a workspace for your team or project, or select one you own in **Teams**.
+2. In **Databases**, choose **Add a database** to create, upload, or connect a database there. You can also move one of your personal databases into the workspace.
+3. Open **People & access**, choose **Invite a teammate**, enter their account email, choose **Member** or **Viewer**, then choose **Create invitation**.
 4. Copy the invitation code and share it privately with that person. A private link is also available. The app does not send email. Invitations expire after seven days and can be revoked or replaced.
 5. The recipient signs in or creates an account with the invited email, opens **Teams**, enters the code in the invitation shown there, and chooses **Join workspace**. Opening the private link can fill in the code for them.
-6. For a Member, select the database permissions you want to grant and save them. Joining does not automatically grant database access.
+6. In **People & access**, select the Member, choose the database permissions you want to grant, and save them. Joining does not automatically grant database access.
 
 Invitation codes and links are credentials: send them only to the intended recipient. Acceptance needs both the private code and the matching signed-in account. The code is shown once when an invitation is created. Replacing an invitation creates a new code and invalidates the previous one.
 
 ## Roles
 
-| Role | Access |
-| --- | --- |
-| Owner | Adds database connections, invites members, and manages permissions. |
-| Member | Uses only databases explicitly granted to them, within their permissions. |
+| Role   | Access                                                                                                           |
+| ------ | ---------------------------------------------------------------------------------------------------------------- |
+| Owner  | Adds database connections, invites members, and manages permissions.                                             |
+| Member | Uses only databases explicitly granted to them, within their permissions.                                        |
 | Viewer | Has no direct database, chat, SQL, or schema access in the shared workspace. Report sharing will be added later. |
 
 A person can own their personal workspace and be a Member or Viewer in another workspace.

@@ -175,7 +175,13 @@ export default function WorkspaceApp() {
   )
     return (
       <PersonalWorkspace user={user} view="workspaces" onNavigate={go} logout={logout}>
-        <WorkspacesPage workbench={workbench} onOpened={opened} />
+        <WorkspacesPage
+          workbench={workbench}
+          onOpened={opened}
+          initialWorkspaceId={new URLSearchParams((route.split('?')[1] || '').split('#')[0]).get(
+            'workspace',
+          )}
+        />
       </PersonalWorkspace>
     );
   if (session && !access.canRead && view === 'account')

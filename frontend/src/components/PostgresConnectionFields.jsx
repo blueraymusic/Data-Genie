@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { api } from '../lib/api';
 
-export function PostgresConnectionFields({ value, onChange, disabled }) {
+export function PostgresConnectionFields({ value, onChange, disabled, submitting }) {
   const [visible, setVisible] = useState(false),
+    [optionsOpen, setOptionsOpen] = useState(
+      Boolean(value.database_name || (value.schema_name && value.schema_name !== 'public')),
+    ),
     [testing, setTesting] = useState(false),
     [result, setResult] = useState(null),
     [error, setError] = useState('');
@@ -26,19 +29,6 @@ export function PostgresConnectionFields({ value, onChange, disabled }) {
   return (
     <fieldset className="postgres-fields" disabled={disabled || testing}>
       <legend className="sr-only">PostgreSQL connection</legend>
-      <p className="small muted">
-        Connect a live database, including PostgreSQL on Supabase or Neon.
-      </p>
-      <label htmlFor="postgresName">
-        Connection name <span className="muted">(optional)</span>
-      </label>
-      <input
-        id="postgresName"
-        value={value.database_name}
-        maxLength={150}
-        placeholder="My PostgreSQL database"
-        onChange={(event) => change('database_name', event.target.value)}
-      />
       <label htmlFor="postgresUrl">PostgreSQL connection URL</label>
       <div className="postgres-url">
         <input
@@ -61,15 +51,6 @@ export function PostgresConnectionFields({ value, onChange, disabled }) {
           {visible ? 'Hide URL' : 'Show URL'}
         </button>
       </div>
-      <label htmlFor="postgresSchema">Schema</label>
-      <input
-        id="postgresSchema"
-        value={value.schema_name}
-        onChange={(event) => change('schema_name', event.target.value)}
-        required
-        maxLength={63}
-        autoComplete="off"
-      />
       <label className="check-label">
         <input
           type="checkbox"
@@ -80,20 +61,59 @@ export function PostgresConnectionFields({ value, onChange, disabled }) {
         Allow changes after I confirm them
       </label>
       <p className="small muted" id="postgresChangesHelp">
-        Read-only by default. With changes enabled, confirmed edits are saved directly in this
-        database. No download or upload is needed to save them.
+        Read-only by default. Enabling changes lets confirmed edits update this live database.
       </p>
-      <p className="small muted">
-        Remote connections use SSL, and credentials are encrypted in this Data Genie installation.
-      </p>
-      <button
-        className="btn"
-        type="button"
-        disabled={!value.connection_url.trim() || testing}
-        onClick={test}
+      <details
+        className="postgres-options"
+        open={optionsOpen}
+        onToggle={(event) => setOptionsOpen(event.currentTarget.open)}
       >
-        {testing ? 'Testing connection…' : 'Test connection'}
-      </button>
+        <summary>
+          Connection options{' '}
+          <span className="small muted">{value.schema_name || 'public'} schema</span>
+        </summary>
+        <div className="postgres-option-fields">
+          <label htmlFor="postgresName">
+            Connection name <span className="muted">(optional)</span>
+            <input
+              id="postgresName"
+              value={value.database_name}
+              maxLength={150}
+              placeholder="My PostgreSQL database"
+              onChange={(event) => change('database_name', event.target.value)}
+            />
+          </label>
+          <label htmlFor="postgresSchema">
+            Schema
+            <input
+              id="postgresSchema"
+              value={value.schema_name}
+              placeholder="public"
+              onChange={(event) => change('schema_name', event.target.value)}
+              maxLength={63}
+              autoComplete="off"
+            />
+          </label>
+        </div>
+        <p className="small muted">Remote connections use SSL. Saved credentials are encrypted.</p>
+      </details>
+      <div className="postgres-actions">
+        <button
+          className="btn"
+          type="button"
+          disabled={!value.connection_url.trim() || testing}
+          onClick={test}
+        >
+          {testing ? 'Testing connection…' : 'Test connection'}
+        </button>
+        <button
+          className="btn pri start-button"
+          type="submit"
+          disabled={disabled || testing || !value.connection_url.trim()}
+        >
+          {submitting ? 'Opening database…' : 'Connect PostgreSQL'}
+        </button>
+      </div>
       <div className="connection-test-result" role="status">
         {result && (
           <p className="ok">

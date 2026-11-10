@@ -12,12 +12,11 @@ Ask your database questions in plain English. Use a SQLite file or connect Postg
 - Ask questions using Data Genie AI, or write SQL without an API key. The SQL tab includes examples.
 - Add, rename, or delete tables and columns in Structure, with a SQL preview before each change.
 - Sort, copy, or export results as CSV, and revisit saved requests in History.
-- Keep writing from the bottom editor; browse recent requests in small batches and search the full History by page.
-- Open Account and saved History even when no database is connected.
+- Create a team workspace from the database chooser, before opening a database. Invite teammates and choose their access to each database.
 
-See the [workspace guide](docs/user-guide.md) for examples, table editing, and History navigation.
+Choose **Create team workspace** on the database screen, name it, then add a database in the new workspace. Existing databases stay in your personal workspace. Invitations use a private code you share yourself; Data Genie does not send email.
 
-**Teams** brings shared workspaces, multiple databases, private invitations, and permissions for each person and database. Existing databases stay in your personal workspace. Invitations appear in the invited account; share the private code with your teammate so they can accept. See [workspaces and access](docs/workspaces.md). Shared reports will come later.
+See the [workspace guide](docs/user-guide.md) for examples and [workspaces and access](docs/workspaces.md) for sharing. Account, Teams, and saved History are available without a database connection.
 
 ![Workspace showing a request, its SQL translation, and matching customers](docs/images/workspace.jpg)
 
@@ -50,11 +49,11 @@ npm start
 
 For local development, open the address printed by `npm start`, sign up, and choose a database.
 
-`npm start` uses the project's `.venv` when available, so PostgreSQL runs with the connector packages installed there. `npm run dev` starts the frontend only; keep the server running too.
+`npm start` uses the project's `.venv` when available. `npm run dev` starts the frontend only; keep the server running too.
 
 If port 8000 is busy, run `npm start -- 8001`.
 
-For live frontend updates, leave the Python server running and start Vite in another terminal:
+For live frontend updates, start Vite in another terminal:
 
 ```bash
 npm run dev
@@ -72,28 +71,17 @@ Microsoft sign-in is also optional. See the [Microsoft sign-in setup](docs/micro
 
 ## Connect PostgreSQL
 
-With Python 3.10+, install the optional connector in a virtual environment:
+The hosted app includes the connector. For local setup, install the optional packages using the [database connections guide](docs/database-connections.md).
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements-postgres.txt
-npm start
-```
-
-Restart the server with that environment, then choose **Databases → PostgreSQL**. Paste your connection URL, choose a schema, and test it. Connections start read-only. Enable **Allow changes after I confirm them** to review and confirm edits to the live database. Connection settings are encrypted in the Data Genie installation.
+Choose **Databases → PostgreSQL**, paste your connection URL, and test it. **Connection options** holds the optional name and schema, which defaults to `public`. Connections start read-only. Enable **Allow changes after I confirm them** to review and confirm edits to the live database. Saved connection settings are encrypted.
 
 Confirmed edits are saved in PostgreSQL directly; no download or upload is needed. CSV downloads are copies of result rows. This is a direct PostgreSQL connector; an MCP client or server is not included yet.
 
-See the [FAQ](https://data-genie.space/faq) for common questions, [Contact us](https://data-genie.space/contact) to prepare an email, or [database connections](docs/database-connections.md) for setup and testing.
-
-For a local test database, run `.venv/bin/python scripts/postgres_demo.py start`. It creates sample customers, products, and orders on port 55432. The connection URL is saved privately in `db/postgres-demo/connection.txt`.
+See [database connections](docs/database-connections.md) for setup, a local sample database, and testing.
 
 ## Host on Azure
 
-[Open the hosted app](https://data-genie.space/). Create a hosted account; desktop accounts stay separate.
-
-The [Azure deployment guide](docs/azure-free-hosting.md) covers the Terraform variables, Azure DevOps pipeline, and storage limits. Hosting supports free F1 or one budgeted Linux B1 instance using student credit. Azure SQL stays on its free offer and pauses at its limits. Existing local accounts and databases are not uploaded automatically.
+The [Azure deployment guide](docs/azure-free-hosting.md) covers Terraform variables, the Azure DevOps pipeline, and storage limits. Hosted accounts and data are separate from local installations; existing local data is not uploaded automatically.
 
 ## Checks
 

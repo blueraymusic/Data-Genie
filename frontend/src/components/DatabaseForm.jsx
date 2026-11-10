@@ -136,20 +136,21 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
             value={postgres}
             onChange={setPostgres}
             disabled={busy || reading}
+            submitting={busy || reading}
           />
         )}
       </div>
-      <button className="btn pri start-button" disabled={busy || reading}>
-        {busy || reading
-          ? 'Opening database…'
-          : mode === 'postgresql'
-            ? 'Connect PostgreSQL'
+      {mode !== 'postgresql' && (
+        <button className="btn pri start-button" disabled={busy || reading}>
+          {busy || reading
+            ? 'Opening database…'
             : mode === 'create'
               ? 'Create database'
               : mode === 'upload'
                 ? 'Open SQLite file'
                 : 'Open sample database'}
-      </button>
+        </button>
+      )}
       <p className="err" role="status">
         {error}
       </p>

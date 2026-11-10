@@ -9,7 +9,7 @@
   margin: 0 auto;
 }
 .workspace-page .sql-intro {
-  padding: 28px 0 12px;
+  padding: 20px 0 10px;
 }
 .workspace-page .sql-intro h1 {
   margin-bottom: 8px;
@@ -32,12 +32,18 @@
   flex: 1 0 auto;
   min-width: 0;
 }
+.workspace-page .sql-page:not(.has-requests) {
+  flex: 0 0 auto;
+}
+.workspace-page .sql-page:not(.has-requests) .sql-feed {
+  flex: 0;
+}
 .workspace-page .sql-feed > .exchange:first-child {
   border-top: 0;
 }
 .workspace-page .sql-page .sql-composer {
   flex: none;
-  margin-top: 20px;
+  margin-top: 14px;
   padding: 12px 0 14px;
   min-width: 0;
 }
@@ -103,7 +109,7 @@
 }
 .workspace-page .sql-editor > .btn {
   flex-shrink: 0;
-  min-height: 42px;
+  min-height: 44px;
   padding: 8px 16px;
   border-radius: 8px;
 }
@@ -178,7 +184,7 @@
 }
 @media (max-width: 620px) {
   .workspace-page .sql-intro {
-    padding-top: 24px;
+    padding-top: 20px;
   }
   .workspace-page .sql-intro h1 {
     font-size: 31px;

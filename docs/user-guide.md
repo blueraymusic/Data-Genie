@@ -4,14 +4,20 @@
 
 Sign up or log in, then choose a database. You can create an empty SQLite database, upload a SQLite file, try the sample, or connect PostgreSQL. Hosted accounts and laptop accounts are separate.
 
+## Start alone or with a team
+
+Your **Personal workspace** keeps your databases private. To work together, choose **Create team workspace** on **Choose your database**, enter a **New workspace name**, and choose **Create workspace**. You do not need to open a database first. The app opens the new team in **Teams**, ready to add a database and invite people.
+
+The same action is available on **Databases** while a database is open. Creating a team keeps that connection and does not move its database. In **Teams**, use **Databases** to add or open a database and **People & access** to invite teammates and grant access. See [workspaces and access](workspaces.md) for the private invitation-code steps and permissions.
+
 ## Choose how to work
 
-| View | Use it for |
-| --- | --- |
-| **Ask** | Describe a request in plain English using Data Genie AI, then inspect its SQL and result. |
-| **SQL** | Write one SQL statement directly, without an AI service or API key. |
-| **Structure** | Inspect tables and columns, or use forms to change their structure. |
-| **History** | Search saved requests and reopen their SQL and result snapshots. |
+| View          | Use it for                                                                                |
+| ------------- | ----------------------------------------------------------------------------------------- |
+| **Ask**       | Describe a request in plain English using Data Genie AI, then inspect its SQL and result. |
+| **SQL**       | Write one SQL statement directly, without an AI service or API key.                       |
+| **Structure** | Inspect tables and columns, or use forms to change their structure.                       |
+| **History**   | Search saved requests and reopen their SQL and result snapshots.                          |
 
 ## Ask in plain English
 
@@ -45,12 +51,16 @@ The forms prepare SQL rather than applying changes immediately. Review the pendi
 
 The Structure toolbar stays available while scrolling. Use **Jump to table** to move directly to a table. The last completed change stays collapsed so it does not bury the table controls.
 
+Choose **Sample rows** on a table to inspect its data. **Hide sample rows** closes the preview; opening it again reuses the loaded rows. Choose **Refresh sample rows** while it is open to fetch current data. Changing sessions or refreshing the schema clears the samples. Copy and CSV controls follow your database's download permission, including in these previews.
+
 ## Navigate long conversations and History
 
 - Ask and SQL initially show eight recent requests. **Show earlier requests** opens older batches, and **Jump to latest** returns to current work. Older completed results stay collapsed until opened; pending confirmations remain available.
 - The workspace caches the latest 50 requests plus unresolved changes. Open **View all in History** for the full saved record; leaving the recent cache does not delete a request.
 - History loads 20 requests per page. Its search and page controls stay available while scrolling. **Next** opens older requests, **Previous** returns toward newer ones, and **Newest** returns to the first page.
-- Search your words or SQL. Expand **Session & operation** to choose a session or SQL operation. Open an entry's details to load its SQL and saved result. **Use request** prepares it in the current database; it does not silently rerun it.
+- Type your words or SQL and choose **Search**. Expand **Session & operation** to change the session or SQL operation. Choosing an operation applies it immediately and returns to the first page; any search text you have not submitted stays in the field.
+- **Clear filters** beside Search resets the search and operation. Emptying the search field removes its applied search immediately.
+- Open an entry's details to load its SQL and saved result. **Use request** prepares it in the current database; it does not silently rerun it.
 
 Saved results are snapshots, with up to 500 rows. Run a request again for current data. Additional result pages read current data without changing the saved snapshot. CSV exports contain the rows currently loaded in the result.
 

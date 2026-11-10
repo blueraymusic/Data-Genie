@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { DatabaseForm } from '../components/DatabaseForm';
 import { SavedDatabases } from '../components/SavedDatabases';
+import { TeamWorkspaceEntry } from '../components/TeamWorkspaceEntry';
 import { Link } from '../lib/router';
 import { databaseAccess } from '../lib/access';
 export default function DatabasesPage({ workbench, onOpened }) {
@@ -25,11 +26,18 @@ export default function DatabasesPage({ workbench, onOpened }) {
         </div>
       </header>
       <div className="database-entry-layout">
-        <SavedDatabases
-          workbench={workbench}
-          onOpened={onOpened}
-          onReconnect={() => setFormVersion((value) => value + 1)}
-        />
+        <div className="database-start-options">
+          <SavedDatabases
+            workbench={workbench}
+            onOpened={onOpened}
+            onReconnect={() => setFormVersion((value) => value + 1)}
+          />
+          <TeamWorkspaceEntry
+            disabled={Boolean(
+              workbench.busy || workbench.pending || workbench.workingCommands?.size,
+            )}
+          />
+        </div>
         <DatabaseForm
           key={formVersion}
           initialMode={formVersion ? 'postgresql' : 'create'}

@@ -42,6 +42,10 @@ const questions = [
     'Can I see my earlier requests?',
     'Yes. History saves your requests, SQL, status and available results. Search and filter it to find an earlier answer.',
   ],
+  [
+    'Can I work with my team?',
+    'Yes. Choose “Create team workspace” on the database screen, then add databases and invite teammates using their account email and a private code. You choose what each person can do with each database.',
+  ],
 ];
 export default function HomePage() {
   const { user } = useAuth();
@@ -77,8 +81,7 @@ export default function HomePage() {
               </div>
               <p className="hero-hint">
                 <Link href="/#demo">Explore the sample demo</Link> · No account needed.
-                <br />
-                SQLite files and PostgreSQL connections.
+                <br /> SQLite files and PostgreSQL connections.
               </p>
             </div>
             <div className="hero-preview">

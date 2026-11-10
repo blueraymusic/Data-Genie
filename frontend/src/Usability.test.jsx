@@ -70,6 +70,7 @@ it('tests a PostgreSQL connection and clears stale connection feedback after edi
   await events.click(screen.getByRole('button', { name: 'Test connection', exact: true }));
   expect(await screen.findByText('Connected to shop · public · 2 tables')).toBeTruthy();
   expect(fetch.mock.calls[0][0]).toBe('/api/connections/test');
+  await events.click(screen.getByText('Connection options'));
   await events.type(screen.getByLabelText('Schema'), 'other');
   expect(screen.queryByText('Connected to shop · public · 2 tables')).toBeNull();
 });

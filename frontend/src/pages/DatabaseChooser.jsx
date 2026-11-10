@@ -3,6 +3,7 @@ import { AuthShell } from '../components/AuthShell';
 import { DatabaseForm } from '../components/DatabaseForm';
 import { SavedDatabases } from '../components/SavedDatabases';
 import { InvitationNotice } from '../components/InvitationNotice';
+import { TeamWorkspaceEntry } from '../components/TeamWorkspaceEntry';
 import { useAuth } from '../context/AuthContext';
 import { useRouter, Link } from '../lib/router';
 export default function DatabaseChooser({ workbench, onOpened }) {
@@ -43,11 +44,18 @@ export default function DatabaseChooser({ workbench, onOpened }) {
       </p>
       <InvitationNotice />
       <div className="database-entry-layout">
-        <SavedDatabases
-          workbench={workbench}
-          onOpened={(data) => (onOpened ? onOpened(data) : navigate('/app', true))}
-          onReconnect={() => setFormVersion((value) => value + 1)}
-        />
+        <div className="database-start-options">
+          <SavedDatabases
+            workbench={workbench}
+            onOpened={(data) => (onOpened ? onOpened(data) : navigate('/app', true))}
+            onReconnect={() => setFormVersion((value) => value + 1)}
+          />
+          <TeamWorkspaceEntry
+            disabled={Boolean(
+              workbench.busy || workbench.pending || workbench.workingCommands?.size,
+            )}
+          />
+        </div>
         <DatabaseForm
           key={formVersion}
           initialMode={formVersion ? 'postgresql' : 'create'}

@@ -257,13 +257,34 @@ export default function HistoryPage({ workbench, onReuse }) {
               <input
                 type="search"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setSearch(value);
+                  if (!value && filters.search) {
+                    setOffset(0);
+                    setFilters((current) => ({ ...current, search: '' }));
+                  }
+                }}
                 placeholder="Search your words or SQL"
               />
             </label>
             <button className="btn pri" disabled={!target}>
               Search
             </button>
+            {(search || operation || filters.search || filters.operation) && (
+              <button
+                className="btn quiet"
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setOperation('');
+                  setOffset(0);
+                  setFilters({ search: '', operation: '' });
+                }}
+              >
+                Clear filters
+              </button>
+            )}
             <button
               className="btn quiet"
               type="button"
@@ -299,7 +320,15 @@ export default function HistoryPage({ workbench, onReuse }) {
               </label>
               <label>
                 Operation
-                <select value={operation} onChange={(event) => setOperation(event.target.value)}>
+                <select
+                  value={operation}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setOperation(value);
+                    setOffset(0);
+                    setFilters((current) => ({ ...current, operation: value }));
+                  }}
+                >
                   <option value="">All operations</option>
                   {[
                     'SELECT',
@@ -315,18 +344,6 @@ export default function HistoryPage({ workbench, onReuse }) {
                   ))}
                 </select>
               </label>
-              <button
-                className="btn"
-                type="button"
-                onClick={() => {
-                  setSearch('');
-                  setOperation('');
-                  setOffset(0);
-                  setFilters({ search: '', operation: '' });
-                }}
-              >
-                Clear filters
-              </button>
             </div>
           </details>
         </form>

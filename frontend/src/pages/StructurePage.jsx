@@ -20,30 +20,42 @@ const isSchemaRequest = (request) =>
 const isPendingRequest = (request) =>
   request.commands.some((command) => command.requires_confirmation && command.status === 'pending');
 
-function SchemaTable({ table, sessionId, index, disabled, dialect, onChange }) {
+function SchemaTable({ table, sessionId, index, disabled, dialect, onChange, canRead, canExport }) {
   const request = useRef(null);
-  const [rows, setRows] = useState(null),
+  const [sample, setSample] = useState(null),
+    [shown, setShown] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
-  useEffect(() => () => request.current?.abort(), [sessionId, table.name]);
-  async function sample() {
+  const rows =
+    canRead && sample?.sessionId === sessionId && sample.table === table ? sample.rows : null;
+  const sampleId = 'schema-sample-' + index;
+  useEffect(() => {
+    request.current?.abort();
+    setSample(null);
+    setShown(false);
+    setBusy(false);
+    setError('');
+    return () => request.current?.abort();
+  }, [sessionId, table, canRead]);
+  async function loadSample() {
+    if (!canRead || busy) return;
     const controller = new AbortController();
     request.current?.abort();
     request.current = controller;
     setBusy(true);
     setError('');
-    setRows(null);
+    setShown(true);
     try {
-      setRows(
-        (
-          await api('/api/sample?table=' + encodeURIComponent(table.name), {
-            sessionId,
-            signal: controller.signal,
-          })
-        ).rows,
-      );
+      const data = await api('/api/sample?table=' + encodeURIComponent(table.name), {
+        sessionId,
+        signal: controller.signal,
+      });
+      if (!controller.signal.aborted) setSample({ sessionId, table, rows: data.rows || [] });
     } catch (error) {
-      if (!controller.signal.aborted) setError(error.message);
+      if (!controller.signal.aborted) {
+        setSample(null);
+        setError(error.message);
+      }
     } finally {
       if (!controller.signal.aborted) setBusy(false);
     }
@@ -187,13 +199,32 @@ function SchemaTable({ table, sessionId, index, disabled, dialect, onChange }) {
           ))}
         </div>
       )}
-      <p className="schema-sample-action">
-        <button className="btn" disabled={busy} onClick={sample}>
-          {busy ? 'Loading…' : 'Sample rows'}
+      <div className="schema-sample-action">
+        <button
+          className="btn"
+          disabled={busy || !canRead}
+          aria-expanded={shown && canRead}
+          aria-controls={sampleId}
+          onClick={() => (rows !== null ? setShown((current) => !current) : loadSample())}
+        >
+          {busy ? 'Loading…' : shown && rows !== null ? 'Hide sample rows' : 'Sample rows'}
         </button>
-      </p>
-      {error && <p className="err">{error}</p>}
-      {rows && <ResultTable rows={rows} />}
+        {shown && rows !== null && (
+          <button className="btn quiet" disabled={busy || !canRead} onClick={loadSample}>
+            Refresh sample rows
+          </button>
+        )}
+      </div>
+      {error && (
+        <p className="err" role="alert">
+          {error}
+        </p>
+      )}
+      {shown && canRead && (
+        <div id={sampleId} className="schema-sample-results" aria-busy={busy}>
+          {rows !== null && <ResultTable rows={rows} canExport={canExport} />}
+        </div>
+      )}
     </div>
   );
 }
@@ -205,11 +236,12 @@ export default function StructurePage({ workbench }) {
     [jumpTable, setJumpTable] = useState(''),
     [openedReview, setOpenedReview] = useState(null);
   const session = workbench.session;
+  const access = databaseAccess(session);
   const disabled = Boolean(
     workbench.busy ||
     workbench.pending ||
     workbench.workingCommands?.size ||
-    !databaseAccess(session).permissions.structure,
+    !access.permissions.structure,
   );
   const schemaRequests = (workbench.feed || []).filter(isSchemaRequest);
   const schemaOutcomes = schemaRequests
@@ -373,6 +405,8 @@ export default function StructurePage({ workbench }) {
               sessionId={workbench.session.session_id}
               disabled={disabled}
               dialect={schemaDialect(session)}
+              canRead={access.canRead}
+              canExport={access.permissions.export}
               onChange={setChange}
             />
           ))

@@ -8,7 +8,7 @@
 .workspace-page .top {
   position: relative;
   z-index: 40;
-  min-height: 72px;
+  min-height: 64px;
   flex: none;
   display: flex;
   align-items: center;
@@ -189,14 +189,14 @@
   flex-direction: column;
   min-height: 0;
   overflow: auto;
-  padding: 28px 20px 20px;
+  padding: 20px 18px 18px;
   border-right: 1px solid var(--rule);
   background: color-mix(in srgb, var(--paper) 18%, var(--chalk));
   overscroll-behavior: contain;
 }
 .workspace-page .rail-connection {
-  padding: 0 0 22px;
-  margin: 0 0 22px;
+  padding: 0 0 16px;
+  margin: 0 0 16px;
   border-bottom: 1px solid var(--rule);
 }
 .workspace-page .rail-connection .rail-meta {
@@ -237,7 +237,7 @@
   gap: 7px;
   color: var(--ink-soft);
   font-size: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 .workspace-page #tableSearch {
   padding: 10px 10px 10px 34px;
@@ -245,7 +245,7 @@
   font-size: 12px;
 }
 .workspace-page .tables-heading {
-  margin-top: 24px;
+  margin-top: 16px;
   margin-bottom: 10px;
 }
 .workspace-page .rail-table {
@@ -254,7 +254,7 @@
 .workspace-page .rail-table summary {
   cursor: pointer;
   list-style: none;
-  min-height: 42px;
+  min-height: 44px;
   padding: 10px;
   margin: 0;
   border-left: 2px solid transparent;
@@ -319,7 +319,7 @@
 }
 .workspace-page .rail-foot {
   margin-top: auto;
-  padding-top: 40px;
+  padding-top: 24px;
   font-size: 12px;
   line-height: 18px;
 }
@@ -338,7 +338,7 @@
   align-items: center;
   gap: 24px;
   flex: none;
-  min-height: 54px;
+  min-height: 48px;
   padding: 0 40px;
   border-bottom: 1px solid var(--rule);
   color: var(--ink-soft);
@@ -350,8 +350,8 @@
 }
 .workspace-page .view-tabs button {
   border-radius: 0;
-  min-height: 54px;
-  padding: 12px 14px;
+  min-height: 48px;
+  padding: 9px 14px;
   border-bottom: 2px solid transparent;
 }
 .workspace-page .view-tabs button.on {
@@ -372,7 +372,7 @@
 :where(.workspace-page .content > section:not(#v-ask):not(#v-sql)) {
   max-width: 1050px;
   margin: 0 auto;
-  padding: 36px 0 64px;
+  padding: 24px 0 36px;
 }
 .workspace-page .ask-content {
   display: flex;
@@ -386,9 +386,9 @@
   display: none;
   align-items: center;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 12px;
   max-width: 1050px;
-  padding: 20px 0;
+  padding: 12px 0;
   margin: 0 auto;
   border-bottom: 1px solid var(--rule);
 }
@@ -424,7 +424,7 @@
 }
 .workspace-page .connection-summary .btn {
   font-size: 12px;
-  min-height: 34px;
+  min-height: 44px;
   padding: 6px 8px;
 }
 .workspace-page .demo-notice {
@@ -442,7 +442,7 @@
 .workspace-page .page-heading {
   align-items: flex-start;
   gap: 24px;
-  margin-bottom: 26px;
+  margin-bottom: 20px;
 }
 .workspace-page .page-heading h1 {
   margin-bottom: 8px;

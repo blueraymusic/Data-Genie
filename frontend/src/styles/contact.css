@@ -1,5 +1,5 @@
 .contact-page .contact-intro {
-  padding-block: 64px 126px;
+  padding-block: 40px 72px;
   background: var(--lapis-wash);
 }
 .contact-page .contact-intro h1 {
@@ -23,20 +23,20 @@
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
   align-items: start;
-  gap: 64px;
-  margin-top: -70px;
-  padding-bottom: 72px;
+  gap: 40px;
+  margin-top: -36px;
+  padding-bottom: 44px;
 }
 .contact-page .contact-form {
   min-width: 0;
-  padding: 32px;
+  padding: 24px;
   border: 1px solid var(--rule);
   border-radius: 12px;
   background: var(--paper);
   box-shadow: var(--shadow-floating);
 }
 .contact-page .contact-form-intro {
-  margin-bottom: 26px;
+  margin-bottom: 18px;
   color: var(--ink-soft);
   font-size: 14px;
   line-height: 1.6;
@@ -44,7 +44,7 @@
 .contact-page .contact-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px 18px;
+  gap: 16px;
 }
 .contact-page .contact-fields label {
   display: block;
@@ -73,13 +73,13 @@
 }
 .contact-page .contact-fields textarea {
   resize: vertical;
-  min-height: 124px;
+  min-height: 104px;
 }
 .contact-page .contact-wide {
   grid-column: 1/-1;
 }
 .contact-page .contact-note {
-  margin-top: 22px;
+  margin-top: 16px;
   color: var(--ink-soft);
   font-size: 11px;
   line-height: 1.6;
@@ -104,15 +104,15 @@
 }
 .contact-page .contact-help {
   min-width: 0;
-  margin-top: 112px;
-  padding-top: 24px;
+  margin-top: 60px;
+  padding-top: 20px;
   border-top: 1px solid var(--rule);
 }
 .contact-page .contact-help h2 {
   font: 500 25px/1.2 var(--serif);
 }
 .contact-page .contact-help > div {
-  margin-top: 26px;
+  margin-top: 20px;
 }
 .contact-page .contact-help a {
   display: inline-flex;
@@ -148,12 +148,12 @@
     gap: 32px;
   }
   .contact-page .contact-form {
-    padding: 26px;
+    padding: 24px;
   }
 }
 @media (max-width: 700px) {
   .contact-page .contact-intro {
-    padding-block: 44px 96px;
+    padding-block: 32px 64px;
   }
   .contact-page .contact-intro h1 {
     font-size: 40px;
@@ -163,9 +163,9 @@
   }
   .contact-page .contact-layout {
     grid-template-columns: minmax(0, 1fr);
-    margin-top: -54px;
-    gap: 32px;
-    padding-bottom: 48px;
+    margin-top: -32px;
+    gap: 24px;
+    padding-bottom: 36px;
   }
   .contact-page .contact-help {
     margin-top: 0;

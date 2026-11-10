@@ -1,5 +1,5 @@
 .home-page .home-tour {
-  padding-block: 80px 90px;
+  padding-block: 48px 56px;
   scroll-margin-top: 74px;
 }
 .home-page .home-tour .section-heading h2 {
@@ -15,7 +15,7 @@
   justify-content: center;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 32px;
+  margin-top: 24px;
 }
 .home-page .tour-tabs button {
   display: inline-flex;
@@ -68,10 +68,9 @@
   display: grid;
   grid-template-columns: 0.9fr 1.1fr;
   align-items: stretch;
-  gap: 36px;
-  margin-top: 36px;
-  padding: 36px;
-  min-height: 530px;
+  gap: 28px;
+  margin-top: 24px;
+  padding: 24px;
   border-radius: 20px;
   background: var(--chalk);
   color: var(--ink);
@@ -110,8 +109,8 @@
 .home-page .tour-icon {
   display: grid;
   place-items: center;
-  width: 72px;
-  height: 72px;
+  width: 56px;
+  height: 56px;
   border-radius: 18px;
   background: #fff;
   color: var(--lapis);
@@ -122,19 +121,19 @@
   height: 32px;
 }
 .home-page .tour-story h3 {
-  margin-top: 44px;
-  font: 500 40px/1.08 var(--serif);
+  margin-top: 22px;
+  font: 500 36px/1.12 var(--serif);
   letter-spacing: -0.02em;
 }
 .home-page .tour-story > p {
   max-width: 34ch;
-  margin-top: 18px;
+  margin-top: 14px;
   color: var(--ink-soft);
   font-size: 15px;
   line-height: 1.65;
 }
 .home-page .tour-story .inline-link {
-  margin-top: 20px;
+  margin-top: 12px;
 }
 .home-page .tour-window {
   min-width: 0;
@@ -149,7 +148,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 14px 18px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--rule);
 }
 .home-page .tour-window-top .brand {
@@ -161,17 +160,16 @@
 }
 .home-page .tour-window-content {
   min-width: 0;
-  padding: 20px;
+  padding: 16px;
   background: var(--paper);
   border-radius: 0 0 12px 12px;
-  min-height: 398px;
 }
 .home-page .tour-preview-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 22px;
+  margin-bottom: 16px;
 }
 .home-page .tour-preview-heading h4 {
   font: 500 17px/1.4 var(--sans);
@@ -239,7 +237,7 @@
 }
 .home-page .history-demo-filters button {
   padding: 8px 12px;
-  min-height: 36px;
+  min-height: 44px;
   border: 1px solid var(--control-border);
   border-radius: 6px;
   background: transparent;
@@ -266,6 +264,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px;
+  min-height: 44px;
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
@@ -315,7 +314,7 @@
 @media (max-width: 1120px) {
   .home-page .tour-panel {
     gap: 24px;
-    padding: 28px;
+    padding: 24px;
   }
   .home-page .tour-story h3 {
     font-size: 36px;
@@ -345,7 +344,7 @@
   }
   .home-page .tour-story h3 {
     grid-column: 2;
-    margin: 24px 0 0;
+    margin: 16px 0 0;
   }
   .home-page .tour-story > p {
     grid-column: 2;
@@ -356,13 +355,10 @@
     grid-column: 2;
     margin-top: 10px;
   }
-  .home-page .tour-window-content {
-    min-height: 380px;
-  }
 }
 @media (max-width: 620px) {
   .home-page .home-tour {
-    padding-block: 54px 60px;
+    padding-block: 36px 40px;
   }
   .home-page .home-tour .section-heading h2 {
     font-size: 38px;
@@ -371,7 +367,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
-    margin-top: 26px;
+    margin-top: 20px;
   }
   .home-page .tour-tabs button {
     padding: 10px 12px;
@@ -379,7 +375,7 @@
   }
   .home-page .tour-panel {
     padding: 20px 14px 14px;
-    margin-top: 24px;
+    margin-top: 20px;
     border-radius: 14px;
     gap: 20px;
   }
@@ -392,7 +388,7 @@
     width: 44px;
     height: 44px;
     border-radius: 12px;
-    margin-top: 24px;
+    margin-top: 16px;
   }
   .home-page .tour-icon .ic {
     width: 24px;
@@ -420,7 +416,6 @@
   }
   .home-page .tour-window-content {
     padding: 16px 12px;
-    min-height: 400px;
   }
   .home-page .tour-preview-heading {
     margin-bottom: 18px;

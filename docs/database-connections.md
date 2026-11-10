@@ -4,7 +4,9 @@ Data Genie supports local SQLite files and live PostgreSQL databases, including 
 
 ## Connect on the hosted site
 
-Open [Data Genie](https://data-genie.space/), [sign up](https://data-genie.space/signup) or [log in](https://data-genie.space/signin), then open [Databases](https://data-genie.space/databases). Choose **PostgreSQL**, paste a URL containing the username, password, host, and database name, and choose a schema (usually `public`). **Test connection** checks access without saving credentials or changing data. **Connect PostgreSQL** saves the connection for your account.
+Open [Data Genie](https://data-genie.space/), [sign up](https://data-genie.space/signup) or [log in](https://data-genie.space/signin), then open [Databases](https://data-genie.space/databases). Choose **PostgreSQL** and paste a URL containing the username, password, host, and database name. **Test connection** checks access without saving credentials or changing data. **Connect PostgreSQL** saves the connection for your account.
+
+The schema defaults to `public`. Expand **Connection options** to change **Schema** or add an optional **Connection name**. These options open automatically when a custom name or schema is already filled in. The connection URL, change-permission checkbox, and test button remain available without opening the options.
 
 The hosted site already includes the connector. It needs a public PostgreSQL hostname and `sslmode=verify-full` (the default for external hosts). A database listening only on your laptop, a private network, or a cloud-metadata address cannot be reached through the hosted connector. If your provider restricts incoming connections, its network rules must also permit the Data Genie app's outbound addresses; testing a URL does not change those rules.
 
@@ -68,7 +70,7 @@ For a ready-to-use database with a **local Data Genie installation** (PostgreSQL
 .venv/bin/python scripts/postgres_demo.py url
 ```
 
-Paste that URL into the local app's **Databases → PostgreSQL**, keep schema `public`, test, and connect. In Ask, try “show all customers from Missouri”, then “which ones are in Iowa”. Without AI, use the SQL tab, for example `SELECT * FROM customers WHERE state = 'Iowa';`. Structure provides forms to add, rename, or delete tables and columns; every change still requires confirmation. The isolated demo has its own dedicated user and password, listens only on loopback port 55432, and stores its settings under ignored `db/postgres-demo/`. It cannot be connected through the hosted site. Re-running `start` preserves your data. Use `.venv/bin/python scripts/postgres_demo.py stop` when finished.
+Paste that URL into the local app's **Databases → PostgreSQL**, leave the default `public` schema, test, and connect. There is no need to open **Connection options** for this demo. In Ask, try “show all customers from Missouri”, then “which ones are in Iowa”. Without AI, use the SQL tab, for example `SELECT * FROM customers WHERE state = 'Iowa';`. Structure provides forms to add, rename, or delete tables and columns; every change still requires confirmation. The isolated demo has its own dedicated user and password, listens only on loopback port 55432, and stores its settings under ignored `db/postgres-demo/`. It cannot be connected through the hosted site. Re-running `start` preserves your data. Use `.venv/bin/python scripts/postgres_demo.py stop` when finished.
 
 For automated checks:
 

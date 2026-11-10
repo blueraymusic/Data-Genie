@@ -16,6 +16,7 @@
   box-shadow: var(--shadow-floating);
 }
 :is(.home-page, .faq-page) .public-mobile-nav > a {
+  min-height: 44px;
   padding: 12px;
   border-radius: 6px;
   color: var(--ink);
@@ -55,13 +56,13 @@
     gap: 4px;
   }
   :is(.home-page, .faq-page) .actions > [data-entry='signup'] {
-    min-height: 40px;
+    min-height: 44px;
     padding-inline: 10px;
     font-size: 11px;
   }
   :is(.home-page, .faq-page) .public-menu-toggle {
-    width: 36px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     padding: 0;
   }
 }

@@ -1,5 +1,5 @@
 .home-page .home-examples {
-  padding-block: 64px;
+  padding-block: 48px;
 }
 .home-page .home-examples .section-heading h2 {
   font-size: clamp(36px, 3.8vw, 48px);
@@ -8,20 +8,20 @@
   margin-top: 12px;
 }
 .home-page .example-carousel {
-  margin-top: 28px;
+  margin-top: 22px;
 }
 .home-page .example-selector {
   display: flex;
   align-items: stretch;
   gap: 12px;
-  margin-bottom: 22px;
+  margin-bottom: 16px;
 }
 .home-page .example-playback {
   display: grid;
   place-items: center;
   flex: none;
-  width: 54px;
-  min-height: 64px;
+  width: 48px;
+  min-height: 48px;
   border: 1px solid var(--rule);
   border-radius: 6px;
   background: var(--sunken);
@@ -45,13 +45,13 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
-  min-height: 64px;
-  padding: 16px 14px;
+  min-height: 48px;
+  padding: 11px 14px;
   border: 1px solid var(--rule);
   border-radius: 6px;
   background: var(--sunken);
   color: var(--ink-soft);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   transition:
     color var(--motion-fast) var(--ease-out),
@@ -120,17 +120,17 @@
 }
 .home-page .example-input {
   min-width: 0;
-  padding: 28px 32px;
+  padding: 22px 24px;
 }
 .home-page .example-stat {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding-bottom: 18px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--rule);
 }
 .home-page .example-stat strong {
-  font: 400 58px/1 var(--sans);
+  font: 400 48px/1 var(--sans);
   letter-spacing: -0.05em;
   color: var(--ink);
 }
@@ -157,13 +157,13 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  margin: 18px 0;
+  margin: 14px 0;
   font-size: 12px;
   color: var(--ink-soft);
 }
 .home-page .example-input select {
   max-width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   font-size: 13px;
   background: var(--paper);
 }
@@ -180,7 +180,7 @@
   flex-direction: column;
   justify-content: center;
   min-width: 0;
-  padding: 28px;
+  padding: 22px;
   border: 0;
   border-radius: 0 12px 12px 0;
   background: #0d1430;
@@ -239,7 +239,7 @@
   margin-top: 18px;
 }
 .home-page .summary-toggle button {
-  min-height: 40px;
+  min-height: 44px;
   padding: 9px 16px;
   border: 1px solid var(--control-border);
   border-radius: 6px;
@@ -328,18 +328,18 @@
     gap: 0;
   }
   .home-page .example-input {
-    padding: 24px;
+    padding: 22px;
   }
   .home-page .example-input h3 {
     font-size: 27px;
   }
   .home-page .example-output {
-    padding: 24px;
+    padding: 22px;
   }
 }
 @media (max-width: 620px) {
   .home-page .home-examples {
-    padding-block: 48px;
+    padding-block: 36px;
   }
   .home-page .home-examples .section-heading h2 {
     font-size: 36px;
@@ -349,8 +349,8 @@
   }
   .home-page .example-tabs button {
     min-width: 0;
-    padding: 12px 7px;
-    min-height: 58px;
+    padding: 10px 7px;
+    min-height: 48px;
     font-size: 12px;
   }
   .home-page .example-tabs .ic {
@@ -365,11 +365,11 @@
     margin-bottom: 16px;
   }
   .home-page .example-playback {
-    width: 38px;
-    min-height: 58px;
+    width: 44px;
+    min-height: 48px;
   }
   .home-page .example-input {
-    padding: 22px;
+    padding: 18px;
   }
   .home-page .example-stat strong {
     font-size: 44px;
@@ -384,13 +384,13 @@
     font-size: 13px;
   }
   .home-page .example-input > label {
-    margin: 18px 0;
+    margin: 14px 0;
   }
   .home-page .example-input .example-request {
     font-size: 22px;
   }
   .home-page .example-output {
-    padding: 22px;
+    padding: 18px;
     border-radius: 0 0 12px 12px;
   }
   .home-page .example-output .sqlblock pre {

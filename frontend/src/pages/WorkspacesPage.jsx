@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DatabaseForm } from '../components/DatabaseForm';
 import { Icon } from '../components/Icon';
 import { WorkspaceDialog } from '../components/WorkspaceDialog';
+import { CreateWorkspaceDialog } from '../components/CreateWorkspaceDialog';
 import { WorkspaceMembers } from '../components/WorkspaceMembers';
 import { WorkspaceInvitations, WorkspaceInviteManager } from '../components/WorkspaceInvitations';
 import { useWorkspaces } from '../hooks/useWorkspaces';
@@ -16,21 +17,26 @@ const permissionLabels = {
   export: 'Export',
 };
 
-export default function WorkspacesPage({ workbench, onOpened }) {
+export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId }) {
   const sectionTabs = useRef(null);
-  const teams = useWorkspaces(workbench.session?.access?.workspace_id),
+  const teams = useWorkspaces(initialWorkspaceId || workbench.session?.access?.workspace_id),
     { details } = teams,
     workspace = details?.workspace,
     owner = workspace?.role === 'owner',
     viewer = workspace?.role === 'viewer';
-  const [name, setName] = useState(''),
-    [deleteName, setDeleteName] = useState(''),
+  const [deleteName, setDeleteName] = useState(''),
     [tab, setTab] = useState('databases'),
     [modal, setModal] = useState(null),
     [invitationDraft, setInvitationDraft] = useState({ email: '', role: 'member', link: null }),
     [personalDatabases, setPersonalDatabases] = useState([]),
     [attachId, setAttachId] = useState(''),
     [opening, setOpening] = useState(null);
+  const lastRequestedWorkspace = useRef(initialWorkspaceId);
+  useEffect(() => {
+    if (lastRequestedWorkspace.current === initialWorkspaceId) return;
+    lastRequestedWorkspace.current = initialWorkspaceId;
+    if (initialWorkspaceId) teams.select(initialWorkspaceId);
+  }, [initialWorkspaceId]);
   const pending = Boolean(workbench.pending || workbench.busy || workbench.workingCommands?.size),
     disabled = pending || teams.busy || opening !== null,
     base = '/api/workspaces/' + encodeURIComponent(teams.selected),
@@ -82,16 +88,6 @@ export default function WorkspacesPage({ workbench, onOpened }) {
   async function action(path, body, success) {
     if (disabled) return null;
     return teams.act(base + '/' + path, body, success);
-  }
-  async function create(event) {
-    event.preventDefault();
-    if (disabled || !name.trim()) return;
-    const result = await teams.act('/api/workspaces', { name: name.trim() }, 'Workspace created.');
-    if (result?.workspace_id) {
-      teams.select(result.workspace_id);
-      setName('');
-      setModal(null);
-    }
   }
   async function accept(invitation, token) {
     if (disabled) return;
@@ -493,48 +489,16 @@ export default function WorkspacesPage({ workbench, onOpened }) {
         </div>
       </div>
       {modal === 'create' && (
-        <WorkspaceDialog
-          title="Create a workspace"
-          description="Bring your team and its databases together."
-          busy={disabled}
+        <CreateWorkspaceDialog
+          disabled={disabled}
           onClose={() => setModal(null)}
-        >
-          <form className="workspace-create" onSubmit={create}>
-            <label>
-              New workspace name
-              <input
-                autoFocus
-                value={name}
-                maxLength={100}
-                required
-                disabled={disabled}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="e.g. Customer operations"
-              />
-            </label>
-            <p className="small muted">
-              You’ll be the owner. Add a database, then invite your teammates.
-            </p>
-            {teams.error && (
-              <p className="err" role="alert">
-                {teams.error}
-              </p>
-            )}
-            <div className="workspace-dialog-actions">
-              <button
-                type="button"
-                className="btn"
-                disabled={disabled}
-                onClick={() => setModal(null)}
-              >
-                Cancel
-              </button>
-              <button className="btn pri" disabled={disabled || !name.trim()}>
-                {teams.busy ? 'Creating…' : 'Create workspace'}
-              </button>
-            </div>
-          </form>
-        </WorkspaceDialog>
+          onCreated={(workspace) => {
+            teams.refresh();
+            teams.select(workspace.workspace_id);
+            teams.setMessage('Workspace created.');
+            setModal(null);
+          }}
+        />
       )}
       {modal === 'database' && workspace && owner && (
         <WorkspaceDialog

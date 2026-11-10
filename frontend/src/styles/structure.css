@@ -9,8 +9,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 18px;
+  gap: 14px;
+  margin-bottom: 12px;
 }
 .workspace-page .structure-page .schema-table-heading h3 {
   min-width: 0;
@@ -38,14 +38,14 @@
 }
 .workspace-page .structure-page .tbl {
   margin: 0;
-  padding: 28px 0;
+  padding: 20px 0;
   border: 0;
   border-top: 1px solid var(--rule);
   border-radius: 0;
   background: transparent;
 }
 .workspace-page .structure-page #schema {
-  margin-top: 24px;
+  margin-top: 16px;
 }
 .workspace-page .structure-page .schema-columns {
   background: var(--paper);
@@ -74,7 +74,11 @@
   margin-inline: 6px;
 }
 .workspace-page .structure-page .schema-sample-action {
-  margin: 16px 0 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 0;
 }
 .workspace-page .schema-edit-note {
   font-size: 12px;
@@ -86,7 +90,7 @@
   scroll-margin-top: 140px;
 }
 .workspace-page .schema-review > section {
-  margin-top: 26px;
+  margin-top: 18px;
 }
 .workspace-page .schema-review > section > h2 {
   font: 500 16px/24px var(--sans);
@@ -103,7 +107,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px 24px;
-  padding: 14px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--rule);
   background: var(--chalk);
 }
@@ -124,8 +128,8 @@
   scroll-margin-top: 140px;
 }
 .workspace-page .structure-page .schema-last-change {
-  margin: 16px 0;
-  padding: 12px 0;
+  margin: 12px 0;
+  padding: 10px 0;
   border: 0;
   border-bottom: 1px solid var(--rule);
   border-radius: 0;
@@ -137,7 +141,7 @@
 }
 .workspace-page .schema-history-link {
   font-size: 12px;
-  margin: 12px 0 20px;
+  margin: 10px 0 16px;
 }
 @media (max-width: 900px) {
   .workspace-page .structure-page .schema-table-heading {
@@ -164,6 +168,6 @@
     flex: 1 1 auto;
   }
   .workspace-page .structure-page .tbl {
-    padding-block: 22px;
+    padding-block: 18px;
   }
 }

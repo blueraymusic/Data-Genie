@@ -212,3 +212,46 @@ it('shows loading and ignores a stale page response after applying new filters',
   await waitFor(() => expect(document.querySelectorAll('.history-entry')).toHaveLength(1));
   expect(screen.getByRole('heading', { name: 'Record 45 query' })).toBeTruthy();
 });
+
+it('applies an operation immediately from page two without submitting an unfinished text search', async () => {
+  const events = userEvent.setup();
+  render(<HistoryPage workbench={workbench()} onReuse={vi.fn()} />);
+  const top = screen.getByRole('navigation', { name: 'History pages top' });
+  await within(top).findByText('1–20 of 45 requests · Page 1 of 3');
+  await events.click(within(top).getByRole('button', { name: 'Next' }));
+  await within(top).findByText('21–40 of 45 requests · Page 2 of 3');
+  const search = screen.getByRole('searchbox', { name: 'Find a request' });
+  await events.type(search, 'Record 4');
+  await events.click(screen.getByText(/^Session & operation/));
+  await events.selectOptions(screen.getByRole('combobox', { name: 'Operation' }), 'UPDATE');
+  await within(top).findByText('1–20 of 22 requests · Page 1 of 2');
+  const query = new URL(
+    fetch.mock.calls.filter(([path]) => path.startsWith('/api/history?')).at(-1)[0],
+    'http://localhost',
+  ).searchParams;
+  expect(Object.fromEntries(query)).toMatchObject({ search: '', operation: 'UPDATE', offset: '0' });
+  expect(search.value).toBe('Record 4');
+  await events.click(screen.getByRole('button', { name: 'Search', exact: true }));
+  await within(top).findByText('1–4 of 4 requests · Page 1 of 1');
+});
+
+it('clears applied text with the search field and keeps Clear filters available outside the disclosure', async () => {
+  const events = userEvent.setup();
+  render(<HistoryPage workbench={workbench()} onReuse={vi.fn()} />);
+  const top = screen.getByRole('navigation', { name: 'History pages top' });
+  await within(top).findByText('1–20 of 45 requests · Page 1 of 3');
+  await events.click(screen.getByText(/^Session & operation/));
+  await events.selectOptions(screen.getByRole('combobox', { name: 'Operation' }), 'UPDATE');
+  const search = screen.getByRole('searchbox', { name: 'Find a request' });
+  await events.type(search, 'Record 4');
+  await events.click(screen.getByRole('button', { name: 'Search', exact: true }));
+  await within(top).findByText('1–4 of 4 requests · Page 1 of 1');
+  await events.clear(search);
+  await within(top).findByText('1–20 of 22 requests · Page 1 of 2');
+  expect(screen.getByRole('combobox', { name: 'Operation' }).value).toBe('UPDATE');
+  await events.click(screen.getByText(/^Session & operation/));
+  await events.click(screen.getByRole('button', { name: 'Clear filters' }));
+  await within(top).findByText('1–20 of 45 requests · Page 1 of 3');
+  expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull();
+  expect(search.value).toBe('');
+});

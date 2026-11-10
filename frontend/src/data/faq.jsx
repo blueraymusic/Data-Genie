@@ -95,18 +95,44 @@ export const faqGroups = [
       {
         question: 'Can I share a database with my team?',
         search:
-          'Open Teams after logging in, create a workspace, and add or move a database into it. The workspace owner invites teammates as Members or Viewers. Members need explicit permission for each database; joining alone does not grant access. Viewers cannot open raw databases in this version. Shared database changes affect the same underlying data, while each person keeps private chats and History.',
+          'Choose Create team workspace on Choose your database or Databases, enter a New workspace name and choose Create workspace. No database connection is needed first. The new team opens in Teams; creating it keeps the current database connection and does not move that database. Add a database in Databases, then invite teammates in People & access as Members or Viewers. Members need explicit permission for each database; joining alone does not grant access. Viewers cannot open raw databases in this version. Shared database changes affect the same underlying data, while each person keeps private chats and History.',
         answer: (
           <>
             <p>
-              Open <strong>Teams</strong>, create a workspace, and add or move a database into it.
-              The owner can invite teammates as <strong>Members</strong> or <strong>Viewers</strong>
-              .
+              Choose <strong>Create team workspace</strong> on the database screen, enter a{' '}
+              <strong>New workspace name</strong>, then choose <strong>Create workspace</strong>.
+              You do not need to open a database first. The new team opens in <strong>Teams</strong>
+              ; your current database stays connected and is not moved.
+            </p>
+            <p>
+              Add a database in <strong>Databases</strong>, then use{' '}
+              <strong>People &amp; access</strong> to invite teammates as <strong>Members</strong>{' '}
+              or <strong>Viewers</strong>.
             </p>
             <p>
               Members need permission for each database; joining alone does not grant access.
               Viewers cannot open raw databases in this version. Confirmed changes affect the same
               shared data, while each person keeps private chats and History.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'What happens if I delete a team workspace?',
+        search:
+          'Only the owner can delete a team workspace. In Teams choose Delete workspace and type its exact name. The databases return to the owner’s Personal workspace. Memberships, invitations and database grants are removed, and members’ shared sessions end. Database files, external PostgreSQL data and the owner’s private History are preserved. Deleting a workspace does not drop tables or undo changes. The Personal workspace cannot be deleted.',
+        answer: (
+          <>
+            <p>
+              Only the owner can delete a team workspace. In <strong>Teams</strong>, choose{' '}
+              <strong>Delete workspace</strong> and type its exact name. The databases return to the
+              owner’s <strong>Personal workspace</strong>.
+            </p>
+            <p>
+              Sharing ends: memberships, invitations and database grants are removed, and members’
+              shared sessions end. Database files, external PostgreSQL data and the owner’s private
+              History are preserved. Deletion does not drop tables or undo changes. Your Personal
+              workspace cannot be deleted.
             </p>
           </>
         ),
@@ -200,13 +226,14 @@ export const faqGroups = [
       {
         question: 'How do I connect PostgreSQL?',
         search:
-          'Connect a local or hosted PostgreSQL database, including standard Supabase and Neon connections. In Databases choose PostgreSQL, paste the connection URL and choose a schema, usually public. Test connection checks access without changing data or saving credentials. Connect PostgreSQL saves the connection for your account. For a local installation, install the optional connector dependencies in the README first. The hosted site includes the connector.',
+          'Connect a local or hosted PostgreSQL database, including standard Supabase and Neon connections. In Databases choose PostgreSQL and paste the connection URL. Schema defaults to public. Expand Connection options to change Schema or add an optional Connection name. Test connection checks access without changing data or saving credentials. Connect PostgreSQL saves the connection for your account. For a local installation, follow the README link to install the optional connector dependencies first. The hosted site includes the connector.',
         answer: (
           <>
             <p>
-              Choose <strong>Databases → PostgreSQL</strong>, paste your connection URL, and choose
-              a schema, usually <code>public</code>. You can connect a local database or a hosted
-              one, including standard PostgreSQL connections from Supabase and Neon.
+              Choose <strong>Databases → PostgreSQL</strong> and paste your connection URL. The
+              schema defaults to <code>public</code>. Expand <strong>Connection options</strong> to
+              change <strong>Schema</strong> or add an optional <strong>Connection name</strong>.
+              You can use standard PostgreSQL connections from Supabase and Neon.
             </p>
             <p>
               A hosted Data Genie installation requires a public PostgreSQL address and verified
@@ -216,8 +243,8 @@ export const faqGroups = [
             <p>
               <strong>Test connection</strong> checks access without changing data or saving the
               credentials. <strong>Connect PostgreSQL</strong> saves the connection for your
-              account. For a local installation, install the optional connector dependencies in the
-              README first. The hosted site includes the connector.
+              account. For a local installation, follow the README link to install the optional
+              connector dependencies first. The hosted site includes the connector.
             </p>
           </>
         ),
@@ -411,6 +438,25 @@ export const faqGroups = [
     title: 'Requests & changes',
     items: [
       {
+        question: 'Can I preview rows while browsing Structure?',
+        search:
+          'Choose Sample rows on a table in Structure. Hide sample rows closes the preview, and reopening it reuses the loaded rows. Refresh sample rows fetches current data while the preview is open. Changing sessions or refreshing the schema clears cached samples. Copy results and Download CSV follow your database download permission in sample previews too.',
+        answer: (
+          <>
+            <p>
+              Yes. Choose <strong>Sample rows</strong> on a table in <strong>Structure</strong>. Use{' '}
+              <strong>Hide sample rows</strong> to close the preview. Opening it again reuses the
+              loaded rows; <strong>Refresh sample rows</strong> fetches current data while the
+              preview is open.
+            </p>
+            <p>
+              Changing sessions or refreshing the schema clears the samples. Copy and CSV controls
+              follow your database’s download permission here too.
+            </p>
+          </>
+        ),
+      },
+      {
         question: 'Can I edit tables and columns without typing a request?',
         search:
           'Yes. In Structure create a table, rename or delete a table, or add, rename or delete a column or attribute. Choose its type when adding a column. Review the SQL and confirm the change, or choose Don’t run. Read-only connections do not allow editing. Deleting a column removes its values and deleting a table removes its rows. Existing column types and constraints are shown for inspection; the forms do not convert existing data types.',
@@ -535,7 +581,7 @@ export const faqGroups = [
       {
         question: 'How do I navigate a long conversation or history?',
         search:
-          'Ask and SQL show recent requests in small batches. Show earlier requests opens older cached requests and Jump to latest returns to current work. All saved requests are available in History, with search, operation filters and pages of older or newer results. SQL keeps its editor and Run SQL button at the bottom while results scroll above. Pending changes remain visible for review. Structure keeps tools nearby and collapses the last completed change.',
+          'Ask and SQL show recent requests in small batches. Show earlier requests opens older cached requests and Jump to latest returns to current work. All saved requests are available in History, with search, operation filters and pages of older or newer results. Choose Search to apply typed words or SQL. Choosing an operation applies immediately and returns to the first page without submitting your search draft. Clear filters beside Search resets search and operation. Emptying the search field removes its applied search immediately. SQL keeps its editor and Run SQL button at the bottom while results scroll above. Pending changes remain visible for review.',
         answer: (
           <>
             <p>
@@ -544,10 +590,15 @@ export const faqGroups = [
               around. The SQL editor and Run button stay at the bottom while results scroll above.
             </p>
             <p>
-              Open <strong>History</strong> for the full saved record. Search your words or SQL,
-              filter by operation, and use the newer and older page controls. Completed command
-              details stay collapsed until you open them. Pending changes remain available for
-              review.
+              Open <strong>History</strong> for the full saved record. Type your words or SQL and
+              choose <strong>Search</strong>. Choosing an operation applies it immediately and
+              returns to the first page; search text you have not submitted stays in the field.
+            </p>
+            <p>
+              <strong>Clear filters</strong> beside Search resets the search and operation. Emptying
+              the search field removes its applied search immediately. Use the newer and older page
+              controls to move through results. Completed details stay collapsed until opened;
+              pending changes remain available for review.
             </p>
           </>
         ),
