@@ -21,4 +21,5 @@ import './styles/connection-fields.css';
 import './styles/interactions.css';
 import './styles/public-header.css';
 import './styles/motion.css';
+import './styles/workspace-refinements.css';
 createRoot(document.getElementById('root')).render(<App />);

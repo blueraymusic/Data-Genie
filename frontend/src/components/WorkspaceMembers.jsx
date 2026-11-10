@@ -104,6 +104,15 @@ function DatabaseAccess({ database, grant, disabled, onSave }) {
               ? 'Access is up to date'
               : 'This database is not shared with this person'}
         </span>
+        {saved?.read === true && (
+          <button
+            className="btn quiet workspace-remove"
+            disabled={disabled}
+            onClick={() => onSave(emptyAccess())}
+          >
+            Revoke access
+          </button>
+        )}
         <button className="btn" disabled={disabled || !changed} onClick={() => onSave(permissions)}>
           Save access
         </button>
@@ -114,7 +123,15 @@ function DatabaseAccess({ database, grant, disabled, onSave }) {
 
 function PersonAccess({ member, details, disabled, onAction }) {
   const [role, setRole] = useState(member.role);
+  const [databaseId, setDatabaseId] = useState('');
   useEffect(() => setRole(member.role), [member.role]);
+  useEffect(() => {
+    setDatabaseId((current) =>
+      (details.databases || []).some((database) => String(database.database_id) === current)
+        ? current
+        : String(details.databases?.[0]?.database_id || ''),
+    );
+  }, [details.databases]);
   const owner = member.role === 'owner';
   return (
     <section className="workspace-person-detail" aria-label={'Access for ' + member.email}>
@@ -162,7 +179,7 @@ function PersonAccess({ member, details, disabled, onAction }) {
           </div>
           <p className="small muted workspace-role-hint">
             {member.role === 'viewer'
-              ? 'Viewers are reserved for future shared reports. They cannot open databases.'
+              ? 'Viewers can read reports shared by the owner. They cannot open databases.'
               : 'Members can open only the databases you share below. Row and table changes still require confirmation.'}
           </p>
           {member.role === 'member' && (
@@ -171,29 +188,51 @@ function PersonAccess({ member, details, disabled, onAction }) {
               {!(details.databases || []).length ? (
                 <p className="small muted">Add a database to set its permissions.</p>
               ) : (
-                details.databases.map((database) => (
-                  <DatabaseAccess
-                    key={database.database_id}
-                    database={database}
-                    disabled={disabled}
-                    grant={(details.grants || []).find(
-                      (grant) =>
-                        String(grant.account_id) === String(member.account_id) &&
-                        String(grant.database_id) === String(database.database_id),
-                    )}
-                    onSave={(permissions) =>
-                      onAction(
-                        'grants',
-                        {
-                          account_id: member.account_id,
-                          database_id: database.database_id,
-                          permissions,
-                        },
-                        'Database access updated.',
-                      )
-                    }
-                  />
-                ))
+                <>
+                  <label>
+                    Database
+                    <select
+                      value={databaseId || String(details.databases[0].database_id)}
+                      onChange={(event) => setDatabaseId(event.target.value)}
+                    >
+                      {details.databases.map((database) => (
+                        <option key={database.database_id} value={database.database_id}>
+                          {database.database}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {details.databases.map((database) => (
+                    <div
+                      key={database.database_id}
+                      hidden={
+                        String(database.database_id) !==
+                        (databaseId || String(details.databases[0].database_id))
+                      }
+                    >
+                      <DatabaseAccess
+                        database={database}
+                        disabled={disabled}
+                        grant={(details.grants || []).find(
+                          (grant) =>
+                            String(grant.account_id) === String(member.account_id) &&
+                            String(grant.database_id) === String(database.database_id),
+                        )}
+                        onSave={(permissions) =>
+                          onAction(
+                            'grants',
+                            {
+                              account_id: member.account_id,
+                              database_id: database.database_id,
+                              permissions,
+                            },
+                            'Database access updated.',
+                          )
+                        }
+                      />
+                    </div>
+                  ))}
+                </>
               )}
             </div>
           )}

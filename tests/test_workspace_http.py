@@ -335,6 +335,31 @@ class WorkspaceHttpTests(HttpHarness, unittest.TestCase):
         self.assertEqual(status, 200, ended)
         self.assertIsNotNone(workbench.get_repository().get_session(member_session)["ended_at"])
 
+    def test_revoked_session_never_sends_attachments_or_prepares_ai(self):
+        self.join()
+        self.grant(read=True)
+        member_session = self.open()["session_id"]
+        self.grant()
+        self.as_user("member")
+        with patch.object(workbench.gemini_provider, "generate_plans") as provider:
+            self.forbidden("POST", "/api/ask", {"question": "show notes", "interpreter": "gemini",
+                "attachments": [{"mime_type": "application/pdf", "data": "JVBERi0xLjQ="}]}, member_session)
+        provider.assert_not_called()
+
+    def test_old_confirmation_stays_invalid_after_read_access_is_regranted(self):
+        self.join()
+        self.grant(read=True, write=True)
+        member_session = self.open()["session_id"]
+        prepared = self.query(member_session, "INSERT INTO notes VALUES(10,'never run')")
+        self.grant()
+        self.grant(read=True, write=True)
+        self.as_user("member")
+        status, response = self.request("POST", "/api/commands/confirm", {
+            "command_id": prepared["command_id"], "confirmation_token": prepared["confirmation_token"]}, member_session)
+        self.assertEqual(status, 400, response)
+        self.assertEqual(workbench.get_repository().get_command(prepared["command_id"])["status"], "declined")
+        self.assertEqual(self.fixture_rows(), [(1, "first"), (2, "second")])
+
     def test_reads_waiting_for_database_lock_recheck_revoked_grants(self):
         self.join()
         self.grant(read=True, export=True)
@@ -358,6 +383,8 @@ class WorkspaceHttpTests(HttpHarness, unittest.TestCase):
         for name, action in actions.items():
             with self.subTest(action=name):
                 self.grant(read=True, export=True)
+                member_session = self.open()["session_id"]
+                result = self.query(member_session, "SELECT * FROM notes")
                 checked.clear()
                 with ThreadPoolExecutor(max_workers=1) as pool, patch.object(workbench, "session_access", observe_access):
                     with workbench._lock(path):
@@ -413,6 +440,7 @@ class WorkspaceHttpTests(HttpHarness, unittest.TestCase):
         self.assertEqual(status, 200, detail)
         self.assertEqual(detail["workspace"]["role"], "viewer")
         self.assertEqual(detail["databases"], [])
+        self.assertEqual(detail["members"], [])
         self.forbidden("POST", self.route("open"), {"database_id": self.database_id})
         self.forbidden("GET", "/api/schema", session_id=self.session_id)
         self.forbidden("POST", "/api/query", {"sql": "SELECT * FROM notes"}, self.session_id)

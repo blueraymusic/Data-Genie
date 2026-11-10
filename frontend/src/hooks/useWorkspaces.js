@@ -7,6 +7,7 @@ export function useWorkspaces(initialId) {
     [selected, setSelected] = useState(initialId || ''),
     [details, setDetails] = useState(null),
     [loading, setLoading] = useState(true),
+    [listResolved, setListResolved] = useState(false),
     [detailsLoading, setDetailsLoading] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
@@ -20,6 +21,7 @@ export function useWorkspaces(initialId) {
     api('/api/workspaces', { signal: controller.signal })
       .then((data) => {
         if (controller.signal.aborted) return;
+        setListResolved(true);
         const available = data.workspaces || [];
         setWorkspaces(available);
         setInvitations(data.invitations || []);
@@ -104,6 +106,7 @@ export function useWorkspaces(initialId) {
     selected,
     details,
     loading,
+    listResolved,
     detailsLoading,
     busy,
     error,

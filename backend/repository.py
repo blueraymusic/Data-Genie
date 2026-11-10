@@ -142,6 +142,22 @@ CREATE TABLE IF NOT EXISTS workspace_invitations (
     revoked_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS workspace_invitation_email ON workspace_invitations(email,expires_at);
+CREATE TABLE IF NOT EXISTS report_ai_budgets (
+    account_id INTEGER PRIMARY KEY REFERENCES accounts(account_id) ON DELETE CASCADE,
+    started_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS workspace_reports (
+    report_id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+    author_id INTEGER NOT NULL REFERENCES accounts(account_id),
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    published INTEGER NOT NULL DEFAULT 0 CHECK(published IN (0,1)),
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    version INTEGER NOT NULL DEFAULT 1
+);
 CREATE TABLE IF NOT EXISTS schema_tables (
     table_id INTEGER PRIMARY KEY,
     database_id INTEGER NOT NULL REFERENCES databases(database_id),

@@ -21,7 +21,7 @@ If private reporting is unavailable, open an issue asking for a private contact 
 - The application repository contains private data and is not encrypted as a whole by Data Genie. Saved PostgreSQL connection settings are separately encrypted with Fernet. Keep the repository and its encryption key private and preserve both for recovery.
 - Review generated SQL before confirming a database change.
 - PostgreSQL connections are read-only by default. If you enable changes, confirmed edits affect the connected database directly and must also be allowed by its database user.
-- When you use Ask, Data Genie sends the configured AI service your database structure and recent request, SQL, and clarification context. Saved connection credentials and result rows are not included. Values you type into requests are sent to the model.
+- When you use Ask, Data Genie sends the configured AI service your database structure and recent request, SQL, and clarification context. Saved connection credentials and result rows are not included automatically. Values you type, files you attach to Ask, and source notes you submit for AI reports are sent to the configured AI service. Ask allows two PDF/image files up to 4 MB combined; file bytes are not persisted in History. Generated SQL and summaries may contain information derived from them. MIME/signature checks are format checks, not malware scanning; files are never executed. Provider retention follows its own settings and terms.
 
 ## Local setup
 
@@ -49,3 +49,7 @@ When Microsoft sign-in is enabled, its separate client secret also stays in sens
 The Terraform identity has Contributor only on `data_genie`. The separate DevOps identity has Reader on that resource group and Website Contributor only on this app, with federation limited to its deployment service connection. That identity can deploy code and read app settings, which gives application-level access to data and credentials. Authorize the service connection only for this pipeline. SQL firewall rules permit only the app's reviewed outbound addresses, with TLS and database authentication still required.
 
 Deployment bundles exclude desktop accounts, databases, keys, backups, and `.env` files. Existing desktop data is not transferred automatically. Sign up on the [hosted site](https://data-genie.space/signup) and upload only the SQLite files you want to move.
+
+## Workspace reports
+
+The server checks current membership before listing, saving, or generating a report. Viewers receive only reports marked shared; members receive shared reports and their own drafts, and owners can review all drafts. Only the owner may publish. Report text is rendered as plain text. Version checks reject conflicting saves. Reports and their contents are included in the installation’s private application-state backup; deleting a workspace removes its reports. Revoking database access does not retract an already shared report snapshot; the owner must unshare it separately.

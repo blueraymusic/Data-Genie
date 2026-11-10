@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { WorkspaceReports } from '../components/WorkspaceReports';
 import { DatabaseForm } from '../components/DatabaseForm';
 import { Icon } from '../components/Icon';
 import { WorkspaceDialog } from '../components/WorkspaceDialog';
@@ -30,7 +31,8 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
     [invitationDraft, setInvitationDraft] = useState({ email: '', role: 'member', link: null }),
     [personalDatabases, setPersonalDatabases] = useState([]),
     [attachId, setAttachId] = useState(''),
-    [opening, setOpening] = useState(null);
+    [opening, setOpening] = useState(null),
+    [databaseChoice, setDatabaseChoice] = useState('new');
   const lastRequestedWorkspace = useRef(initialWorkspaceId);
   useEffect(() => {
     if (lastRequestedWorkspace.current === initialWorkspaceId) return;
@@ -66,6 +68,7 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
   useEffect(() => {
     setInvitationDraft({ email: '', role: 'member', link: null });
     setAttachId('');
+    setDatabaseChoice('new');
     setDeleteName('');
     setTab('databases');
     setModal(null);
@@ -170,6 +173,7 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
       <WorkspaceInvitations
         invitations={teams.invitations}
         loading={teams.loading}
+        resolved={teams.listResolved}
         disabled={disabled}
         onAccept={accept}
       />
@@ -327,6 +331,14 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                   {!viewer && <span>{databases.length}</span>}
                   <small>{viewer ? 'Reports shared with you' : 'Open & manage databases'}</small>
                 </button>
+                {!viewer && (
+                  <button
+                    aria-current={tab === 'reports' ? 'page' : undefined}
+                    onClick={() => selectTab('reports')}
+                  >
+                    Reports<small>Draft & share findings</small>
+                  </button>
+                )}
                 {owner && !workspace.personal && (
                   <button
                     aria-current={tab === 'people' ? 'page' : undefined}
@@ -342,17 +354,12 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                   </button>
                 )}
               </nav>
-              {viewer ? (
-                <section className="workspace-empty-state workspace-viewer-state">
-                  <span className="workspace-empty-icon">
-                    <Icon name="layers" />
-                  </span>
-                  <h3>Shared reports</h3>
-                  <p>Reports shared with you will appear here. Report sharing is coming later.</p>
-                  <p className="small muted">
-                    Viewers do not have access to database rows, conversations, SQL, or structure.
-                  </p>
-                </section>
+              {viewer || tab === 'reports' ? (
+                <WorkspaceReports
+                  key={workspace.workspace_id}
+                  workspace={workspace}
+                  busy={disabled}
+                />
               ) : tab === 'databases' ? (
                 <section className="workspace-section" aria-labelledby="workspaceDatabasesTitle">
                   <header className="workspace-section-heading">
@@ -451,13 +458,13 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
               ) : (
                 <div className="workspace-people-tab">
                   <WorkspaceInviteManager
+                    error={teams.error}
                     draft={invitationDraft}
                     setDraft={setInvitationDraft}
                     invitations={details.invitations || []}
                     disabled={disabled}
                     onAction={action}
                     onError={teams.setError}
-                    onMessage={teams.setMessage}
                   />
                   <WorkspaceMembers details={details} disabled={disabled} onAction={action} />
                 </div>
@@ -512,16 +519,36 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
           busy={disabled}
           onClose={() => setModal(null)}
         >
-          <DatabaseForm
-            busy={disabled}
-            onOpen={async (payload) => {
-              const data = await workbench.open({ ...payload, workspace_id: teams.selected });
-              teams.refresh();
-              setModal(null);
-              onOpened?.(data);
-            }}
-          />
           {!workspace.personal && personalDatabases.length > 0 && (
+            <div className="database-source-tabs" role="group" aria-label="Database source">
+              <button
+                className="btn"
+                aria-pressed={databaseChoice === 'new'}
+                onClick={() => setDatabaseChoice('new')}
+              >
+                New or connected database
+              </button>
+              <button
+                className="btn"
+                aria-pressed={databaseChoice === 'existing'}
+                onClick={() => setDatabaseChoice('existing')}
+              >
+                Use an existing database
+              </button>
+            </div>
+          )}
+          {(databaseChoice === 'new' || workspace.personal || !personalDatabases.length) && (
+            <DatabaseForm
+              busy={disabled}
+              onOpen={async (payload) => {
+                const data = await workbench.open({ ...payload, workspace_id: teams.selected });
+                teams.refresh();
+                setModal(null);
+                onOpened?.(data);
+              }}
+            />
+          )}
+          {databaseChoice === 'existing' && !workspace.personal && personalDatabases.length > 0 && (
             <form
               className="workspace-attach"
               onSubmit={async (event) => {
@@ -585,6 +612,7 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
               <li>All databases move to your personal workspace. Your data is kept.</li>
               <li>Team members lose access to this workspace and its databases.</li>
               <li>Pending invitations are revoked.</li>
+              <li>Workspace reports are deleted.</li>
             </ul>
             <label>
               Type the workspace name to confirm

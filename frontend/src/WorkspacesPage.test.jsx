@@ -59,6 +59,7 @@ function fixture(role = 'owner', invitations = [], configuration = {}) {
     invitations: role === 'owner' ? [invitation] : [],
   };
   fetch.mockImplementation((path, options = {}) => {
+    if (path.endsWith('/reports')) return response({ reports: [] });
     if (options.method === 'POST') {
       const body = JSON.parse(options.body);
       if (path.endsWith('/delete')) {
@@ -218,13 +219,9 @@ it('keeps owner controls out of a member workspace and opens only readable datab
   expect(onOpened).toHaveBeenCalledWith({ session_id: 'shared' });
 });
 
-it('shows viewers only the future-report state without database details or access controls', async () => {
+it('shows viewers only shared reports without database details or access controls', async () => {
   render(<WorkspacesPage workbench={fixture('viewer')} />);
-  expect(
-    await screen.findByText(
-      'Reports shared with you will appear here. Report sharing is coming later.',
-    ),
-  ).toBeTruthy();
+  expect(await screen.findByText('No reports have been shared yet.')).toBeTruthy();
   expect(screen.queryByText('customers.sqlite3')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Open database' })).toBeNull();
   expect(screen.queryByRole('heading', { name: 'Database access' })).toBeNull();
@@ -263,6 +260,7 @@ it('creates a private invitation code with an optional link and lets the owner r
   expect(new URL(link.value).searchParams.get('token')).toBe('private-invitation-token');
   expect(new URL(link.value).pathname).toBe('/workspaces');
   expect(screen.getByText(/No emails are sent/)).toBeTruthy();
+  await events.click(screen.getByRole('button', { name: '1 pending' }));
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Revoke invitation' }).disabled).toBe(false),
   );
@@ -287,6 +285,7 @@ it('explains an unavailable private invitation and displays invitation expiry fr
     await screen.findByText(/This invitation is not available for your signed-in email/),
   ).toBeTruthy();
   await openPeople(events);
+  await events.click(screen.getByRole('button', { name: '1 pending' }));
   expect(
     await screen.findByText(
       `viewer · Expires ${new Date(invitation.expires_at * 1000).toLocaleString()}`,
@@ -373,6 +372,8 @@ it('moves an existing personal database only after an explicit choice', async ()
   await events.click(await screen.findByRole('button', { name: 'Add a database' }));
   const dialog = screen.getByRole('dialog');
   expect(fetch.mock.calls.some(([path]) => path.endsWith('/attach'))).toBe(false);
+  await events.click(within(dialog).getByRole('button', { name: 'Use an existing database' }));
+  expect(within(dialog).queryByRole('button', { name: 'Create database' })).toBeNull();
   await events.selectOptions(
     within(dialog).getByRole('combobox', { name: 'Move one of your personal databases' }),
     '11',
@@ -421,6 +422,18 @@ it('revokes all database capabilities when read access is removed', async () => 
   ).toEqual({ read: false, write: false, delete: false, structure: false, export: false });
 });
 
+it('revokes access directly without leaving an unsaved permission draft', async () => {
+  const events = userEvent.setup();
+  render(<WorkspacesPage workbench={fixture()} />);
+  await openPeople(events);
+  await events.click(screen.getByRole('button', { name: 'Revoke access' }));
+  await screen.findByText('Database access updated.');
+  expect(
+    JSON.parse(fetch.mock.calls.find(([path]) => path.endsWith('/grants'))[1].body).permissions,
+  ).toEqual({ read: false, write: false, delete: false, structure: false, export: false });
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Revoke access' })).toBeNull());
+});
+
 it('preserves another database draft while a grant saves and the selected person stays open', async () => {
   const events = userEvent.setup();
   const databases = [7, 8].map((database_id) => ({
@@ -437,7 +450,9 @@ it('preserves another database draft while a grant saves and the selected person
   render(<WorkspacesPage workbench={fixture('owner', [], { databases, grants })} />);
   await openPeople(events);
   await events.click(screen.getByRole('checkbox', { name: 'Edit rows permission for database-7' }));
+  await events.selectOptions(screen.getByRole('combobox', { name: 'Database', exact: true }), '8');
   await events.click(screen.getByRole('checkbox', { name: 'Export permission for database-8' }));
+  await events.selectOptions(screen.getByRole('combobox', { name: 'Database', exact: true }), '7');
   await events.click(
     within(screen.getByRole('region', { name: 'Access to database-7' })).getByRole('button', {
       name: 'Save access',
@@ -452,6 +467,7 @@ it('preserves another database draft while a grant saves and the selected person
     ).toBe(true),
   );
   expect(screen.getByRole('region', { name: 'Access for lin@example.test' })).toBeTruthy();
+  await events.selectOptions(screen.getByRole('combobox', { name: 'Database', exact: true }), '8');
   expect(screen.getByRole('checkbox', { name: 'Export permission for database-8' }).checked).toBe(
     true,
   );

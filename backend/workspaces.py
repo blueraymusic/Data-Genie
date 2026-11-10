@@ -216,7 +216,7 @@ class WorkspaceStore:
             result = self._workspace(connection, workspace)
             # _workspace has no member id on a single membership lookup.
             result["database_count"] = len(databases)
-            return {"workspace": result, "members": [dict(row) for row in members], "databases": databases,
+            return {"workspace": result, "members": [dict(row) for row in members] if workspace["role"] == "owner" else [], "databases": databases,
                     "grants": grants, "invitations": invitations}
 
     @_serialized
@@ -327,14 +327,34 @@ class WorkspaceStore:
             # Demotion is a revocation, not a suspension of hidden old grants.
             if role == "viewer":
                 connection.execute("DELETE FROM workspace_grants WHERE workspace_id=? AND account_id=?", (workspace_id, target_id))
+                self._end_shared_sessions(connection, workspace_id, target_id)
             return {"account_id": target_id, "role": role}
 
     @_serialized
     def remove_member(self, account_id, workspace_id, target_id):
         with self.repository._connection(write=True) as connection:
             self._target_member(connection, account_id, workspace_id, target_id)
+            self._end_shared_sessions(connection, workspace_id, target_id)
+            connection.execute("DELETE FROM workspace_grants WHERE workspace_id=? AND account_id=?", (workspace_id, target_id))
             connection.execute("DELETE FROM workspace_members WHERE workspace_id=? AND account_id=?", (workspace_id, target_id))
             return {"removed": True}
+
+    def _end_shared_sessions(self, connection, workspace_id, account_id, database_id=None):
+        connection.execute("""UPDATE sessions SET ended_at=COALESCE(ended_at,?)
+            WHERE account_id=? AND database_id IN
+            (SELECT database_id FROM workspace_databases WHERE workspace_id=?)
+            AND (? IS NULL OR database_id=?)""",
+            (_now(), account_id, workspace_id, database_id, database_id))
+        pending = connection.execute("""SELECT DISTINCT r.request_id FROM requests r
+            JOIN sql_commands c USING(request_id) WHERE c.status='pending' AND r.session_id IN
+                (SELECT session_id FROM sessions WHERE account_id=? AND database_id IN
+                    (SELECT database_id FROM workspace_databases WHERE workspace_id=?)
+                 AND (? IS NULL OR database_id=?))""",
+            (account_id, workspace_id, database_id, database_id)).fetchall()
+        for request in pending:
+            connection.execute("UPDATE sql_commands SET status='declined',completed_at=? WHERE request_id=? AND status='pending'",
+                               (_now(), request['request_id']))
+            self.repository._update_request(connection, request['request_id'])
 
     @_serialized
     def revoke_invitation(self, account_id, workspace_id, invitation_id):
@@ -365,6 +385,8 @@ class WorkspaceStore:
                 ON CONFLICT(workspace_id,account_id,database_id) DO UPDATE SET can_read=excluded.can_read,
                 can_write=excluded.can_write,can_delete=excluded.can_delete,can_structure=excluded.can_structure,can_export=excluded.can_export""",
                 (workspace_id, target_id, database_id, *(int(permissions[key]) for key in PERMISSIONS)))
+            if not permissions["read"]:
+                self._end_shared_sessions(connection, workspace_id, target_id, database_id)
             return {"account_id": target_id, "database_id": database_id, "permissions": permissions}
 
     @_serialized

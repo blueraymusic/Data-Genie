@@ -165,11 +165,7 @@ it('does not fetch or render database history or SQL for a viewer session', asyn
     ),
   );
   render(<App />);
-  expect(
-    await screen.findByText(
-      'Reports shared with you will appear here. Report sharing is coming later.',
-    ),
-  ).toBeTruthy();
+  expect(await screen.findByText('No reports have been shared yet.')).toBeTruthy();
   expect(screen.queryByRole('heading', { name: 'Run SQL.' })).toBeNull();
   expect(fetch.mock.calls.some(([path]) => path.startsWith('/api/history'))).toBe(false);
 });

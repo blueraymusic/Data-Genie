@@ -93,9 +93,49 @@ export const faqGroups = [
         ),
       },
       {
+        question: 'Can I create and share reports?',
+        search:
+          'In Teams open Reports and New report. Write from a blank page, use a template, or draft with Data Genie AI from source notes you supply. Members can edit their own drafts. Owners review and share reports with workspace members and viewers. Viewers see only shared reports, not database rows, chats or SQL. Reports are saved snapshots, not live dashboards.',
+        answer: (
+          <p>
+            Open <strong>Teams → Reports → New report</strong>. Write from a blank page, use a
+            template, or draft with Data Genie AI from notes you supply. Members can edit their own
+            drafts; the owner reviews and shares them. Viewers see only shared reports. Reports are
+            saved snapshots, not live dashboards.
+          </p>
+        ),
+      },
+      {
+        question: 'Can I attach a PDF or image to a question?',
+        search:
+          'Attach PDF or image in Ask. Up to two PDF PNG JPEG WebP files and 4 MB combined. Sent to the configured AI service with that request only, not saved in History or reused automatically. Generated SQL and summaries can include information from the file. Database permissions and confirmations still apply.',
+        answer: (
+          <p>
+            Choose <strong>Attach PDF or image</strong> in Ask, then type your request. You can
+            attach two PDF, PNG, JPEG, or WebP files up to 4 MB combined. Files go to the configured
+            AI service with that request and are not saved in History or automatically reused. SQL
+            and summaries may include information from them. Permissions and change confirmations
+            still apply.
+          </p>
+        ),
+      },
+      {
+        question: 'How do I revoke someone’s database access?',
+        search:
+          'Teams People and access choose person and database Revoke access. Ends existing database sessions and invalidates their pending confirmations. Removing a member clears grants so rejoining restores no permissions. Shared report snapshots must be unshared separately.',
+        answer: (
+          <p>
+            In <strong>People &amp; access</strong>, choose the person and database, then{' '}
+            <strong>Revoke access</strong>. Existing database sessions end and pending changes
+            cannot be confirmed. Removing a member clears their grants; rejoining does not restore
+            them. Shared report snapshots must be unshared separately.
+          </p>
+        ),
+      },
+      {
         question: 'Can I share a database with my team?',
         search:
-          'Choose Create team workspace on Choose your database or Databases, enter a New workspace name and choose Create workspace. No database connection is needed first. The new team opens in Teams; creating it keeps the current database connection and does not move that database. Add a database in Databases, then invite teammates in People & access as Members or Viewers. Members need explicit permission for each database; joining alone does not grant access. Viewers cannot open raw databases in this version. Shared database changes affect the same underlying data, while each person keeps private chats and History.',
+          'Choose Create team workspace on Choose your database or Databases, enter a New workspace name and choose Create workspace. No database connection is needed first. The new team opens in Teams; creating it keeps the current database connection and does not move that database. Add a database in Databases, then invite teammates in People & access as Members or Viewers. Members need explicit permission for each database; joining alone does not grant access. Viewers can read only reports shared by the owner and cannot open raw databases. Shared database changes affect the same underlying data, while each person keeps private chats and History.',
         answer: (
           <>
             <p>
@@ -111,8 +151,9 @@ export const faqGroups = [
             </p>
             <p>
               Members need permission for each database; joining alone does not grant access.
-              Viewers cannot open raw databases in this version. Confirmed changes affect the same
-              shared data, while each person keeps private chats and History.
+              Viewers can read only reports shared by the owner and cannot open raw databases.
+              Confirmed changes affect the same shared data, while each person keeps private chats
+              and History.
             </p>
           </>
         ),
@@ -393,7 +434,7 @@ export const faqGroups = [
       {
         question: 'What does Data Genie AI receive about my database?',
         search:
-          'Data Genie sends the configured AI service your request, the database structure, and up to eight recent turns from this conversation. Context includes your messages, assistant replies, clarification questions, SQL, execution status, and brief result summaries. Table rows, other conversations, file paths, and profile details are not sent. Values typed into a request are included. New conversation clears the context for future requests.',
+          'Data Genie sends the configured AI service your request, the database structure, and up to eight recent turns from this conversation. Context includes your messages, assistant replies, clarification questions, SQL, execution status, and brief result summaries. Table rows are not sent automatically. Attached files and source notes for AI reports are sent when you submit them. Other conversations, file paths, and profile details are not sent. Values typed into a request are included. New conversation clears the context for future requests.',
         answer: (
           <>
             <p>
@@ -404,9 +445,11 @@ export const faqGroups = [
               result summaries.
             </p>
             <p>
-              Table rows, other conversations, file paths, and profile details are not sent. Values
-              you type into a request are included. Use New conversation to clear the context for
-              future requests; your saved History stays available.
+              Table rows are not sent automatically. Files attached to Ask and source notes for AI
+              reports are sent when you submit them. Other conversations, file paths, and profile
+              details are not sent. Values you type into a request are included. Use New
+              conversation to clear the context for future requests; your saved History stays
+              available.
             </p>
           </>
         ),

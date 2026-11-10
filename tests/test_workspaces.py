@@ -205,6 +205,22 @@ class WorkspaceTests(unittest.TestCase):
         with self.repository._connection() as connection:
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM workspace_grants WHERE account_id=?", (self.member,)).fetchone()[0], 0)
 
+    def test_rejoining_never_restores_old_grants_or_sessions(self):
+        session, workspace_id = self.share()
+        opened = self.store.open_database(self.member, workspace_id, session["database_id"])
+        self.store.remove_member(self.owner, workspace_id, self.member)
+        self.assertIsNotNone(self.repository.get_session(opened["session_id"])["ended_at"])
+        self.join(workspace_id)
+        with self.assertRaises(PermissionError):
+            self.store.access(self.member, session["database_id"])
+
+    def test_revocation_ends_only_that_persons_database_sessions(self):
+        session, workspace_id = self.share()
+        opened = self.store.open_database(self.member, workspace_id, session["database_id"])
+        self.store.set_grant(self.owner, workspace_id, self.member, session["database_id"], {})
+        self.assertIsNotNone(self.repository.get_session(opened["session_id"])["ended_at"])
+        self.assertIsNone(self.repository.get_session(session["session_id"])["ended_at"])
+
     def test_demotion_discards_grants_and_promotion_does_not_restore_them(self):
         session, workspace_id = self.share()
         self.store.set_member_role(self.owner, workspace_id, self.member, "viewer")

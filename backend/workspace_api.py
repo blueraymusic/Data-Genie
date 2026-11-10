@@ -3,6 +3,7 @@
 import re
 
 from . import workbench
+from .reports import ReportStore
 from .workspaces import WorkspaceStore, AUTHORIZATION_LOCK
 
 
@@ -30,6 +31,10 @@ def get(handler, path, user):
     if path == "/api/workspaces":
         handler.json(store().list_workspaces(account_id))
         return True
+    reports = re.fullmatch(r"/api/workspaces/([A-Za-z0-9-]+)/reports", path)
+    if reports:
+        handler.json(ReportStore(workbench.get_repository()).list_reports(account_id, reports[1]))
+        return True
     match = re.fullmatch(r"/api/workspaces/([A-Za-z0-9-]+)", path)
     if match:
         handler.json(store().get_workspace(account_id, match[1]))
@@ -40,7 +45,7 @@ def get(handler, path, user):
 def post(handler, path, user):
     if not (path == "/api/workspaces" or path.startswith("/api/workspaces/")):
         return False
-    payload = handler.read_json(32 * 1024)
+    payload = handler.read_json(128 * 1024)
     account_id = user["account_id"]
     service = store()
     if path == "/api/workspaces":
@@ -48,6 +53,13 @@ def post(handler, path, user):
         return True
     if path == "/api/workspaces/invitations/accept":
         handler.json(service.accept_invitation(account_id, payload.get("invitation_id"), payload.get("token")))
+        return True
+    reports = re.fullmatch(r"/api/workspaces/([A-Za-z0-9-]+)/reports(?:/(generate))?", path)
+    if reports:
+        service = ReportStore(workbench.get_repository())
+        result = (service.generate(account_id, reports[1], payload) if reports[2]
+                  else service.save_report(account_id, reports[1], payload))
+        handler.json(result)
         return True
     match = re.fullmatch(r"/api/workspaces/([A-Za-z0-9-]+)/(invite|members|remove|grants|invitations/revoke|open|attach|delete)", path)
     if not match:

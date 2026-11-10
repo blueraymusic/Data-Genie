@@ -12,7 +12,9 @@ Ask your database questions in plain English. Use a SQLite file or connect Postg
 - Ask questions using Data Genie AI, or write SQL without an API key. The SQL tab includes examples.
 - Add, rename, or delete tables and columns in Structure, with a SQL preview before each change.
 - Sort, copy, or export results as CSV, and revisit saved requests in History.
-- Create a team workspace from the database chooser, before opening a database. Invite teammates and choose their access to each database.
+- Create a team, invite teammates with a private code, and grant or revoke access per database.
+- Write reports from a blank page or template, or draft with Data Genie AI. Owners share approved reports; viewers see only shared reports.
+- Attach PDFs or images to an Ask request for extra context.
 
 Choose **Create team workspace** on the database screen, name it, then add a database in the new workspace. Existing databases stay in your personal workspace. Invitations use a private code you share yourself; Data Genie does not send email.
 
@@ -65,7 +67,7 @@ Open the URL Vite prints. It forwards API requests to the Python server.
 
 Copy `.env.example` to `.env` and add your `GEMINI_API_KEY`. The model is configured with `GEMINI_MODEL` in the same file. Without a key, use the SQL tab or the forms in Structure. Neither sends requests to AI.
 
-Data Genie sends the configured AI service your database structure and recent conversation context, including request text, SQL, and clarifications. Result rows are not sent to the model.
+Data Genie sends the configured AI service your database structure and recent conversation context, including request text, SQL, and clarifications. Result rows are not sent automatically. Files attached to Ask and source notes explicitly submitted for an AI report are sent to the configured AI service. Attachments are limited to two files and 4 MB combined, and are not saved in History.
 
 Microsoft sign-in is also optional. See the [Microsoft sign-in setup](docs/microsoft-sign-in.md) to add **Continue with Microsoft** alongside the existing password accounts.
 

@@ -12,12 +12,22 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
     feed = useRef(null),
     wasBlocked = useRef(false),
     lastJump = useRef(0);
-  const [validation, setValidation] = useState('');
+  const [validation, setValidation] = useState(''),
+    [attachments, setAttachments] = useState([]),
+    [readingFiles, setReadingFiles] = useState(false);
+  useLayoutEffect(() => {
+    setAttachments([]);
+  }, [workbench.session.session_id]);
   const requestWindow = useRequestWindow(workbench.feed, workbench.session.session_id);
   const aiAvailable = Boolean(workbench.session.ai?.enabled);
   const canChangeStructure = databaseAccess(workbench.session).permissions.structure;
   const blocked =
-    !aiAvailable || workbench.busy || workbench.pending || workbench.workingCommands?.size > 0;
+    !aiAvailable ||
+    readingFiles ||
+    !databaseAccess(workbench.session).canRead ||
+    workbench.busy ||
+    workbench.pending ||
+    workbench.workingCommands?.size > 0;
   const context = workbench.session.conversation_context;
   const contextTables = context?.tables || [];
   const changedTable = Boolean(
@@ -92,7 +102,17 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
       return;
     }
     setDraft('');
-    await workbench.submit(text, false, 'gemini', selected);
+    let result;
+    if (attachments.length)
+      result = await workbench.submit(
+        text,
+        false,
+        'gemini',
+        selected,
+        attachments.map(({ mime_type, data }) => ({ mime_type, data })),
+      );
+    else result = await workbench.submit(text, false, 'gemini', selected);
+    if (result && result.matched !== false) setAttachments([]);
   }
   return (
     <section id="v-ask" className={workbench.feed.length ? 'has-requests' : undefined}>
@@ -224,11 +244,88 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
           </div>
         </div>
         <div className="composer-tools">
+          <label className="context-upload">
+            {readingFiles ? 'Reading files…' : 'Attach PDF or image'}
+            <input
+              type="file"
+              accept="application/pdf,image/png,image/jpeg,image/webp"
+              multiple
+              disabled={blocked}
+              onChange={async (event) => {
+                const files = [...event.target.files];
+                event.target.value = '';
+                if (
+                  files.length + attachments.length > 2 ||
+                  files.reduce(
+                    (sum, file) => sum + file.size,
+                    attachments.reduce((sum, file) => sum + file.size, 0),
+                  ) >
+                    4 * 1024 * 1024
+                ) {
+                  setValidation('Attach up to two files, 4 MB combined.');
+                  return;
+                }
+                setReadingFiles(true);
+                try {
+                  if (
+                    files.some(
+                      (file) =>
+                        !['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(
+                          file.type,
+                        ),
+                    )
+                  )
+                    throw new Error('Use PDF, PNG, JPEG or WebP files.');
+                  const loaded = await Promise.all(
+                    files.map(
+                      (file) =>
+                        new Promise((resolve, reject) => {
+                          const reader = new FileReader();
+                          reader.onerror = () =>
+                            reject(new Error('Could not read the attachment.'));
+                          reader.onload = () =>
+                            resolve({
+                              name: file.name,
+                              size: file.size,
+                              mime_type: file.type,
+                              data: String(reader.result).split(',')[1],
+                            });
+                          reader.readAsDataURL(file);
+                        }),
+                    ),
+                  );
+                  setAttachments((current) => [...current, ...loaded]);
+                  setValidation('');
+                } catch (error) {
+                  setValidation(error.message);
+                } finally {
+                  setReadingFiles(false);
+                }
+              }}
+            />
+          </label>
           <label className="composer-label" htmlFor="request-input">
             {workbench.feed.length ? 'Follow up or ask a new question' : 'Your next request'}
           </label>
-          <span>Changes always wait for your OK.</span>
         </div>
+        {attachments.length > 0 && (
+          <div className="context-files">
+            <span className="small muted">
+              Sent to Data Genie AI for this request only; not saved.
+            </span>
+            {attachments.map((file, index) => (
+              <button
+                type="button"
+                className="btn quiet"
+                key={index}
+                disabled={blocked}
+                onClick={() => setAttachments((current) => current.filter((_, i) => i !== index))}
+              >
+                Remove {file.name}
+              </button>
+            ))}
+          </div>
+        )}
         <form className="ask" onSubmit={ask}>
           <textarea
             id="request-input"

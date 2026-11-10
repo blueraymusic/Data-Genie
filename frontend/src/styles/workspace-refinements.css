@@ -1,0 +1,752 @@
+.workspace-page #v-ask:not(.has-requests),
+.workspace-page .sql-page:not(.has-requests) {
+  flex: 1 0 auto;
+}
+.workspace-page #v-ask:not(.has-requests) #feed,
+.workspace-page .sql-page:not(.has-requests) .sql-feed {
+  flex: 1;
+}
+.workspace-page .composer,
+.workspace-page .sql-composer {
+  border-radius: 12px 12px 0 0;
+  padding-inline: 16px;
+  background: var(--paper);
+  box-shadow: 0 -5px 24px #18213a0a;
+}
+.workspace-page .gate-form > p[role='status']:not(.err)::before,
+.workspace-loading::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--rule);
+  border-top-color: var(--lapis);
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+  animation: genie-loading 900ms linear infinite;
+}
+@keyframes genie-loading {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.database-source-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.database-source-tabs [aria-pressed='true'] {
+  background: var(--lapis-wash);
+  border-color: var(--lapis);
+  color: var(--lapis);
+}
+.workspace-page .workspace-dialog .database-choice {
+  overflow: visible;
+  min-width: 0;
+  padding-block: 4px;
+}
+.context-upload {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+.context-upload input {
+  max-width: 200px;
+  font-size: 11px;
+}
+.context-files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-height: 100px;
+  overflow: auto;
+}
+.workspace-page .workspace-access-card {
+  border-left: 3px solid var(--lapis);
+  padding: 12px;
+  background: var(--lapis-wash);
+}
+.workspace-page .workspace-permission-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+.workspace-page .workspace-permission-choice {
+  padding: 6px;
+}
+.workspace-page .workspace-member-databases {
+  margin-top: 12px;
+}
+.workspace-page .workspace-invitations-list {
+  max-height: 120px;
+  overflow: auto;
+}
+@media (min-width: 951px) {
+  .workspace-page .personal-content:has(.workspaces-page) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 16px 24px;
+  }
+  .workspace-page .workspaces-page {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+  .workspace-page .workspace-layout {
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
+    gap: 20px;
+  }
+  .workspace-page .workspace-main {
+    min-height: 0;
+    overflow: auto;
+    padding: 16px;
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    background: var(--paper);
+  }
+  .workspace-page .workspace-page-heading {
+    margin-bottom: 12px;
+  }
+  .workspace-page .workspace-selected-heading {
+    margin-bottom: 12px;
+  }
+  .workspace-page .workspace-section {
+    padding-block: 12px;
+  }
+  .workspace-page .workspace-person-detail {
+    max-height: calc(100dvh - 390px);
+    overflow: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-loading::before,
+  .workspace-page .gate-form > p[role='status']::before {
+    animation: none;
+  }
+}
+/* Contained paper surfaces keep the working area distinct from navigation. */
+.workspace-page .content,
+.workspace-page .personal-content {
+  background: color-mix(in srgb, var(--chalk) 93%, var(--lapis) 7%);
+}
+.workspace-page .workspace-section-tabs {
+  gap: 8px;
+}
+.workspace-page .workspace-section-tabs button {
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+.workspace-page .workspace-section-tabs button[aria-current='page'] {
+  background: var(--lapis-wash);
+  box-shadow: inset 0 -2px var(--lapis);
+}
+.workspace-page .workspace-member-databases > label {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.workspace-page .workspace-access-card footer {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.workspace-page .workspace-pending-invitations {
+  max-height: 150px;
+  overflow-y: auto;
+}
+.workspace-page .gate-form > p[role='status']:not(.err)::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--rule);
+  border-top-color: var(--lapis);
+  border-radius: 50%;
+  margin-right: 8px;
+  animation: genie-loading 900ms linear infinite;
+}
+.workspace-page .workspace-reports {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.workspace-page .reports-layout {
+  display: grid;
+  grid-template-columns: minmax(150px, 22%) minmax(0, 1fr);
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+.workspace-page .reports-list {
+  overflow: auto;
+  border-right: 1px solid var(--rule);
+  padding-right: 12px;
+}
+.workspace-page .reports-list button {
+  display: grid;
+  text-align: left;
+  gap: 4px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  padding: 12px;
+  background: transparent;
+  color: var(--ink);
+}
+.workspace-page .reports-list button[aria-current='page'] {
+  background: var(--lapis-wash);
+  color: var(--lapis);
+}
+.workspace-page .reports-list small {
+  color: var(--ink-soft);
+}
+.workspace-page .report-document {
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+  background: var(--chalk);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+.workspace-page .report-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 300px;
+}
+.workspace-page .report-editor label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+.workspace-page .report-editor input:not([type='checkbox']),
+.workspace-page .report-editor textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+.workspace-page .report-body-label {
+  flex: 1;
+  min-height: 120px;
+}
+.workspace-page .report-body-label textarea {
+  resize: vertical;
+  min-height: 120px;
+  height: 100%;
+  line-height: 1.6;
+}
+.workspace-page .report-tools,
+.workspace-page .report-actions,
+.workspace-page .report-reading header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.workspace-page .report-actions > label {
+  display: flex;
+  align-items: center;
+  margin-right: auto;
+}
+.workspace-page .report-ai-context {
+  display: grid;
+  gap: 8px;
+  border-left: 3px solid var(--lapis);
+  background: var(--lapis-wash);
+  padding: 12px;
+}
+.workspace-page .report-reading h3,
+.workspace-page .report-placeholder h3 {
+  font: 28px var(--serif);
+  margin: 8px 0;
+}
+.workspace-page .report-reading header {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 12px;
+}
+.workspace-page .report-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.75;
+}
+.workspace-page .report-placeholder {
+  max-width: 480px;
+  margin: 24px auto;
+}
+@media (min-width: 951px) {
+  .workspace-page .workspace-main:has(.workspace-reports) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+}
+@media (max-width: 780px) {
+  .workspace-page .reports-layout {
+    grid-template-columns: 1fr;
+  }
+  .workspace-page .reports-list {
+    max-height: 120px;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .workspace-page .report-document {
+    max-height: 65dvh;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-page .gate-form > p[role='status']:not(.err)::before {
+    animation: none;
+  }
+}
+@media (min-width: 951px) {
+  .workspace-page .workspace-people-tab {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+  }
+  .workspace-page .workspace-main:has(.workspace-people-tab) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .workspace-page .workspace-people-tab > .workspace-section:first-child {
+    padding-block: 0 8px;
+    flex: none;
+  }
+  .workspace-page .workspace-people-tab > .workspace-section:last-child {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+    padding-block: 0;
+  }
+  .workspace-page .workspace-people-tab > .workspace-section:last-child > header {
+    display: none;
+  }
+  .workspace-page .workspace-people-layout {
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .workspace-page .workspace-person-list {
+    overflow: auto;
+    align-content: start;
+  }
+  .workspace-page .workspace-person-detail {
+    max-height: none;
+    min-height: 0;
+    padding: 12px;
+  }
+  .workspace-page .workspace-settings {
+    margin-top: 8px;
+    padding-top: 8px;
+    flex: none;
+  }
+  .workspace-page .workspace-person-heading {
+    margin-bottom: 8px;
+  }
+  .workspace-page .workspace-role-hint {
+    margin-block: 8px;
+  }
+}
+.workspace-page .composer-tools > .composer-label {
+  order: -1;
+}
+.workspace-page .context-upload {
+  position: relative;
+  cursor: pointer;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 5px 9px;
+  color: var(--lapis);
+  background: var(--chalk);
+}
+.workspace-page .context-upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  opacity: 0;
+}
+.workspace-page .context-upload:focus-within {
+  outline: 2px solid var(--lapis);
+  outline-offset: 3px;
+}
+.workspace-page .context-upload:has(input:disabled) {
+  opacity: 0.5;
+  cursor: default;
+}
+@media (min-width: 951px) {
+  .workspace-page .workspace-page-heading h1 {
+    font-size: 32px;
+    line-height: 38px;
+    margin-bottom: 4px;
+  }
+  .workspace-page .workspace-page-heading .lead {
+    font-size: 13px;
+    line-height: 20px;
+  }
+  .workspace-page .workspace-selected-heading h2 {
+    font-size: 26px;
+    line-height: 30px;
+    margin-bottom: 4px;
+  }
+  .workspace-page .workspace-main:has(.workspace-people-tab) .workspace-selected-heading .muted,
+  .workspace-page .workspace-main:has(.workspace-reports) .workspace-selected-heading .muted {
+    display: none;
+  }
+  .workspace-page .workspace-access-card > footer {
+    position: sticky;
+    bottom: -12px;
+    background: var(--paper);
+    padding: 8px 0;
+    z-index: 1;
+  }
+}
+
+.workspace-page .workspace-dialog .database-modes > label {
+  min-width: 0;
+  min-height: 72px;
+  align-items: start;
+  padding: 12px;
+}
+/* Workspace sections fill the app shell rather than inheriting public-page spacing. */
+@media (min-width: 951px) {
+  .workspace-page .workspaces-page {
+    padding: 0;
+  }
+  .workspace-page .workspace-selected-heading {
+    padding-bottom: 8px;
+    margin-bottom: 6px;
+  }
+  .workspace-page .workspace-section-tabs button {
+    min-height: 42px;
+  }
+  .workspace-page .workspace-section-tabs button small {
+    display: none;
+  }
+  .workspace-page .workspace-people-tab > .workspace-section:first-child h2 {
+    font-size: 20px;
+    line-height: 26px;
+  }
+  .workspace-page .workspace-no-invitations {
+    display: none;
+  }
+  .workspace-page .report-editor {
+    min-height: 0;
+  }
+  .workspace-page .report-actions {
+    position: sticky;
+    bottom: -16px;
+    padding: 8px 0;
+    background: var(--chalk);
+  }
+}
+.workspace-page .workspace-reports:has(.report-editor) > .workspace-section-heading {
+  display: none;
+}
+.workspace-page .reports-layout:has(.report-editor) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.workspace-page .reports-layout:has(.report-editor) > .reports-list {
+  display: none;
+}
+@media (min-width: 951px) {
+  .workspace-page .personal-content:has(.workspaces-page) {
+    max-width: none;
+    align-self: stretch;
+    padding-inline: clamp(16px, 2vw, 32px);
+  }
+  .workspace-page .workspaces-page {
+    max-width: none;
+    margin-inline: 0;
+  }
+}
+@media (max-width: 950px) {
+  .workspace-page .personal-content:has(.workspaces-page) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    max-width: none;
+    padding: 12px;
+  }
+  .workspace-page .workspaces-page {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+  .workspace-page .workspace-layout {
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .workspace-page .workspace-main {
+    min-height: 0;
+    overflow: auto;
+    padding: 12px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+  }
+  .workspace-page .workspace-page-heading {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .workspace-page .workspace-page-heading h1 {
+    font-size: 26px;
+    line-height: 30px;
+    margin: 0;
+  }
+  .workspace-page .workspace-page-heading .lead {
+    display: none;
+  }
+  .workspace-page .workspace-page-heading > .btn {
+    margin: 0;
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .workspace-page .workspace-selected-heading {
+    flex-wrap: nowrap;
+    padding: 0 0 8px;
+    margin: 0;
+    gap: 8px;
+  }
+  .workspace-page .workspace-selected-heading h2 {
+    font-size: 24px;
+    line-height: 30px;
+    margin: 0;
+  }
+  .workspace-page .workspace-selected-heading .workspace-eyebrow,
+  .workspace-page .workspace-selected-heading .muted {
+    display: none;
+  }
+  .workspace-page .workspace-header-actions {
+    width: auto;
+    min-height: 0;
+  }
+  .workspace-page .workspace-header-actions > .btn {
+    display: none;
+  }
+  .workspace-page .workspace-section-tabs {
+    gap: 4px;
+    flex: none;
+  }
+  .workspace-page .workspace-section-tabs button {
+    min-height: 44px;
+    padding: 8px;
+    font-size: 12px;
+    gap: 5px;
+    flex: none;
+    white-space: nowrap;
+  }
+  .workspace-page .workspace-section-tabs button small {
+    display: none;
+  }
+  .workspace-page .workspace-settings {
+    margin-top: 8px;
+    padding-top: 8px;
+    flex: none;
+  }
+  .workspace-page .workspace-main:has(.workspace-people-tab),
+  .workspace-page .workspace-main:has(.workspace-reports) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .workspace-page .workspace-people-tab {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  .workspace-page .workspace-people-tab > .workspace-section:first-child {
+    flex: none;
+    padding: 8px 0;
+  }
+  .workspace-page .workspace-people-tab > .workspace-section:first-child h2 {
+    font-size: 18px;
+    line-height: 24px;
+  }
+  .workspace-page .workspace-people-tab > .workspace-section:first-child header {
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-bottom: 0;
+  }
+  .workspace-page .workspace-people-tab > .workspace-section:first-child header p,
+  .workspace-page .workspace-no-invitations {
+    display: none;
+  }
+  .workspace-page .workspace-people-tab > .workspace-section:first-child .btn {
+    padding: 8px;
+    font-size: 12px;
+    min-height: 44px;
+  }
+  .workspace-page .workspace-people-tab > .workspace-section:last-child {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    padding: 0;
+  }
+  .workspace-page .workspace-people-tab > .workspace-section:last-child > header {
+    display: none;
+  }
+  .workspace-page .workspace-people-layout {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    gap: 8px;
+  }
+  .workspace-page .workspace-person-list {
+    flex: none;
+    display: flex;
+    overflow-x: auto;
+    max-height: 90px;
+  }
+  .workspace-page .workspace-person-button {
+    min-height: 64px;
+    padding: 6px;
+  }
+  .workspace-page .workspace-person-detail {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    padding: 10px;
+    overflow: auto;
+  }
+  .workspace-page .workspace-reports > header {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding-top: 8px;
+  }
+  .workspace-page .workspace-reports > header p {
+    display: none;
+  }
+  .workspace-page .workspace-reports > header .btn {
+    min-height: 44px;
+    padding: 8px;
+    font-size: 12px;
+  }
+  .workspace-page .reports-list {
+    flex: none;
+    max-height: 90px;
+  }
+  .workspace-page .reports-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-height: 0;
+  }
+  .workspace-page .report-document {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    padding: 12px;
+  }
+  .workspace-page .report-editor {
+    min-height: 0;
+  }
+  .workspace-page .report-actions {
+    position: sticky;
+    bottom: -12px;
+    background: var(--chalk);
+    padding: 8px 0;
+  }
+  .workspace-page .report-placeholder {
+    margin: 8px auto;
+  }
+}
+@media (max-width: 780px) {
+  .workspace-page .workspace-layout {
+    display: flex;
+    flex-direction: column;
+  }
+  .workspace-page .workspace-mobile-switcher {
+    flex: none;
+    padding: 0 0 8px;
+    margin: 0;
+  }
+  .workspace-page .workspace-main {
+    flex: 1;
+  }
+}
+.workspace-page .sql-page .sql-composer {
+  padding-inline: 16px;
+}
+
+@media (max-width: 620px) {
+  .workspace-page .personal-content:has(.workspaces-page) {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+}
+/* Section navigation stays flat; actions retain the filled button treatment. */
+.workspace-page .workspace-section-tabs {
+  gap: 20px;
+}
+.workspace-page .workspace-section-tabs > button {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin: 0;
+  padding: 10px 2px;
+  color: var(--ink-soft);
+}
+.workspace-page .workspace-section-tabs > button::after {
+  display: none;
+}
+.workspace-page .workspace-section-tabs > button[aria-current='page'] {
+  background: transparent;
+  box-shadow: none;
+  color: var(--lapis);
+  border-bottom-color: var(--lapis);
+}
+.workspace-page .workspace-section-tabs > button:hover {
+  background: transparent;
+  color: var(--ink);
+}
+.workspace-page .workspace-section-tabs > button > span {
+  border-radius: 20px;
+  min-width: 20px;
+  height: 20px;
+  background: var(--sunken);
+  font-size: 11px;
+}
+@media (max-width: 620px) {
+  .workspace-page .workspace-section-tabs {
+    gap: 12px;
+  }
+  .workspace-page .workspace-section-tabs > button {
+    font-size: 12px;
+  }
+}

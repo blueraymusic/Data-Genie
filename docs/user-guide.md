@@ -10,6 +10,8 @@ Your **Personal workspace** keeps your databases private. To work together, choo
 
 The same action is available on **Databases** while a database is open. Creating a team keeps that connection and does not move its database. In **Teams**, use **Databases** to add or open a database and **People & access** to invite teammates and grant access. See [workspaces and access](workspaces.md) for the private invitation-code steps and permissions.
 
+Teams uses the available screen width. On phones, use **Select workspace** to switch teams. Primary controls stay on screen; long member lists, permissions, and report text scroll inside their panels.
+
 ## Choose how to work
 
 | View          | Use it for                                                                                |
@@ -25,7 +27,15 @@ In the sample database, start with **show all customers**, then ask **which ones
 
 Press **Enter** to ask or **Shift + Enter** for a new line. **New conversation** clears the context for future requests and keeps saved History.
 
-Data Genie AI sends your request, database structure, and recent conversation facts to the configured AI service. Result rows and saved connection credentials are not sent. Values you type into a request are included. If AI is unavailable, open SQL or Structure to continue.
+Data Genie AI sends your request, database structure, and recent conversation facts to the configured AI service. Result rows and saved connection credentials are not sent automatically. Values you type into a request are included. If AI is unavailable, open SQL or Structure to continue.
+
+### Attach reference files
+
+Choose **Attach PDF or image** beside the Ask composer. You can add up to two PDFs, PNGs, JPEGs, or WebP images, up to 4 MB combined. Type what you want to know, then choose **Ask**. Files are sent to the configured AI service only with that request. They are not stored in History or automatically reused on later turns; attach them again if needed. Generated SQL and summaries may still contain information from a file. File contents never bypass database permissions or change confirmations.
+
+## Reports
+
+In **Teams**, select a workspace and open **Reports**. Create a blank report, use the template, or generate a draft from source notes you supply. Review AI text before saving. Members can edit their own drafts; only the owner can share a report with all workspace members and viewers. Viewers get a reading surface without raw database access. See the [report workflow](workspaces.md#reports).
 
 ## Run SQL
 

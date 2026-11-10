@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, rememberSession, savedSession } from '../lib/api';
-import { databaseAccess } from '../lib/access';
+import { databaseAccess, canConfirmCommand } from '../lib/access';
 
 export function normalizeCommand(command) {
   return {
@@ -136,20 +136,22 @@ export function useWorkbench(user) {
     }
   }, []);
   useEffect(() => {
-    if (!session?.session_id) return;
+    if (!session?.session_id || !databaseAccess(session).canRead) return;
     const check = () => {
       if (document.visibilityState === 'hidden') return;
       refresh(session.session_id).catch((error) => {
         if (error.status !== 403) setMessage(error.message);
       });
     };
+    const timer = setInterval(check, 15000);
     window.addEventListener('focus', check);
     document.addEventListener('visibilitychange', check);
     return () => {
+      clearInterval(timer);
       window.removeEventListener('focus', check);
       document.removeEventListener('visibilitychange', check);
     };
-  }, [session?.session_id, refresh]);
+  }, [session?.session_id, session?.access?.role, session?.access?.permissions?.read, refresh]);
   const open = useCallback(
     async (payload, resumeId) => {
       if (inFlight.current) throw new Error('Wait for the current request to finish.');
@@ -227,10 +229,14 @@ export function useWorkbench(user) {
     [adopt, pending],
   );
   const submit = useCallback(
-    async (text, raw = false, interpreter = 'keywords', selectedTable = null) => {
+    async (text, raw = false, interpreter = 'keywords', selectedTable = null, attachments = []) => {
       const id = active.current,
         revision = version.current;
       if (!id || inFlight.current || commandLocks.current.size || pending || !text.trim()) return;
+      if (!databaseAccess(session).canRead) {
+        setMessage('Your database access has been revoked.');
+        return;
+      }
       inFlight.current = true;
       setBusy(true);
       setMessage('');
@@ -255,7 +261,12 @@ export function useWorkbench(user) {
           sessionId: id,
           body: raw
             ? { sql: text }
-            : { question: text, interpreter, selected_table: selectedTable },
+            : {
+                question: text,
+                interpreter,
+                selected_table: selectedTable,
+                ...(attachments.length ? { attachments } : {}),
+              },
         });
         if (active.current !== id || version.current !== revision) return;
         const commands = data.commands?.length
@@ -288,6 +299,7 @@ export function useWorkbench(user) {
           previous.map((item) => (item.request_id === temporary ? request : item)),
         );
         await refresh(id);
+        return data;
       } catch (error) {
         if (active.current === id && version.current === revision) {
           setFeed((previous) =>
@@ -303,13 +315,17 @@ export function useWorkbench(user) {
         setBusy(false);
       }
     },
-    [pending, refresh],
+    [pending, refresh, session],
   );
   const decide = useCallback(
     async (command, decline = false) => {
       const id = active.current,
         revision = version.current;
       if (!id || commandLocks.current.has(command.command_id)) return;
+      if (!databaseAccess(session).canRead || (!decline && !canConfirmCommand(session, command))) {
+        setMessage('Your current permissions do not allow this action.');
+        return;
+      }
       commandLocks.current.add(command.command_id);
       setWorkingCommands(new Set(commandLocks.current));
       setMessage('');
@@ -394,7 +410,7 @@ export function useWorkbench(user) {
         setWorkingCommands(new Set(commandLocks.current));
       }
     },
-    [refresh],
+    [refresh, session],
   );
   const end = useCallback(async () => {
     if (!active.current || pending || inFlight.current) return;

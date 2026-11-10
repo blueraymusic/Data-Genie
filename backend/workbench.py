@@ -103,8 +103,10 @@ def db(readonly=False):
 
 @contextmanager
 def session_scope(session_id, active_only=True):
-    session = get_repository().get_session(session_id, active_only=active_only)
+    session = get_repository().get_session(session_id)
     session_access(get_repository(), session)
+    if active_only and session.get("ended_at") is not None:
+        raise RepositoryError("This session has ended. Start a new session.")
     adapter = None
     if session.get("connection_id"):
         adapter = PostgresConnector(_saved_postgres_config(session))
@@ -692,7 +694,7 @@ def _preview_write(connection, sql, details):
     return {"table": target, "affected_rows": count if count is not None else result["changes"]}
 
 
-def submit_request(session_id, text, raw_sql=False, interpreter="keywords", selected_table=None):
+def submit_request(session_id, text, raw_sql=False, interpreter="keywords", selected_table=None, attachments=None):
     text = str(text or "").strip()
     if not text:
         raise ValueError("A request is required.")
@@ -700,9 +702,14 @@ def submit_request(session_id, text, raw_sql=False, interpreter="keywords", sele
     if interpreter not in {"keywords", "gemini"}:
         raise ValueError("Choose a supported request mode.")
     with session_scope(session_id) as session, _lock(_path()):
+        session_access(get_repository(), session)
+        from .context_files import validate_files
+        files = validate_files(attachments)
+        if files and (raw_sql or interpreter != 'gemini'):
+            raise ValueError('Attachments require Data Genie AI mode.')
         # Structural inspection is function 2; it does not create history records.
         metadata_error = None
-        if not raw_sql:
+        if not raw_sql and not files:
             try:
                 metadata = _metadata_response(session_id, text, selected_table)
                 if metadata:
@@ -720,7 +727,7 @@ def submit_request(session_id, text, raw_sql=False, interpreter="keywords", sele
                 validate_request(text, has_context=bool(conversation), allow_short_reply=awaiting_answer(conversation))
                 tables = visible_tables()
                 selected_table = keywords.resolve_table(str(selected_table), tables) if selected_table else None
-                context_plan = contextual_read(text, tables, table_schema, selected_table)
+                context_plan = contextual_read(text, tables, table_schema, selected_table) if not files else None
                 if not context_plan and interpreter == "keywords":
                     context_plan = followup_plan(text, conversation, selected_table, _query_columns)
             if context_plan:
@@ -730,6 +737,7 @@ def submit_request(session_id, text, raw_sql=False, interpreter="keywords", sele
                 plans = _prepare_plans(gemini_provider.generate_plans(
                     text, [table_schema(name) for name in tables], config["api_key"], config["model"],
                     selected_table=selected_table, conversation=conversation,
+                    **({'attachments': files} if files else {}),
                     **({"dialect": "postgresql", "schema_name": _connector.get().config["schema_name"], "read_only": _connector.get().config["read_only"]} if _connector.get() else {})
                 ))
             else:

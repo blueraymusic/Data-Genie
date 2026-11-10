@@ -212,11 +212,13 @@ class Handler(BaseHTTPRequestHandler):
             raise PermissionError("Reload the page before sending this request.")
 
     def owned_session(self, session_id, user, active_only=False, check_access=True):
-        session = workbench.get_repository().get_session(session_id, active_only=active_only)
+        session = workbench.get_repository().get_session(session_id)
         if session.get("account_id") != user["account_id"]:
             raise PermissionError("This session is not available for your account.")
         if check_access:
             session_access(workbench.get_repository(), session)
+        if active_only and session.get("ended_at") is not None:
+            raise workbench.RepositoryError("This session has ended. Start a new session.")
         return session
 
     def session_id(self, query=None, user=None):
@@ -483,7 +485,7 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == "/api/ask":
                 return self.json(workbench.submit_request(
                     session_id, payload.get("question", ""), interpreter=payload.get("interpreter", "keywords"),
-                    selected_table=payload.get("selected_table")
+                    selected_table=payload.get("selected_table"), attachments=payload.get('attachments')
                 ))
             if parsed.path == "/api/query":
                 if "confirmed" in payload:
