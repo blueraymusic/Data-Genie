@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AuthShell } from '../components/AuthShell';
 import { DatabaseForm } from '../components/DatabaseForm';
 import { SavedDatabases } from '../components/SavedDatabases';
+import { InvitationNotice } from '../components/InvitationNotice';
 import { useAuth } from '../context/AuthContext';
 import { useRouter, Link } from '../lib/router';
 export default function DatabaseChooser({ workbench, onOpened }) {
@@ -28,7 +29,7 @@ export default function DatabaseChooser({ workbench, onOpened }) {
           {user.first_name} {user.last_name} · {user.email}
         </span>
         <span className="gate-account-actions">
-          <Link href="/workspaces">Workspaces</Link>
+          <Link href="/workspaces">Teams & invitations</Link>
           <Link href="/history">History</Link>
           <Link href="/account">Account</Link>
           <button
@@ -40,6 +41,7 @@ export default function DatabaseChooser({ workbench, onOpened }) {
           </button>
         </span>
       </p>
+      <InvitationNotice />
       <div className="database-entry-layout">
         <SavedDatabases
           workbench={workbench}

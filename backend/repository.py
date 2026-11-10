@@ -142,20 +142,6 @@ CREATE TABLE IF NOT EXISTS workspace_invitations (
     revoked_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS workspace_invitation_email ON workspace_invitations(email,expires_at);
-CREATE TABLE IF NOT EXISTS workspace_invitation_emails (
-    invitation_id TEXT PRIMARY KEY REFERENCES workspace_invitations(invitation_id) ON DELETE CASCADE,
-    status TEXT NOT NULL CHECK(status IN ('sending','sent','failed','not_configured')),
-    attempted_at INTEGER,
-    completed_at INTEGER,
-    provider_message_id TEXT,
-    error_code TEXT
-);
-CREATE TABLE IF NOT EXISTS workspace_email_rate_limits (
-    bucket_key TEXT PRIMARY KEY,
-    started_at INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL,
-    attempts INTEGER NOT NULL
-);
 CREATE TABLE IF NOT EXISTS schema_tables (
     table_id INTEGER PRIMARY KEY,
     database_id INTEGER NOT NULL REFERENCES databases(database_id),

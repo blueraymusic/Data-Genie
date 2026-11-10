@@ -111,13 +111,8 @@ resource "azurerm_linux_web_app" "app" {
     GENIE_MICROSOFT_CLIENT_SECRET  = var.microsoft_client_secret
     GENIE_MICROSOFT_TENANT         = var.microsoft_tenant
     GENIE_MICROSOFT_REDIRECT_URI   = var.microsoft_redirect_uri
-    GENIE_EMAIL_CONNECTION_STRING  = var.invitation_email_enabled ? azurerm_communication_service.invitations[0].primary_connection_string : ""
-    GENIE_EMAIL_SENDER             = local.invitation_email_sender
-    GENIE_EMAIL_REPLY_TO           = var.invitation_email_enabled ? var.invitation_email_reply_to : ""
-    GENIE_EMAIL_DAILY_LIMIT        = var.invitation_email_enabled ? tostring(var.invitation_email_daily_limit) : ""
   }
-  depends_on = [azurerm_communication_service_email_domain_association.invitations]
-  tags       = local.tags
+  tags = local.tags
 }
 
 # SQL starts with no public firewall rules. The deployment script reads the web

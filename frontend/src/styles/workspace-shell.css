@@ -75,7 +75,6 @@
 .workspace-page .nav button.on::after {
   transform: scaleX(1);
 }
-.workspace-page .live-indicator,
 .workspace-page .dot {
   display: inline-block;
   width: 6px;
@@ -83,6 +82,41 @@
   border-radius: 50%;
   background: var(--add);
   flex: none;
+}
+.workspace-page .invitation-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--lapis-wash);
+  color: var(--lapis);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.workspace-page .tabs button {
+  position: relative;
+}
+.workspace-page .tabs .invitation-count {
+  position: absolute;
+  top: 4px;
+  left: calc(50% + 6px);
+  min-width: 16px;
+  height: 16px;
+  font-size: 10px;
+}
+.invitation-notice {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  margin-bottom: 24px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--lapis-wash);
+  color: var(--ink);
 }
 .workspace-page .top-actions {
   margin-left: auto;

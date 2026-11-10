@@ -81,6 +81,7 @@ export function useWorkspaces(initialId) {
     setMessage('');
     try {
       const data = await api(path, { method: 'POST', body });
+      window.dispatchEvent(new Event('dg-workspaces-changed'));
       setMessage(success);
       setRevision((value) => value + 1);
       return data;

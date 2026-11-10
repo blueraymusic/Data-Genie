@@ -21,6 +21,15 @@
   padding-top: 3px;
   min-width: 0;
 }
+.workspace-page .workspace-mobile-switcher {
+  display: none;
+}
+.workspace-page .workspace-rail > nav {
+  max-height: min(60dvh, 560px);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+}
 .workspace-page .workspace-rail-heading {
   display: flex;
   align-items: center;
@@ -143,6 +152,7 @@
   display: flex;
   gap: 28px;
   border-bottom: 1px solid var(--rule);
+  scroll-margin-block: 16px 84px;
 }
 .workspace-page .workspace-section-tabs > button {
   display: flex;
@@ -756,29 +766,28 @@
     display: block;
   }
   .workspace-page .workspace-rail {
-    padding: 0 0 22px;
-    margin-bottom: 28px;
+    display: none;
+  }
+  .workspace-page .workspace-mobile-switcher {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    align-items: end;
+    gap: 8px;
+    padding-bottom: 20px;
+    margin-bottom: 24px;
     border-bottom: 1px solid var(--rule);
   }
-  .workspace-page .workspace-rail-heading {
-    padding: 0 0 8px;
+  .workspace-page .workspace-mobile-switcher > label {
+    font-size: 11px;
+    font-weight: 500;
   }
-  .workspace-page .workspace-rail nav {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 12px;
+  .workspace-page .workspace-mobile-switcher select {
+    min-width: 0;
+    width: 100%;
+    min-height: 44px;
   }
-  .workspace-page .workspace-rail-group {
-    margin-bottom: 12px;
-  }
-  .workspace-page .workspace-rail-group h2 {
-    margin-left: 10px;
-  }
-  .workspace-page .workspace-new {
-    width: auto;
-    margin-left: 0;
-    min-height: 38px;
-    font-size: 12px;
+  .workspace-page .workspace-mobile-switcher > button {
+    padding: 10px;
   }
   .workspace-page .workspace-selected-heading h2 {
     font-size: 30px;
@@ -858,26 +867,136 @@
     padding: 18px;
   }
 }
-.workspace-page .workspace-invitation-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-.workspace-page .workspace-resend-note {
-  font-size: 10px;
-  line-height: 18px;
-  margin-top: 12px;
-}
-.workspace-page .workspace-private-invite > .workspace-invite-delivery {
+.workspace-page .workspace-private-invite > .workspace-invite-code-heading {
   font-size: 12px;
   line-height: 20px;
 }
-.workspace-page .workspace-invite-delivery strong {
+.workspace-page .workspace-invite-code-heading strong {
   font-weight: 500;
   color: var(--ink);
 }
-.workspace-page .workspace-invite-delivery span {
+.workspace-page .workspace-header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
+  flex: none;
+}
+.workspace-page .workspace-header-actions > .btn {
+  font-size: 12px;
+}
+.workspace-page .workspace-team-actions {
+  min-height: 83px;
+  min-width: 169px;
+}
+.workspace-page .workspace-section-tabs > button {
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: flex-start;
+  row-gap: 4px;
+  max-width: 240px;
+  min-width: 0;
+  text-align: left;
+}
+.workspace-page .workspace-section-tabs > button > small {
   display: block;
-  margin-top: 3px;
+  flex-basis: 100%;
+  font: 400 10px/16px var(--sans);
+  color: var(--ink-soft);
+}
+.workspace-page .workspace-heading-count {
+  display: inline-block;
+  margin-left: 10px;
+  font: 500 10px/18px var(--sans);
+  color: var(--ink-soft);
+  vertical-align: middle;
+}
+.workspace-page .workspace-invitation-form-note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 11px;
+}
+.workspace-page .workspace-invitation-code {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+}
+.workspace-page .workspace-invitation-code > label {
+  flex: 1 1 230px;
+}
+.workspace-page .workspace-invitation-code input {
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--lapis);
+  background: var(--lapis-wash);
+}
+.workspace-page .workspace-invitation-link {
+  width: 100%;
+  padding-top: 4px;
+}
+.workspace-page .workspace-invitation-link > summary {
+  color: var(--lapis);
+  font-size: 11px;
+  padding-block: 8px;
+  cursor: pointer;
+}
+.workspace-page .workspace-invitation-link > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-top: 8px;
+}
+.workspace-page .workspace-invitation-link label {
+  flex: 1 1 280px;
+}
+.workspace-page .workspace-settings {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding-top: 20px;
+  margin-top: 10px;
+  border-top: 1px solid var(--rule);
+}
+.workspace-page .workspace-settings > p {
+  margin: 0;
+  font-size: 10px;
+}
+.workspace-page .workspace-settings > button {
+  font-size: 11px;
+}
+.workspace-page .workspace-delete-form > ul {
+  margin: 0 0 24px;
+  padding-left: 18px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 21px;
+}
+.workspace-page .workspace-delete-form > ul > li + li {
+  margin-top: 7px;
+}
+.workspace-page .workspace-delete-match {
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 460px) {
+  .workspace-page .workspace-selected-heading {
+    flex-wrap: wrap;
+  }
+  .workspace-page .workspace-header-actions {
+    flex-direction: row;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .workspace-page .workspace-team-actions {
+    min-width: 0;
+    min-height: 44px;
+  }
+  .workspace-page .workspace-section-tabs > button {
+    flex: 1;
+  }
 }

@@ -17,7 +17,7 @@ Ask your database questions in plain English. Use a SQLite file or connect Postg
 
 See the [workspace guide](docs/user-guide.md) for examples, table editing, and History navigation.
 
-**Teams** brings shared workspaces, multiple databases, private invitations, and permissions for each person and database. Existing databases stay in your personal workspace. Owners can email invitations when a sender is configured, or copy a private link. See [workspaces and access](docs/workspaces.md) and [invitation email setup](docs/email.md). Shared reports will come later.
+**Teams** brings shared workspaces, multiple databases, private invitations, and permissions for each person and database. Existing databases stay in your personal workspace. Invitations appear in the invited account; share the private code with your teammate so they can accept. See [workspaces and access](docs/workspaces.md). Shared reports will come later.
 
 ![Workspace showing a request, its SQL translation, and matching customers](docs/images/workspace.jpg)
 

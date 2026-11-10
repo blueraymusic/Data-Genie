@@ -99,32 +99,6 @@ variable "public_url" {
   }
 }
 
-variable "invitation_email_enabled" {
-  type        = bool
-  default     = false
-  description = "Explicitly create Azure Communication email resources for workspace invitations. Email sending is metered separately from hosting and SQL."
-}
-
-variable "invitation_email_reply_to" {
-  type        = string
-  default     = ""
-  description = "Optional mailbox selected by the operator to receive replies. Empty omits Reply-To. This is not the Azure sender address."
-  validation {
-    condition     = var.invitation_email_reply_to == "" || can(regex("^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?\\.[A-Za-z]{2,63}$", var.invitation_email_reply_to))
-    error_message = "Use one email address without a display name, whitespace or line breaks, or leave it empty."
-  }
-}
-
-variable "invitation_email_daily_limit" {
-  type        = number
-  default     = 100
-  description = "Application-wide maximum invitation email attempts per 24-hour period; this does not replace Azure quotas or the subscription spending limit."
-  validation {
-    condition     = var.invitation_email_daily_limit >= 1 && var.invitation_email_daily_limit <= 1000 && floor(var.invitation_email_daily_limit) == var.invitation_email_daily_limit
-    error_message = "Use a whole number from 1 through 1000."
-  }
-}
-
 # HCP Terraform injects this object when dynamic Azure credentials are enabled.
 # Do not add its file paths as workspace variables or copy tokens into the repo.
 variable "tfc_azure_dynamic_credentials" {

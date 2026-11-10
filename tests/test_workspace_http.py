@@ -462,6 +462,25 @@ class WorkspaceHttpTests(HttpHarness, unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertEqual(self.fixture_rows(), [(1, "first"), (2, "second")])
 
+    def test_workspace_delete_route_requires_owner_name_and_csrf_and_preserves_database(self):
+        self.join()
+        self.as_user("member")
+        self.forbidden("POST", self.route("delete"), {"name": self.workspace["name"]})
+        self.as_user("owner")
+        csrf, self.csrf = self.csrf, ""
+        self.forbidden("POST", self.route("delete"), {"name": self.workspace["name"]})
+        self.csrf = csrf
+        self.assertEqual(self.request("POST", self.route("delete"), {"name": "wrong"})[0], 400)
+        status, response = self.request("POST", self.route("delete"), {"name": self.workspace["name"]})
+        self.assertEqual(status, 200, response)
+        self.assertTrue(response["deleted"])
+        self.assertEqual(response["workspace_id"], self.workspace_id)
+        status, personal = self.request("GET", self.route(workspace_id=response["personal_workspace_id"]))
+        self.assertEqual(status, 200, personal)
+        self.assertIn(self.database_id, [database["database_id"] for database in personal["databases"]])
+        self.assertEqual(self.fixture_rows(), [(1, "first"), (2, "second")])
+        self.forbidden("GET", self.route())
+
     @unittest.skipUnless(importlib.util.find_spec("cryptography"), "Optional PostgreSQL dependencies are not installed")
     def test_shared_postgres_grants_cannot_exceed_the_owners_read_only_connection(self):
         with patch.object(workbench.PostgresConnector, "schema", return_value=[]):

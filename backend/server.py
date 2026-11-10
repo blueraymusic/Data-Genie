@@ -365,8 +365,6 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("Sec-Fetch-Site") == "cross-site" or (origin and origin != expected):
             return self.json({"error": "Cross-origin requests are blocked."}, 403)
         try:
-            if workspace_api.invite(self, parsed.path):
-                return
             if parsed.path == "/api/auth/microsoft/link":
                 if not self.microsoft_config():
                     return self.json({"error": "Microsoft sign-in is unavailable right now."}, 503)

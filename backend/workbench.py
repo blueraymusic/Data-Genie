@@ -15,6 +15,7 @@ import time
 import uuid
 
 from . import keywords
+from . import preview_guard
 from . import gemini_provider
 from .request_validation import RequestClarification, validate_request, awaiting_answer
 from .request_context import contextual_read, recovery_choices
@@ -247,15 +248,29 @@ def _authorize_sql(sql):
                          read_only=bool(_connector.get() and _connector.get().config["read_only"]))
 
 
-def execute_sql(sql, operation):
+def execute_sql(sql, operation, expected_guard=None):
     with AUTHORIZATION_LOCK:
         access = _authorize_sql(sql)
         if _connector.get() is not None:
-            return _connector.get().execute(sql, operation, **({"workspace_access": access} if access and access["role"] != "owner" else {}))
+            return _connector.get().execute(sql, operation,
+                **({"workspace_access": access} if access and access["role"] != "owner" else {}),
+                **({"expected_guard": expected_guard} if expected_guard is not None else {}))
         with db(readonly=(operation == "read")) as connection:
-            statement_details(connection, sql)
+            if operation == "write" and expected_guard is not None:
+                connection.execute("BEGIN IMMEDIATE")
+            details = statement_details(connection, sql)
+            if operation == "write" and expected_guard is not None:
+                if access and access["role"] != "owner":
+                    with sqlite_permissions(connection, access, sql):
+                        connection.execute("EXPLAIN " + sql).fetchall()
+                guard_targets = [{"table_name": name} for name in expected_guard.get("tables", {})]
+                actual = preview_guard.sqlite_snapshot(connection, guard_targets)
+                preview_guard.verify(expected_guard, actual, details["targets"])
             with sqlite_permissions(connection, access, sql):
-                return execute(connection, sql, operation)
+                result = execute(connection, sql, operation, commit=expected_guard is None)
+            if operation == "write" and expected_guard is not None:
+                result["_guard_after"] = preview_guard.sqlite_snapshot(connection, guard_targets)
+            return result
 
 
 def keyword_plan(question):
@@ -527,6 +542,9 @@ def history_for_session(session_id, search="", operation=None, history_session_i
                         plans = _prepare_plans([{"sql": command["sql"]} for command in pending])
                         for command, plan in zip(pending, plans):
                             command["preview"] = plan.get("preview")
+                            if command["kind"] != "SELECT":
+                                expected = preview_guard.load(repository, command["command_id"])
+                                preview_guard.verify(expected, plan.get("preview_guard", {}), plan["targets"])
                     except (ValueError, sqlite3.Error) as exc:
                         for command in pending:
                             command["preview_error"] = "The database changed. Decline this request and prepare it again. " + str(exc)
@@ -565,7 +583,10 @@ def _run_authorized_command(session_id, command_id, token=None, summary=None, vi
     if summary:
         response["answer"] = summary
     try:
-        result = execute_sql(command["sql"], response["operation"])
+        expected = (preview_guard.load(repository, command_id) or {}) if response["operation"] == "write" else None
+        result = execute_sql(command["sql"], response["operation"], expected_guard=expected)
+        after = result.pop("_guard_after", None)
+        preview_guard.advance(repository, command["request_id"], command_id, after)
         response.update(result)
         if response["operation"] == "read":
             question = repository.get_request(command["request_id"])["text"]
@@ -628,7 +649,8 @@ def _prepare_plans(source_plans):
                         raise RequestClarification(message)
                     # This checks SQLite CHECK/UNIQUE/NOT NULL/FK constraints before confirmation.
                     if operation == "write":
-                        plan = {**plan, "preview": _preview_write(connection, sql, details)}
+                        guard = preview_guard.sqlite_snapshot(connection, details["targets"])
+                        plan = {**plan, "preview_guard": guard, "preview": _preview_write(connection, sql, details)}
                 prepared.append({**plan, **details, "sql": sql, "access": operation})
     return prepared
 
@@ -652,7 +674,8 @@ def _prepare(text, raw_sql):
                 with db() as connection:
                     details = statement_details(connection, sql)
                     if operation == "write":
-                        plan = {**plan, "preview": _preview_write(connection, sql, details)}
+                        guard = preview_guard.sqlite_snapshot(connection, details["targets"])
+                        plan = {**plan, "preview_guard": guard, "preview": _preview_write(connection, sql, details)}
                 prepared.append({**plan, **details, "sql": sql, "access": operation})
     return prepared
 
@@ -748,6 +771,8 @@ def submit_request(session_id, text, raw_sql=False, interpreter="keywords", sele
             command = repository.add_command(request_id, plan["sql"], plan["kind"], deferred,
                                              targets=plan["targets"], operation=plan["operation"], has_aggregation=plan["has_aggregation"], summary=plan["summary"])
             commands.append(command)
+            if plan["access"] == "write":
+                preview_guard.save(repository, command["command_id"], plan["preview_guard"])
         responses = []
         for command, plan in zip(commands, plans):
             if command["requires_confirmation"]:

@@ -6,7 +6,7 @@ from urllib.parse import quote, urlsplit
 
 from .server import Handler
 from . import cloud_state
-from . import settings, workspace_api
+from . import settings
 from .client_ip import client_ip
 
 
@@ -63,14 +63,12 @@ def application(environ, start_response):
             request.headers.get("Sec-Fetch-Site") == "cross-site"
             or (origin and origin != settings.public_url())
         )
-        # External identity and email requests split their own short durable
-        # operations so network waits don't lock out other users.
+        # OAuth exchanges can wait on Microsoft. Those handlers explicitly split
+        # their own short durable operations so other users aren't locked out.
         manages_transaction = (request.command, urlsplit(request.path).path) in {
             ("GET", "/api/auth/providers"), ("GET", "/api/auth/microsoft/start"),
             ("GET", "/api/auth/microsoft/callback"), ("POST", "/api/auth/microsoft/link"),
         }
-        manages_transaction = manages_transaction or (
-            request.command == "POST" and workspace_api.invitation_route(urlsplit(request.path).path) is not None)
         if hosted and request.local_host() and not cross_origin and request.path.startswith("/api/") and not manages_transaction:
             with cloud_state.transaction():
                 request.run()

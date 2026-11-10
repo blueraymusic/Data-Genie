@@ -112,25 +112,43 @@ export const faqGroups = [
         ),
       },
       {
-        question: 'How do workspace invitation emails work?',
+        question: 'How do workspace invitation codes work?',
         search:
-          'When invitation email is configured, the workspace owner can choose Send invitation. Otherwise choose Create invitation link and share the private link with the teammate. Email sent means the provider accepted the message, not confirmed inbox delivery. Check inbox and spam, and check with the recipient before resending an uncertain send. Invitations expire after seven days. Resending invalidates the old link. Recipients sign in or sign up with the invited email and choose Join workspace.',
+          'The workspace owner enters a teammate account email and creates an invitation, then shares the private code or link with that person. Data Genie does not send invitation emails. The recipient signs in or signs up with the invited email, opens Teams, enters the code in their invitation and chooses Join workspace. Invitations expire after seven days. Codes are shown once and replacing an invitation invalidates its old code.',
         answer: (
           <>
             <p>
-              When email is configured, choose <strong>Send invitation</strong>. Otherwise choose{' '}
-              <strong>Create invitation link</strong> and share the private link with your teammate.
-              You can copy the link after creating an invitation even when email is available.
+              The workspace owner creates an invitation using the teammate’s account email, then
+              shares its private code or link with that person. Data Genie does not send invitation
+              emails.
             </p>
             <p>
-              <strong>Email sent</strong> means the provider accepted the message. Ask your teammate
-              to check their inbox and spam folder. If the send status is uncertain, check with them
-              before resending. Resending invalidates the old invitation link.
+              The recipient signs in or creates an account using the invited email, opens{' '}
+              <strong>Teams</strong>, enters the code in their invitation and chooses{' '}
+              <strong>Join workspace</strong>. A private link can fill in the code for them.
             </p>
             <p>
-              Invitations expire after seven days. The recipient signs in or creates an account
-              using the invited email, opens the private link, and chooses{' '}
-              <strong>Join workspace</strong>.
+              Invitations expire after seven days. Codes are shown once. Replacing an invitation
+              invalidates its old code, so keep the new code private.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'What if two teammates edit the same database?',
+        search:
+          'Each person has private chats, History and confirmations while using the same shared database. Before applying a confirmed change, Data Genie checks whether the previewed tables or dependencies changed. A stale change is refused; prepare the request again to review current data. The app holds short locks only while checking and applying a change, never while you review it. Large changes can exceed its bounded preview checks and need database transaction tools.',
+        answer: (
+          <>
+            <p>
+              You share the same database, with separate chats, History and confirmations. Before
+              applying a change, Data Genie checks whether its previewed tables or dependencies
+              changed. If they did, the change is refused and you must prepare the request again.
+            </p>
+            <p>
+              Short locks protect the check and update. A lock is not held while you review a
+              confirmation. Operations exceeding the app’s preview limits need your database’s
+              transaction tools.
             </p>
           </>
         ),

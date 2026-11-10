@@ -30,8 +30,10 @@ function Invitation({ invitation, disabled, onAccept }) {
       <label>
         Invitation link or code
         <input
-          type="password"
+          type="text"
           autoComplete="off"
+          spellCheck="false"
+          placeholder="Paste the code from the workspace owner"
           value={code}
           maxLength={2048}
           required
@@ -59,8 +61,8 @@ export function WorkspaceInvitations({ invitations, loading, disabled, onAccept 
       <header>
         <h2 id="workspaceInvitationsTitle">Your invitations</h2>
         <p className="small muted">
-          Use your invitation link or the private code from the owner. Sign in with the email
-          address they invited.
+          Enter the code shared by the workspace owner to join. You’re seeing these invitations
+          because you’re signed in with the invited email.
         </p>
       </header>
       {unavailable && (
@@ -85,48 +87,19 @@ export function WorkspaceInviteManager({
   onMessage,
   draft,
   setDraft,
-  email: emailConfiguration,
 }) {
   const { email, role, link } = draft;
   const [composing, setComposing] = useState(false);
-  const [retryUntil, setRetryUntil] = useState({});
-  const [now, setNow] = useState(Date.now);
-  const emailEnabled = emailConfiguration?.enabled === true;
-  const cooldown = (invitation) =>
-    Math.max(
-      0,
-      Math.ceil(
-        (Math.max(
-          retryUntil[invitation.email] || 0,
-          Number(invitation.email_attempted_at || 0) * 1000 +
-            (invitation.email_attempted_at ? 60000 : 0),
-        ) -
-          now) /
-          1000,
-      ),
-    );
-  useEffect(() => {
-    if (!invitations.some((invitation) => cooldown(invitation) > 0)) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [invitations, retryUntil, now]);
   async function invite(event) {
     event.preventDefault();
-    await createInvitation(email.trim(), role);
-  }
-  async function createInvitation(recipient, invitedRole) {
+    const recipient = email.trim();
     const result = await onAction(
       'invite',
-      { email: recipient, role: invitedRole },
-      'Invitation created.',
+      { email: recipient, role },
+      'Invitation created. Share the code with your teammate.',
     );
     if (result?.token) {
       setComposing(false);
-      setNow(Date.now());
-      setRetryUntil((current) => ({
-        ...current,
-        [recipient]: Date.now() + Number(result.retry_after || 60) * 1000,
-      }));
       const query = new URLSearchParams({ invite: result.invitation_id, token: result.token });
       setDraft((current) => ({
         ...current,
@@ -134,17 +107,19 @@ export function WorkspaceInviteManager({
         link: {
           invitationId: result.invitation_id,
           email: recipient,
+          code: result.token,
+          expiresAt: result.expires_at,
           url: result.invitation_url || location.origin + '/workspaces?' + query,
-          emailStatus: result.email_status || 'not_configured',
-          emailMessage: result.email_message || '',
         },
       }));
-      if (result.email_status === 'sent')
-        onMessage('Invitation email sent. You can also share its private link.');
-      else if (result.email_status === 'failed') {
-        onMessage('');
-        onError('Email could not be sent. Copy the private invitation link to share it.');
-      } else onMessage('Email is not configured. Copy the private invitation link to share it.');
+    }
+  }
+  async function copy(value, label) {
+    try {
+      await navigator.clipboard.writeText(value);
+      onMessage(label + ' copied. Share it privately with your teammate.');
+    } catch {
+      onError('Copy is unavailable. Select the invitation code or link and copy it manually.');
     }
   }
   async function revoke(invitation) {
@@ -160,16 +135,19 @@ export function WorkspaceInviteManager({
     <section className="workspace-section" aria-labelledby="workspaceInviteTitle">
       <header className="workspace-section-heading">
         <div>
-          <h2 id="workspaceInviteTitle">Invitations</h2>
+          <h2 id="workspaceInviteTitle">
+            Invitations
+            {invitations.length > 0 && (
+              <span className="workspace-heading-count">{invitations.length} pending</span>
+            )}
+          </h2>
           <p className="small muted">
-            {emailEnabled
-              ? 'Send an invitation email or share a private link.'
-              : 'Create a private invitation link to share with your teammate.'}{' '}
-            They’ll need to sign in with the matching email.
+            Invite someone by their account email, then share the code privately. They’ll see the
+            invitation when they log in. No emails are sent.
           </p>
         </div>
         {!composing && (
-          <button className="btn" disabled={disabled} onClick={() => setComposing(true)}>
+          <button className="btn pri" disabled={disabled} onClick={() => setComposing(true)}>
             <Icon name="plus" />
             Invite a teammate
           </button>
@@ -206,7 +184,7 @@ export function WorkspaceInviteManager({
             </select>
           </label>
           <button className="btn pri" disabled={disabled || !email.trim()}>
-            {emailEnabled ? 'Send invitation' : 'Create invitation link'}
+            Create invitation
           </button>
           <button
             type="button"
@@ -216,43 +194,49 @@ export function WorkspaceInviteManager({
           >
             Cancel
           </button>
+          <p className="small muted workspace-invitation-form-note">
+            Invitations expire after 7 days. Members need database access after joining.
+          </p>
         </form>
       )}
       {link && (
-        <div className="workspace-private-invite" role="status">
-          <p className="workspace-invite-delivery">
-            <strong>
-              {link.emailStatus === 'sent'
-                ? 'Invitation email sent'
-                : link.emailStatus === 'failed'
-                  ? 'Email could not be sent — share this link instead'
-                  : 'Your private invitation link is ready'}
-            </strong>
-            {link.emailStatus === 'failed' && link.emailMessage && <span>{link.emailMessage}</span>}
+        <div className="workspace-private-invite">
+          <p className="workspace-invite-code-heading" role="status">
+            <strong>Invitation code ready for {link.email}</strong>
           </p>
-          <label>
-            Private invitation link for {link.email}
-            <input readOnly value={link.url} onFocus={(event) => event.currentTarget.select()} />
-          </label>
-          <button
-            className="btn"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(link.url);
-                onMessage('Invitation link copied. Send it privately to your teammate.');
-              } catch {
-                onError('Copy is unavailable. Select the invitation link and copy it manually.');
-              }
-            }}
-          >
-            Copy invitation link
-          </button>
+          <div className="workspace-invitation-code">
+            <label>
+              Invitation code for {link.email}
+              <input readOnly value={link.code} onFocus={(event) => event.currentTarget.select()} />
+            </label>
+            <button className="btn pri" onClick={() => copy(link.code, 'Invitation code')}>
+              <Icon name="copy" />
+              Copy code
+            </button>
+          </div>
           <p className="small muted">
-            {link.emailStatus === 'sent' &&
-              'The email provider accepted the message; delivery is not yet confirmed. '}
-            This link is shown once. Keep it private; revoking or resending the invitation
-            invalidates it.
+            This code is shown once. Share it privately with {link.email}. They’ll need to log in
+            with that email and enter the code to join.
+            {link.expiresAt
+              ? ' Expires ' + invitationExpiry(link.expiresAt) + '.'
+              : ' Expires after 7 days.'}
           </p>
+          <details className="workspace-invitation-link">
+            <summary>Or share a private invitation link</summary>
+            <div>
+              <label>
+                Private invitation link for {link.email}
+                <input
+                  readOnly
+                  value={link.url}
+                  onFocus={(event) => event.currentTarget.select()}
+                />
+              </label>
+              <button className="btn" onClick={() => copy(link.url, 'Invitation link')}>
+                Copy invitation link
+              </button>
+            </div>
+          </details>
         </div>
       )}
       {invitations.length > 0 && (
@@ -260,52 +244,26 @@ export function WorkspaceInviteManager({
           {invitations.map((invitation) => (
             <li key={invitation.invitation_id}>
               <span>
-                {invitation.email}{' '}
+                {invitation.email}
                 <small>
                   {invitation.role} · Expires {invitationExpiry(invitation.expires_at)}
                 </small>
-                {invitation.email_status === 'failed' && invitation.email_message && (
-                  <small>{invitation.email_message}</small>
-                )}
-                <small>
-                  {invitation.email_status === 'sent'
-                    ? 'Email sent · Provider accepted'
-                    : invitation.email_status === 'failed'
-                      ? 'Email could not be sent'
-                      : 'Private link invitation'}
-                </small>
               </span>
-              <div className="workspace-invitation-actions">
-                {emailEnabled && (
-                  <button
-                    className="text-button"
-                    disabled={disabled || cooldown(invitation) > 0}
-                    onClick={() => createInvitation(invitation.email, invitation.role)}
-                  >
-                    {cooldown(invitation) > 0
-                      ? `Resend in ${cooldown(invitation)}s`
-                      : 'Resend email'}
-                  </button>
-                )}
-                <button
-                  className="text-button workspace-remove"
-                  disabled={disabled}
-                  onClick={() => revoke(invitation)}
-                >
-                  Revoke invitation
-                </button>
-              </div>
+              <button
+                className="text-button workspace-remove"
+                disabled={disabled}
+                onClick={() => revoke(invitation)}
+              >
+                Revoke invitation
+              </button>
             </li>
           ))}
         </ul>
       )}
-      {emailEnabled && invitations.length > 0 && (
-        <p className="small muted workspace-resend-note">
-          Resending creates a new private link and invalidates the previous one.
-        </p>
-      )}
       {!invitations.length && !composing && !link && (
-        <p className="small muted workspace-no-invitations">No pending invitations.</p>
+        <p className="small muted workspace-no-invitations">
+          No pending invitations. Invite a teammate to work together.
+        </p>
       )}
     </section>
   );

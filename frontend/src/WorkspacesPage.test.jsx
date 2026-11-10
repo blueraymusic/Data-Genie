@@ -42,6 +42,7 @@ const response = (data, status = 200) =>
   Promise.resolve({ ok: status < 400, status, json: async () => data });
 function fixture(role = 'owner', invitations = [], configuration = {}) {
   let workspaces = [personal, { ...team, role }];
+  let personalDatabases = configuration.personalDatabases || [];
   let details = {
     workspace: { ...team, role },
     members: configuration.members || people,
@@ -56,11 +57,23 @@ function fixture(role = 'owner', invitations = [], configuration = {}) {
       },
     ],
     invitations: role === 'owner' ? [invitation] : [],
-    email: { enabled: configuration.emailEnabled === true },
   };
   fetch.mockImplementation((path, options = {}) => {
     if (options.method === 'POST') {
       const body = JSON.parse(options.body);
+      if (path.endsWith('/delete')) {
+        if (configuration.deleteError)
+          return response({ error: 'Workspace could not be deleted.' }, 409);
+        personalDatabases = [...personalDatabases, ...details.databases];
+        workspaces = workspaces.filter(
+          (workspace) => workspace.workspace_id !== details.workspace.workspace_id,
+        );
+        return response({
+          deleted: true,
+          workspace_id: details.workspace.workspace_id,
+          personal_workspace_id: personal.workspace_id,
+        });
+      }
       if (path === '/api/workspaces') {
         const created = { ...team, workspace_id: 'created', name: body.name };
         workspaces = [...workspaces, created];
@@ -102,9 +115,7 @@ function fixture(role = 'owner', invitations = [], configuration = {}) {
           email: body.email,
           role: body.role,
           token: 'private-invitation-token',
-          email_status: configuration.emailStatus || 'not_configured',
           invitation_url: configuration.invitationUrl,
-          retry_after: 30,
         });
       if (path.endsWith('/accept')) return response({ ...team, role: 'viewer' });
       return response({ ok: true });
@@ -113,7 +124,7 @@ function fixture(role = 'owner', invitations = [], configuration = {}) {
       path === '/api/workspaces'
         ? { workspaces, invitations }
         : path === '/api/workspaces/personal'
-          ? { workspace: personal, databases: configuration.personalDatabases || [] }
+          ? { workspace: personal, databases: personalDatabases }
           : details,
     );
   });
@@ -124,6 +135,7 @@ function fixture(role = 'owner', invitations = [], configuration = {}) {
     workingCommands: new Set(),
     open: vi.fn().mockResolvedValue({ session_id: 'new' }),
     openShared: vi.fn().mockResolvedValue({ session_id: 'shared' }),
+    refresh: vi.fn(),
   };
 }
 async function openPeople(events) {
@@ -231,7 +243,7 @@ it('guards workspace changes while a database command awaits confirmation', asyn
   expect(screen.getByText(/before switching workspaces/)).toBeTruthy();
 });
 
-it('creates a private invitation link for the owner to send and lets them revoke it', async () => {
+it('creates a private invitation code with an optional link and lets the owner revoke it', async () => {
   const events = userEvent.setup();
   render(<WorkspacesPage workbench={fixture()} />);
   await openPeople(events);
@@ -240,15 +252,17 @@ it('creates a private invitation link for the owner to send and lets them revoke
     await screen.findByRole('textbox', { name: 'Email', exact: true }),
     'new@example.test',
   );
-  await events.click(screen.getByRole('button', { name: 'Create invitation link' }));
+  await events.click(screen.getByRole('button', { name: 'Create invitation' }));
+  expect(
+    await screen.findByRole('textbox', { name: 'Invitation code for new@example.test' }),
+  ).toBeTruthy();
+  await events.click(screen.getByText('Or share a private invitation link'));
   const link = await screen.findByRole('textbox', {
     name: 'Private invitation link for new@example.test',
   });
   expect(new URL(link.value).searchParams.get('token')).toBe('private-invitation-token');
   expect(new URL(link.value).pathname).toBe('/workspaces');
-  expect(
-    screen.getByText('Email is not configured. Copy the private invitation link to share it.'),
-  ).toBeTruthy();
+  expect(screen.getByText(/No emails are sent/)).toBeTruthy();
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Revoke invitation' }).disabled).toBe(false),
   );
@@ -262,6 +276,7 @@ it('creates a private invitation link for the owner to send and lets them revoke
     ).toBeNull(),
   );
   expect(screen.queryByRole('button', { name: 'Copy invitation link' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Copy code' })).toBeNull();
 });
 
 it('explains an unavailable private invitation and displays invitation expiry from server seconds', async () => {
@@ -447,58 +462,166 @@ it('preserves another database draft while a grant saves and the selected person
   ).toBe(false);
 });
 
-it('sends email invitations with the canonical URL and guards resend cooldown', async () => {
+it('shows the one-time code clearly, copies it, and keeps email delivery out of the flow', async () => {
   const events = userEvent.setup();
-  const canonical =
-    'https://app.example.test/workspaces?invite=invitation-1&token=private-invitation-token';
-  render(
-    <WorkspacesPage
-      workbench={fixture('owner', [], {
-        emailEnabled: true,
-        emailStatus: 'sent',
-        invitationUrl: canonical,
-      })}
-    />,
-  );
+  const clipboard = vi.spyOn(navigator.clipboard, 'writeText');
+  render(<WorkspacesPage workbench={fixture()} />);
   await openPeople(events);
   await events.click(screen.getByRole('button', { name: 'Invite a teammate' }));
+  expect(screen.getByText(/Invitations expire after 7 days/)).toBeTruthy();
   await events.type(
     screen.getByRole('textbox', { name: 'Email', exact: true }),
     'guest@example.test',
   );
-  await events.click(screen.getByRole('button', { name: 'Send invitation' }));
-  const link = await screen.findByRole('textbox', {
-    name: 'Private invitation link for guest@example.test',
+  await events.click(screen.getByRole('button', { name: 'Create invitation' }));
+  const code = await screen.findByRole('textbox', {
+    name: 'Invitation code for guest@example.test',
   });
-  expect(link.value).toBe(canonical);
+  expect(code.value).toBe('private-invitation-token');
+  expect(code.readOnly).toBe(true);
+  await events.click(screen.getByRole('button', { name: 'Copy code' }));
+  expect(clipboard).toHaveBeenCalledWith('private-invitation-token');
   expect(
-    screen.getByText('Invitation email sent. You can also share its private link.'),
+    screen.getByText('Invitation code copied. Share it privately with your teammate.'),
   ).toBeTruthy();
-  expect(screen.getByText(/delivery is not yet confirmed/)).toBeTruthy();
-  expect(screen.getByRole('button', { name: /Resend in \d+s/ }).disabled).toBe(true);
-  expect(fetch.mock.calls.filter(([path]) => path.endsWith('/invite'))).toHaveLength(1);
+  expect(screen.queryByRole('button', { name: 'Send invitation' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Resend email' })).toBeNull();
+  expect(screen.queryByText(/Email is not configured/)).toBeNull();
 });
 
-it('resends an invitation explicitly and keeps a private link when email fails', async () => {
+it('opens people and invitation management directly from the workspace header', async () => {
   const events = userEvent.setup();
-  render(
-    <WorkspacesPage
-      workbench={fixture('owner', [], { emailEnabled: true, emailStatus: 'failed' })}
-    />,
-  );
-  await openPeople(events);
-  await events.click(screen.getByRole('button', { name: 'Resend email' }));
-  expect(JSON.parse(fetch.mock.calls.find(([path]) => path.endsWith('/invite'))[1].body)).toEqual({
-    email: 'guest@example.test',
-    role: 'viewer',
+  render(<WorkspacesPage workbench={fixture()} />);
+  await events.click(await screen.findByRole('button', { name: 'Manage people and access' }));
+  expect(screen.getByRole('button', { name: 'Invite a teammate' })).toBeTruthy();
+  expect(screen.getByRole('group', { name: 'Workspace members' })).toBeTruthy();
+  expect(screen.getByText('1 pending')).toBeTruthy();
+  expect(screen.getByText(/Invite teammates & set permissions/)).toBeTruthy();
+});
+
+it('requires an exact workspace name before deletion and preserves databases in personal', async () => {
+  const events = userEvent.setup(),
+    workbench = fixture();
+  render(<WorkspacesPage workbench={workbench} />);
+  await events.click(await screen.findByRole('button', { name: 'Delete workspace' }));
+  const dialog = screen.getByRole('dialog', { name: 'Delete workspace' });
+  expect(
+    within(dialog).getByText(/All databases move to your personal workspace. Your data is kept/),
+  ).toBeTruthy();
+  expect(within(dialog).getByText(/Team members lose access/)).toBeTruthy();
+  expect(within(dialog).getByText('Pending invitations are revoked.')).toBeTruthy();
+  const confirmation = within(dialog).getByRole('textbox', {
+    name: 'Type the workspace name to confirm',
+  });
+  const remove = within(dialog).getByRole('button', { name: 'Delete workspace' });
+  expect(remove.disabled).toBe(true);
+  await events.type(confirmation, 'operations');
+  expect(remove.disabled).toBe(true);
+  await events.clear(confirmation);
+  await events.type(confirmation, 'Operations ');
+  expect(remove.disabled).toBe(true);
+  expect(fetch.mock.calls.some(([path]) => path.endsWith('/delete'))).toBe(false);
+  await events.clear(confirmation);
+  await events.type(confirmation, 'Operations');
+  await events.click(remove);
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  expect(JSON.parse(fetch.mock.calls.find(([path]) => path.endsWith('/delete'))[1].body)).toEqual({
+    name: 'Operations',
   });
   expect(
-    await screen.findByRole('textbox', { name: 'Private invitation link for guest@example.test' }),
-  ).toBeTruthy();
-  expect(screen.getByRole('alert').textContent).toContain(
-    'Email could not be sent. Copy the private invitation link',
+    screen.getByRole('button', { name: /Personal.*Only you/ }).getAttribute('aria-current'),
+  ).toBe('page');
+  expect(await screen.findByText('customers.sqlite3')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: /Operations.*You manage this team/ })).toBeNull();
+  expect(workbench.refresh).toHaveBeenCalledOnce();
+});
+
+it('keeps the delete dialog open with its error when the server cannot delete the workspace', async () => {
+  const events = userEvent.setup();
+  render(<WorkspacesPage workbench={fixture('owner', [], { deleteError: true })} />);
+  await events.click(await screen.findByRole('button', { name: 'Delete workspace' }));
+  const dialog = screen.getByRole('dialog', { name: 'Delete workspace' });
+  await events.type(
+    within(dialog).getByRole('textbox', { name: 'Type the workspace name to confirm' }),
+    'Operations',
   );
-  expect(
-    screen.queryByText('Invitation email sent. You can also share its private link.'),
-  ).toBeNull();
+  await events.click(within(dialog).getByRole('button', { name: 'Delete workspace' }));
+  expect(await within(dialog).findByRole('alert')).toBeTruthy();
+  expect(screen.getByRole('dialog')).toBe(dialog);
+  expect(within(dialog).getByRole('textbox').value).toBe('Operations');
+  await events.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+it('does not offer workspace deletion to members or for a personal workspace', async () => {
+  const events = userEvent.setup();
+  render(<WorkspacesPage workbench={fixture('member')} />);
+  await screen.findByRole('heading', { name: 'Databases', exact: true });
+  expect(screen.queryByRole('button', { name: 'Delete workspace' })).toBeNull();
+  await events.click(screen.getByRole('button', { name: /Personal.*Only you/ }));
+  await screen.findByText('Your databases, just for you.');
+  expect(screen.queryByRole('button', { name: 'Delete workspace' })).toBeNull();
+});
+
+it('groups the compact workspace picker and opens its selected workspace', async () => {
+  const events = userEvent.setup();
+  render(<WorkspacesPage workbench={fixture()} />);
+  await screen.findByRole('heading', { name: 'Databases', exact: true });
+  const picker = screen.getByRole('combobox', { name: 'Select workspace' });
+  expect(picker.value).toBe('team');
+  expect(within(picker).getByRole('group', { name: 'Personal' }).textContent).toBe('Personal');
+  expect(within(picker).getByRole('group', { name: 'Teams' }).textContent).toBe('Operations');
+  await events.selectOptions(picker, 'personal');
+  expect(await screen.findByText('Your databases, just for you.')).toBeTruthy();
+  expect(picker.value).toBe('personal');
+  expect(screen.queryByRole('button', { name: 'Manage people and access' })).toBeNull();
+});
+
+it('scrolls explicit mobile section changes into view and respects reduced motion', async () => {
+  const events = userEvent.setup();
+  let reducedMotion = true;
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query) => ({ matches: query.includes('max-width') || reducedMotion })),
+  );
+  vi.stubGlobal('requestAnimationFrame', (callback) => {
+    callback();
+    return 1;
+  });
+  render(<WorkspacesPage workbench={fixture()} />);
+  const navigation = await screen.findByRole('navigation', { name: 'Workspace sections' });
+  const scroll = vi.fn();
+  navigation.scrollIntoView = scroll;
+  expect(scroll).not.toHaveBeenCalled();
+  await events.click(screen.getByRole('button', { name: 'Manage people and access' }));
+  expect(screen.getByRole('button', { name: 'Invite a teammate' })).toBeTruthy();
+  expect(scroll).toHaveBeenLastCalledWith({ block: 'start', behavior: 'instant' });
+  reducedMotion = false;
+  await events.click(within(navigation).getByRole('button', { name: /^Databases/ }));
+  expect(scroll).toHaveBeenLastCalledWith({ block: 'start', behavior: 'smooth' });
+  expect(scroll).toHaveBeenCalledTimes(2);
+  await events.selectOptions(
+    screen.getByRole('combobox', { name: 'Select workspace' }),
+    'personal',
+  );
+  await screen.findByText('Your databases, just for you.');
+  expect(scroll).toHaveBeenCalledTimes(2);
+});
+
+it('keeps desktop section changes at the current scroll position', async () => {
+  const events = userEvent.setup();
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn(() => ({ matches: false })),
+  );
+  render(<WorkspacesPage workbench={fixture()} />);
+  const navigation = await screen.findByRole('navigation', { name: 'Workspace sections' });
+  const scroll = vi.fn();
+  navigation.scrollIntoView = scroll;
+  await events.click(screen.getByRole('button', { name: 'Manage people and access' }));
+  expect(screen.getByRole('button', { name: 'Invite a teammate' })).toBeTruthy();
+  expect(document.activeElement).toBe(
+    within(navigation).getByRole('button', { name: /^People & access/ }),
+  );
+  expect(scroll).not.toHaveBeenCalled();
 });

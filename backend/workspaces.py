@@ -50,6 +50,17 @@ def _role(value):
     return value
 
 
+def _invitation_code(token):
+    """Normalize readable codes while preserving existing URL-safe secrets."""
+    if not isinstance(token, str):
+        return token
+    candidate = token.strip()
+    if re.fullmatch(r"[0-9a-fA-F]{20}|(?:[0-9a-fA-F]{4}-){4}[0-9a-fA-F]{4}", candidate):
+        compact = candidate.replace("-", "").upper()
+        return "-".join(compact[offset:offset + 4] for offset in range(0, 20, 4))
+    return token
+
+
 def _permissions(values):
     if (not isinstance(values, dict) or set(values) - set(PERMISSIONS)
             or any(type(value) is not bool for value in values.values())):
@@ -221,6 +232,32 @@ class WorkspaceStore:
             return self._workspace(connection, self._membership(connection, account_id, workspace_id))
 
     @_serialized
+    def delete_workspace(self, account_id, workspace_id, name):
+        """Remove a team while retaining its owner's databases and private history."""
+        with self.repository._connection(write=True) as connection:
+            workspace = self._membership(connection, account_id, workspace_id, owner=True)
+            if workspace["kind"] != "team":
+                raise ValueError("Your personal workspace cannot be deleted.")
+            if not isinstance(name, str) or name != workspace["name"]:
+                raise ValueError("Type the workspace name exactly to delete it.")
+            personal = self._ensure_personal(connection, account_id)
+            # End shared sessions so their pending confirmation tokens cannot
+            # become usable again if the database is shared in a later team.
+            # Owner sessions and every session's saved history remain intact.
+            connection.execute("""UPDATE sessions SET ended_at=COALESCE(ended_at,?)
+                WHERE account_id IS NOT NULL AND account_id<>? AND database_id IN
+                    (SELECT database_id FROM workspace_databases WHERE workspace_id=?)""",
+                (_now(), account_id, workspace_id))
+            connection.execute("DELETE FROM workspace_grants WHERE workspace_id=?", (workspace_id,))
+            connection.execute("""UPDATE workspace_databases SET workspace_id=?,attached_at=?
+                WHERE workspace_id=?""", (personal["workspace_id"], int(time.time()), workspace_id))
+            # Memberships and invitation secrets cascade with the team. No
+            # database, connection, session, request or result rows are deleted.
+            connection.execute("DELETE FROM workspaces WHERE workspace_id=?", (workspace_id,))
+            return {"deleted": True, "workspace_id": workspace_id,
+                    "personal_workspace_id": personal["workspace_id"]}
+
+    @_serialized
     def invite(self, account_id, workspace_id, email, role="member"):
         _role(role)
         if not isinstance(email, str) or len(email.strip()) > 254 or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email.strip()):
@@ -233,7 +270,9 @@ class WorkspaceStore:
             if connection.execute("""SELECT 1 FROM workspace_members m JOIN accounts a USING(account_id)
                 WHERE m.workspace_id=? AND a.email=? COLLATE NOCASE""", (workspace_id, email)).fetchone():
                 raise ValueError("That person already belongs to this workspace.")
-            now, invitation_id, token = int(time.time()), str(uuid.uuid4()), secrets.token_urlsafe(32)
+            now, invitation_id = int(time.time()), str(uuid.uuid4())
+            compact = secrets.token_hex(10).upper()
+            token = "-".join(compact[offset:offset + 4] for offset in range(0, 20, 4))
             connection.execute("""UPDATE workspace_invitations SET revoked_at=? WHERE workspace_id=? AND email=? COLLATE NOCASE
                 AND accepted_at IS NULL AND revoked_at IS NULL""", (now, workspace_id, email))
             connection.execute("""INSERT INTO workspace_invitations
@@ -247,6 +286,7 @@ class WorkspaceStore:
 
     @_serialized
     def accept_invitation(self, account_id, invitation_id, token=None):
+        token = _invitation_code(token)
         with self.repository._connection(write=True) as connection:
             account = self._account(connection, account_id)
             now = int(time.time())

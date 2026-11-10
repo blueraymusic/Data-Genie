@@ -6,6 +6,7 @@ from decimal import Decimal
 import ipaddress
 import logging
 from .. import settings
+from .. import preview_guard
 from .network import public_address
 from urllib.parse import parse_qsl, unquote, urlsplit
 from uuid import UUID
@@ -327,13 +328,29 @@ class PostgresConnector:
 
     def prepare(self, sql, validate_live=True):
         root, details = self._parsed(sql)
-        if validate_live and details["operation"] in {"SELECT", "INSERT", "UPDATE", "DELETE"}:
+        if details["access"] == "write":
+            with self.connection(read_only=False) as connection:
+                self._lock_preview_tables(connection, details["targets"])
+                if validate_live and details["operation"] in {"INSERT", "UPDATE", "DELETE"}:
+                    connection.execute("EXPLAIN (FORMAT JSON) " + root.sql(dialect="postgres")).fetchall()
+                details["preview_guard"] = preview_guard.postgres_snapshot(connection, self.config["schema_name"], details["targets"])
+        elif validate_live:
             with self.connection() as connection:
                 connection.execute("EXPLAIN (FORMAT JSON) " + root.sql(dialect="postgres")).fetchall()
         if details["access"] == "write":
             target = next((item["table_name"] for item in details["targets"] if item["access_type"] != "read"), None)
             details["preview"] = {"table": target, "affected_rows": None}
         return details
+
+    def _lock_preview_tables(self, connection, targets):
+        for name in preview_guard.names(targets):
+            exists = connection.execute("""SELECT 1 FROM pg_catalog.pg_class c
+                JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+                WHERE n.nspname=%s AND c.relname=%s""", (self.config["schema_name"], name)).fetchone()
+            if exists:
+                connection.execute("LOCK TABLE {}.{} IN SHARE ROW EXCLUSIVE MODE".format(
+                    '"' + self.config["schema_name"].replace('"', '""') + '"',
+                    '"' + name.replace('"', '""') + '"'))
 
     def prepare_batch(self, plans):
         """Track planned schema names in memory; never execute writes to preview them."""
@@ -430,7 +447,7 @@ class PostgresConnector:
                     row[key] for key in ("triggers", "rules", "cascades", "inheritance", "custom_types", "custom_functions"))):
                 raise PermissionError("This table has database-side rules or functions. Ask the workspace owner to review and run this change.")
 
-    def execute(self, sql, operation="read", limit=500, offset=None, workspace_access=None):
+    def execute(self, sql, operation="read", limit=500, offset=None, workspace_access=None, expected_guard=None):
         if isinstance(limit, bool) or not isinstance(limit, int) or not 0 <= limit <= 500:
             raise ValueError("Choose a result page size between 0 and 500.")
         if offset is not None and (isinstance(offset, bool) or not isinstance(offset, int) or offset < 0):
@@ -444,6 +461,9 @@ class PostgresConnector:
             # are rendered here; SQL percent literals must never become DB-API placeholders.
             statement = f"SELECT * FROM ({statement}) AS result_page LIMIT {limit + 1} OFFSET {offset or 0}"
         with self.connection(read_only=operation == "read") as connection:
+            if operation == "write" and expected_guard is not None:
+                guard_targets = [{"table_name": name} for name in expected_guard.get("tables", {})]
+                self._lock_preview_tables(connection, guard_targets + details["targets"])
             if (operation == "write" and workspace_access is not None and workspace_access["role"] != "owner"
                     and not all(workspace_access["permissions"].get(key) for key in ("write", "delete", "structure"))):
                 from psycopg import sql as pg_sql
@@ -458,6 +478,9 @@ class PostgresConnector:
                         pg_sql.Identifier(self.config["schema_name"]), pg_sql.Identifier(name)))
                     locked.add(name)
                 self.check_workspace_effects(sql, workspace_access, connection=connection)
+            if operation == "write" and expected_guard is not None:
+                actual = preview_guard.postgres_snapshot(connection, self.config["schema_name"], guard_targets)
+                preview_guard.verify(expected_guard, actual, details["targets"])
             cursor = connection.cursor(row_factory=_result_row)
             cursor.execute(statement)
             columns = unique_columns([item.name for item in cursor.description]) if cursor.description else []
@@ -467,11 +490,16 @@ class PostgresConnector:
             if operation == "write" and cursor.description:
                 while cursor.fetchmany(1000):
                     pass
+            after = None
+            if operation == "write" and expected_guard is not None:
+                from sqlglot import exp
+                after_targets = guard_targets + [{"table_name": item.this.name} for item in root.find_all(exp.AlterRename)]
+                after = preview_guard.postgres_snapshot(connection, self.config["schema_name"], after_targets)
         if operation == "write":
             self._schema = None
         return {"rows": [{key: _value(value) for key, value in row.items()} for row in fetched[:limit]],
                 "columns": columns, "changes": changes, "truncated": len(fetched) > limit,
-                "sql": sql, "executed_sql": statement}
+                "sql": sql, "executed_sql": statement, **({"_guard_after": after} if after else {})}
 
     def columns(self, sql):
         return self.execute(sql, limit=0, offset=0)["columns"]

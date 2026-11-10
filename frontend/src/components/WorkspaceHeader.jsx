@@ -3,6 +3,7 @@ import { Brand } from './Brand';
 import { ThemeToggle } from './PublicHeader';
 import { Link } from '../lib/router';
 import { databaseAccess } from '../lib/access';
+import { useInvitationCount } from '../hooks/useInvitationCount';
 function SessionTimer({ started }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -27,6 +28,7 @@ export function WorkspaceHeader({
   onLogout,
   disabled,
 }) {
+  const invitationCount = useInvitationCount();
   const dropdown = useRef(null),
     trigger = useRef(null);
   const [menu, setMenu] = useState(false),
@@ -79,8 +81,13 @@ export function WorkspaceHeader({
               onClick={() => onNavigate(id)}
             >
               {label}
-              {id === 'ask' && session && (
-                <span className="live-indicator" aria-label="Open session" />
+              {id === 'workspaces' && invitationCount > 0 && (
+                <span
+                  className="invitation-count"
+                  aria-label={`${invitationCount} pending invitations`}
+                >
+                  {invitationCount}
+                </span>
               )}
             </button>
           ))}

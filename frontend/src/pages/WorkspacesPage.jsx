@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DatabaseForm } from '../components/DatabaseForm';
 import { Icon } from '../components/Icon';
 import { WorkspaceDialog } from '../components/WorkspaceDialog';
@@ -17,12 +17,14 @@ const permissionLabels = {
 };
 
 export default function WorkspacesPage({ workbench, onOpened }) {
+  const sectionTabs = useRef(null);
   const teams = useWorkspaces(workbench.session?.access?.workspace_id),
     { details } = teams,
     workspace = details?.workspace,
     owner = workspace?.role === 'owner',
     viewer = workspace?.role === 'viewer';
   const [name, setName] = useState(''),
+    [deleteName, setDeleteName] = useState(''),
     [tab, setTab] = useState('databases'),
     [modal, setModal] = useState(null),
     [invitationDraft, setInvitationDraft] = useState({ email: '', role: 'member', link: null }),
@@ -36,9 +38,29 @@ export default function WorkspacesPage({ workbench, onOpened }) {
   const databases = (details?.databases || []).filter(
     (database) => owner || database.permissions?.read === true,
   );
+  const focusSection = useRef(false);
+  useEffect(() => {
+    if (!focusSection.current) return;
+    focusSection.current = false;
+    sectionTabs.current?.querySelector('[aria-current="page"]')?.focus({ preventScroll: true });
+  }, [tab]);
+  function selectTab(next) {
+    focusSection.current = true;
+    setTab(next);
+    if (!window.matchMedia?.('(max-width: 780px)')?.matches) return;
+    window.requestAnimationFrame(() => {
+      sectionTabs.current?.scrollIntoView?.({
+        block: 'start',
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 'instant'
+          : 'smooth',
+      });
+    });
+  }
   useEffect(() => {
     setInvitationDraft({ email: '', role: 'member', link: null });
     setAttachId('');
+    setDeleteName('');
     setTab('databases');
     setModal(null);
   }, [teams.selected]);
@@ -87,6 +109,17 @@ export default function WorkspacesPage({ workbench, onOpened }) {
       teams.select(result.workspace_id);
     }
   }
+  async function deleteWorkspace(event) {
+    event.preventDefault();
+    if (disabled || !owner || workspace.personal || deleteName !== workspace.name) return;
+    const result = await action('delete', { name: deleteName }, 'Workspace deleted.');
+    if (result?.deleted) {
+      teams.select(result.personal_workspace_id || personalId || '');
+      teams.setMessage('Workspace deleted. Its databases are in your personal workspace.');
+      setModal(null);
+      workbench.refresh?.();
+    }
+  }
   async function open(database) {
     if (disabled) return;
     setOpening(database.database_id);
@@ -109,6 +142,17 @@ export default function WorkspacesPage({ workbench, onOpened }) {
           <h1>Your workspaces</h1>
           <p className="lead">A place for your databases. A shared space for your team.</p>
         </div>
+        <button
+          className="btn pri"
+          disabled={disabled || teams.loading}
+          onClick={() => {
+            teams.setError('');
+            setModal('create');
+          }}
+        >
+          <Icon name="plus" />
+          New workspace
+        </button>
       </header>
       {pending && (
         <p className="workspace-pending-note" role="status">
@@ -134,6 +178,44 @@ export default function WorkspacesPage({ workbench, onOpened }) {
         onAccept={accept}
       />
       <div className="workspace-layout">
+        <div className="workspace-mobile-switcher">
+          <label>
+            Select workspace
+            <select
+              value={teams.selected}
+              disabled={disabled || teams.loading || !teams.workspaces.length}
+              onChange={(event) => teams.select(event.target.value)}
+            >
+              {!teams.workspaces.length && (
+                <option value="">
+                  {teams.loading ? 'Loading workspaces…' : 'No workspaces yet'}
+                </option>
+              )}
+              {[
+                ['Personal', true],
+                ['Teams', false],
+              ].map(([label, personal]) => (
+                <optgroup label={label} key={label}>
+                  {teams.workspaces
+                    .filter((item) => Boolean(item.personal) === personal)
+                    .map((item) => (
+                      <option value={item.workspace_id} key={item.workspace_id}>
+                        {item.name}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          <button
+            className="btn quiet"
+            aria-label="Refresh workspace list"
+            disabled={disabled || teams.loading || teams.detailsLoading}
+            onClick={teams.refresh}
+          >
+            <Icon name="replay" />
+          </button>
+        </div>
         <aside className="workspace-rail" aria-label="Choose a workspace">
           <div className="workspace-rail-heading">
             <span>WORKSPACES</span>
@@ -188,17 +270,6 @@ export default function WorkspacesPage({ workbench, onOpened }) {
               </div>
             ))}
           </nav>
-          <button
-            className="btn workspace-new"
-            disabled={disabled || teams.loading}
-            onClick={() => {
-              teams.setError('');
-              setModal('create');
-            }}
-          >
-            <Icon name="plus" />
-            New workspace
-          </button>
         </aside>
         <div className="workspace-main">
           {currentName && (
@@ -218,7 +289,26 @@ export default function WorkspacesPage({ workbench, onOpened }) {
                         : 'Databases your team has shared with you.'}
                 </p>
               </div>
-              {workspace && <span className="workspace-role">{workspace.role}</span>}
+              {workspace && (
+                <div
+                  className={
+                    'workspace-header-actions' +
+                    (owner && !workspace.personal ? ' workspace-team-actions' : '')
+                  }
+                >
+                  <span className="workspace-role">{workspace.role}</span>
+                  {owner && !workspace.personal && tab === 'databases' && (
+                    <button
+                      className={'btn' + (tab === 'databases' ? ' pri' : '')}
+                      aria-label="Manage people and access"
+                      onClick={() => selectTab('people')}
+                    >
+                      <Icon name="account" />
+                      People &amp; access
+                    </button>
+                  )}
+                </div>
+              )}
             </header>
           )}
           {(teams.loading || teams.detailsLoading) && (
@@ -228,20 +318,31 @@ export default function WorkspacesPage({ workbench, onOpened }) {
           )}
           {workspace && !teams.detailsLoading && (
             <>
-              <nav className="workspace-section-tabs" aria-label="Workspace sections">
+              <nav
+                ref={sectionTabs}
+                className="workspace-section-tabs"
+                aria-label="Workspace sections"
+              >
                 <button
                   aria-current={tab === 'databases' ? 'page' : undefined}
-                  onClick={() => setTab('databases')}
+                  onClick={() => selectTab('databases')}
                 >
                   {viewer ? 'Shared reports' : 'Databases'}
                   {!viewer && <span>{databases.length}</span>}
+                  <small>{viewer ? 'Reports shared with you' : 'Open & manage databases'}</small>
                 </button>
                 {owner && !workspace.personal && (
                   <button
                     aria-current={tab === 'people' ? 'page' : undefined}
-                    onClick={() => setTab('people')}
+                    onClick={() => selectTab('people')}
                   >
                     People &amp; access<span>{(details.members || []).length}</span>
+                    <small>
+                      Invite teammates &amp; set permissions
+                      {details.invitations?.length
+                        ? ' · ' + details.invitations.length + ' pending'
+                        : ''}
+                    </small>
                   </button>
                 )}
               </nav>
@@ -344,7 +445,7 @@ export default function WorkspacesPage({ workbench, onOpened }) {
                   {owner && !workspace.personal && (
                     <p className="workspace-section-note small muted">
                       Database access is set for each person in{' '}
-                      <button className="text-button" onClick={() => setTab('people')}>
+                      <button className="text-button" onClick={() => selectTab('people')}>
                         People &amp; access
                       </button>
                       .
@@ -353,9 +454,7 @@ export default function WorkspacesPage({ workbench, onOpened }) {
                 </section>
               ) : (
                 <div className="workspace-people-tab">
-                  <WorkspaceMembers details={details} disabled={disabled} onAction={action} />
                   <WorkspaceInviteManager
-                    email={details.email}
                     draft={invitationDraft}
                     setDraft={setInvitationDraft}
                     invitations={details.invitations || []}
@@ -364,7 +463,24 @@ export default function WorkspacesPage({ workbench, onOpened }) {
                     onError={teams.setError}
                     onMessage={teams.setMessage}
                   />
+                  <WorkspaceMembers details={details} disabled={disabled} onAction={action} />
                 </div>
+              )}
+              {owner && !workspace.personal && (
+                <footer className="workspace-settings">
+                  <p className="small muted">Workspace settings</p>
+                  <button
+                    className="text-button workspace-remove"
+                    disabled={disabled}
+                    onClick={() => {
+                      teams.setError('');
+                      setDeleteName('');
+                      setModal('delete');
+                    }}
+                  >
+                    Delete workspace
+                  </button>
+                </footer>
               )}
             </>
           )}
@@ -491,6 +607,54 @@ export default function WorkspacesPage({ workbench, onOpened }) {
               {teams.error}
             </p>
           )}
+        </WorkspaceDialog>
+      )}
+      {modal === 'delete' && workspace && owner && !workspace.personal && (
+        <WorkspaceDialog
+          title="Delete workspace"
+          description={'Delete ' + workspace.name + ' and end sharing with this team.'}
+          busy={disabled}
+          onClose={() => setModal(null)}
+        >
+          <form className="workspace-delete-form" onSubmit={deleteWorkspace}>
+            <ul>
+              <li>All databases move to your personal workspace. Your data is kept.</li>
+              <li>Team members lose access to this workspace and its databases.</li>
+              <li>Pending invitations are revoked.</li>
+            </ul>
+            <label>
+              Type the workspace name to confirm
+              <input
+                autoFocus
+                autoComplete="off"
+                spellCheck="false"
+                value={deleteName}
+                disabled={disabled}
+                onChange={(event) => setDeleteName(event.target.value)}
+              />
+            </label>
+            <p className="small muted workspace-delete-match">
+              Enter <strong>{workspace.name}</strong> exactly.
+            </p>
+            {teams.error && (
+              <p className="err" role="alert">
+                {teams.error}
+              </p>
+            )}
+            <div className="workspace-dialog-actions">
+              <button
+                type="button"
+                className="btn"
+                disabled={disabled}
+                onClick={() => setModal(null)}
+              >
+                Cancel
+              </button>
+              <button className="btn warn" disabled={disabled || deleteName !== workspace.name}>
+                {teams.busy ? 'Deleting…' : 'Delete workspace'}
+              </button>
+            </div>
+          </form>
         </WorkspaceDialog>
       )}
     </section>

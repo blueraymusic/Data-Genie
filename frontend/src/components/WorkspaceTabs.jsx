@@ -1,6 +1,8 @@
 import { Icon } from './Icon';
 import { databaseAccess } from '../lib/access';
+import { useInvitationCount } from '../hooks/useInvitationCount';
 export function WorkspaceTabs({ view, onNavigate, session }) {
+  const invitationCount = useInvitationCount();
   return (
     <nav className="tabs" aria-label="Mobile navigation">
       {[
@@ -24,6 +26,14 @@ export function WorkspaceTabs({ view, onNavigate, session }) {
             >
               <Icon name={icon} />
               {label}
+              {id === 'workspaces' && invitationCount > 0 && (
+                <span
+                  className="invitation-count"
+                  aria-label={`${invitationCount} pending invitations`}
+                >
+                  {invitationCount}
+                </span>
+              )}
             </button>
           );
         })}

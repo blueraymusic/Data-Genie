@@ -17,11 +17,3 @@ output "sql_server_name" {
 output "app_service_sku" {
   value = azurerm_service_plan.hosting.sku_name
 }
-
-output "invitation_email_enabled" {
-  value = var.invitation_email_enabled
-}
-
-output "invitation_email_sender" {
-  value = local.invitation_email_sender
-}
