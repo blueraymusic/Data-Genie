@@ -12,6 +12,6 @@ export default defineConfig({
     include: ['src/**/*.test.{js,jsx}'],
     restoreMocks: true,
     // Bound JSDOM concurrency on laptops and small CI runners without relaxing timeouts.
-    maxWorkers: 4,
+    maxWorkers: 1,
   },
 });
