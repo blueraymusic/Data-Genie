@@ -1,6 +1,21 @@
 import { useEffect, useId, useRef } from 'react';
 import { Icon } from './Icon';
 
+function available(node) {
+  if (
+    node.disabled ||
+    node.tabIndex < 0 ||
+    node.type === 'hidden' ||
+    node.closest('[hidden], [inert]')
+  )
+    return false;
+  const closed = node.closest('details:not([open])');
+  return (
+    (!closed || node === closed.querySelector(':scope > summary')) &&
+    getComputedStyle(node).display !== 'none'
+  );
+}
+
 export function WorkspaceDialog({ title, description, busy, onClose, children, wide = false }) {
   const titleId = useId(),
     descriptionId = useId(),
@@ -8,9 +23,8 @@ export function WorkspaceDialog({ title, description, busy, onClose, children, w
   useEffect(() => {
     const previous = document.activeElement;
     const first =
-      panel.current?.querySelector(
-        'input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
-      ) || panel.current?.querySelector('button:not([disabled])');
+      [...(panel.current?.querySelectorAll('input, select, textarea') || [])].find(available) ||
+      [...(panel.current?.querySelectorAll('button') || [])].find(available);
     (first || panel.current)?.focus();
     return () => {
       if (previous?.isConnected) previous.focus();
@@ -39,9 +53,9 @@ export function WorkspaceDialog({ title, description, busy, onClose, children, w
           if (event.key !== 'Tab') return;
           const focusable = [
             ...panel.current.querySelectorAll(
-              'button, input, select, textarea, a[href], [tabindex]',
+              'button, input, select, textarea, a[href], summary, [tabindex]',
             ),
-          ].filter((node) => !node.disabled && node.tabIndex >= 0 && node.type !== 'hidden');
+          ].filter(available);
           const first = focusable[0],
             last = focusable.at(-1);
           if (!first) {

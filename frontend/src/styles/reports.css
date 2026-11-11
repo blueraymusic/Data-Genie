@@ -1,0 +1,785 @@
+/* A full-screen document desk; the native dialog stays above workspace surfaces. */
+.workspace-page dialog.report-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--chalk);
+  color: var(--ink);
+  box-shadow: none;
+  overflow: hidden;
+}
+.workspace-page dialog.report-overlay[open] {
+  display: flex;
+  flex-direction: column;
+}
+.report-overlay::backdrop {
+  background: #101a31a3;
+}
+.workspace-page .report-overlay-header {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 14px;
+  min-height: 76px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+}
+.workspace-page .report-heading-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 44px;
+  flex: none;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  color: var(--lapis);
+  background: var(--lapis-wash);
+}
+.workspace-page .report-heading-icon .ic {
+  width: 22px;
+  height: 22px;
+}
+.workspace-page .report-heading-copy {
+  min-width: 0;
+  margin-right: auto;
+}
+.workspace-page .report-overlay-header .eyebrow {
+  margin: 0 0 3px;
+  font-size: 9px;
+}
+.workspace-page .report-overlay-header h2 {
+  font: 24px/1.15 var(--serif);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.workspace-page .report-overlay-header > button {
+  flex: none;
+  min-height: 44px;
+}
+.workspace-page .report-unsaved {
+  color: var(--ink-soft);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.workspace-page .report-unsaved::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--brass);
+  margin: 0 7px 2px 0;
+}
+.workspace-page .report-overlay-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.workspace-page .report-overlay .report-editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  gap: 0;
+  overflow: hidden;
+}
+.workspace-page .report-editor-layout {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.workspace-page .report-writing-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 26px 20px;
+  border-right: 1px solid var(--rule);
+  background: var(--paper);
+  overflow: auto;
+}
+.workspace-page .report-tools-heading .eyebrow {
+  font-size: 9px;
+  margin: 0 0 14px;
+}
+.workspace-page .report-tools-heading h3 {
+  font: 26px/1.12 var(--serif);
+  margin: 0 0 10px;
+}
+.workspace-page .report-tools-heading > p:last-child {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 0;
+}
+.workspace-page .report-overlay .report-tools {
+  display: grid;
+  gap: 8px;
+  flex: none;
+}
+.workspace-page .report-tool {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
+}
+.workspace-page .report-tool > .ic {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--lapis);
+  flex: none;
+}
+.workspace-page .report-tool strong {
+  display: block;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+.workspace-page .report-tool small {
+  display: block;
+  margin-top: 3px;
+  color: var(--ink-soft);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.workspace-page .report-tool:hover:not(:disabled),
+.workspace-page .report-tool[aria-expanded='true'] {
+  border-color: var(--lapis);
+  background: var(--lapis-wash);
+}
+.workspace-page .report-tool:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.workspace-page .report-writing-note {
+  display: flex;
+  gap: 8px;
+  margin: auto 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+  color: var(--ink-soft);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.workspace-page .report-writing-note .ic {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--lapis);
+  margin-top: 1px;
+}
+.workspace-page .report-overlay .report-ai-context {
+  display: grid;
+  gap: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.workspace-page .report-overlay .report-editor label {
+  display: grid;
+  font-size: 11px;
+  gap: 7px;
+  margin: 0;
+}
+.workspace-page .report-overlay .report-ai-context input,
+.workspace-page .report-overlay .report-ai-context textarea {
+  min-height: 42px;
+  font: 13px/1.5 var(--sans);
+  background: var(--chalk);
+}
+.workspace-page .report-ai-context > p {
+  margin: 0;
+  line-height: 1.6;
+}
+.workspace-page .report-ai-context > button {
+  min-height: 42px;
+  font-size: 12px;
+}
+.workspace-page .report-editor-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px clamp(20px, 4vw, 60px) 24px;
+  background: var(--chalk);
+}
+.workspace-page .report-document-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  flex: none;
+}
+.workspace-page .report-view-switch {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  background: var(--paper);
+}
+.workspace-page .report-view-switch button {
+  min-height: 32px;
+  padding: 5px 14px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+.workspace-page .report-view-switch button[aria-pressed='true'] {
+  color: var(--lapis);
+  background: var(--lapis-wash);
+}
+.workspace-page .report-word-count {
+  color: var(--ink-soft);
+  font: 11px var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.workspace-page .report-editor-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  flex: 1;
+  width: 100%;
+  max-width: 900px;
+  min-height: 390px;
+  margin: 0 auto;
+  padding: 28px 36px 24px;
+  border: 1px solid var(--rule);
+  border-top: 2px solid color-mix(in srgb, var(--brass) 55%, var(--rule));
+  border-radius: 3px;
+  background: var(--paper);
+  box-shadow: 0 6px 24px #00000006;
+}
+.workspace-page .report-paper-kicker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: none;
+}
+.workspace-page .report-paper-kicker > .ic {
+  width: 18px;
+  height: 18px;
+  color: var(--ink-soft);
+  opacity: 0.6;
+}
+.workspace-page .report-status-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 3px 7px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.workspace-page .report-overlay .report-title-label {
+  flex: none;
+}
+.workspace-page .report-title-label > span,
+.workspace-page .report-body-label > span {
+  color: var(--ink-soft);
+  font-size: 10px;
+}
+.workspace-page .report-overlay .report-title-label input {
+  min-height: 50px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 36px/1.15 var(--serif);
+}
+.workspace-page .report-overlay .report-title-label input::placeholder {
+  color: var(--ink-soft);
+  opacity: 0.65;
+}
+.workspace-page .report-overlay .report-editor .report-body-label {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 190px;
+  padding-top: 18px;
+  border-top: 1px solid var(--rule);
+}
+.workspace-page .report-overlay .report-body-label textarea {
+  flex: 1;
+  min-height: 170px;
+  height: auto;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 0;
+  resize: vertical;
+  background: transparent;
+  color: var(--ink);
+  font: 15px/1.8 var(--sans);
+}
+.workspace-page .report-overlay .report-body-label textarea::placeholder {
+  color: var(--ink-soft);
+}
+.workspace-page .report-overlay .report-title-label input:focus-visible,
+.workspace-page .report-overlay .report-body-label textarea:focus-visible {
+  outline: 2px solid var(--lapis);
+  outline-offset: 5px;
+  border-radius: 2px;
+}
+.workspace-page .report-preview h3,
+.workspace-page .report-reader > h3 {
+  font: 38px/1.12 var(--serif);
+  margin: 0 0 22px;
+  overflow-wrap: anywhere;
+}
+.workspace-page .report-preview .report-text {
+  padding-top: 18px;
+  border-top: 1px solid var(--rule);
+}
+.workspace-page .report-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 1.8;
+}
+.workspace-page .report-overlay .report-actions {
+  position: static;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  gap: 20px;
+  min-height: 76px;
+  margin: 0;
+  padding: 12px 24px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
+}
+.workspace-page .report-overlay .report-editor .report-share-choice {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin: 0 auto 0 0;
+  max-width: 65ch;
+  font-size: 12px;
+}
+.workspace-page .report-share-choice input {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  accent-color: var(--lapis);
+  margin: 0;
+}
+.workspace-page .report-share-choice small {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 10px;
+  margin-top: 3px;
+}
+.workspace-page .report-save-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+.workspace-page .report-save-note .ic {
+  width: 16px;
+  height: 16px;
+}
+.workspace-page .report-save-actions {
+  display: flex;
+  gap: 10px;
+  flex: none;
+  margin-left: auto;
+}
+.workspace-page .report-save-actions button {
+  min-height: 44px;
+}
+.workspace-page .report-save-actions .ic {
+  width: 16px;
+  height: 16px;
+}
+.workspace-page .report-overlay-notice {
+  flex: none;
+  margin: 0;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+  font-size: 12px;
+}
+.workspace-page .report-reader {
+  width: calc(100% - 48px);
+  max-width: 900px;
+  margin: 28px auto;
+  padding: 30px 40px;
+  border: 1px solid var(--rule);
+  border-top: 2px solid color-mix(in srgb, var(--brass) 55%, var(--rule));
+  background: var(--paper);
+  box-shadow: 0 6px 24px #00000006;
+}
+.workspace-page .report-reader > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 22px;
+}
+.workspace-page .report-reader-actions,
+.workspace-page .report-delete-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.workspace-page .report-reader-actions .btn,
+.workspace-page .report-delete-actions .btn {
+  min-height: 40px;
+  font-size: 12px;
+}
+.workspace-page .report-reader-actions .ic {
+  width: 16px;
+  height: 16px;
+}
+.workspace-page .report-delete {
+  color: var(--remove);
+}
+.workspace-page .report-delete-confirm {
+  padding: 16px;
+  margin-bottom: 24px;
+  border: 1px solid color-mix(in srgb, var(--remove) 35%, var(--rule));
+  border-radius: 6px;
+  background: var(--chalk);
+}
+.workspace-page .report-delete-confirm p {
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 8px 0 16px;
+}
+.workspace-page .report-delete-primary {
+  background: var(--remove);
+  color: var(--on-remove);
+  border-color: var(--remove);
+}
+.workspace-page .report-reader header p {
+  margin: 8px 0 0;
+  font-size: 11px;
+}
+.workspace-page .report-reader > .report-text {
+  margin: 0;
+  padding-top: 22px;
+  border-top: 1px solid var(--rule);
+  font-size: 16px;
+}
+.workspace-page .report-discard-prompt {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+}
+.workspace-page .report-discard-prompt > div {
+  flex: 1;
+  min-width: 180px;
+}
+.workspace-page .report-discard-prompt p {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+/* The library stays compact; documents open in the full-screen desk. */
+.workspace-page .report-library {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  align-content: start;
+  gap: 14px;
+  padding: 6px 3px;
+  min-height: 0;
+  overflow: auto;
+}
+.workspace-page .report-library > button {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  align-items: start;
+  gap: 14px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+.workspace-page .report-library > button:hover {
+  border-color: var(--lapis);
+  box-shadow: 0 3px 12px #00000008;
+}
+.workspace-page .report-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.workspace-page .report-card-top > .ic {
+  color: var(--lapis);
+  width: 24px;
+  height: 24px;
+}
+.workspace-page .report-library strong {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font: 25px/1.2 var(--serif);
+  overflow-wrap: anywhere;
+}
+.workspace-page .report-card-excerpt {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+.workspace-page .report-card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+  color: var(--ink-soft);
+  font-size: 10px;
+}
+.workspace-page .report-library-open {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  color: var(--lapis);
+  font-size: 12px;
+}
+.workspace-page .report-library-open .ic {
+  width: 16px;
+  height: 16px;
+}
+.workspace-page .report-library-empty {
+  margin: auto;
+  padding: 24px;
+  text-align: center;
+  max-width: 500px;
+}
+.workspace-page .report-empty-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 68px;
+  margin: 0 auto 22px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  color: var(--lapis);
+  background: var(--paper);
+  box-shadow: 5px 5px 0 var(--lapis-wash);
+  transform: rotate(-4deg);
+}
+.workspace-page .report-empty-mark .ic {
+  width: 28px;
+  height: 28px;
+}
+.workspace-page .report-library-empty > .eyebrow {
+  color: var(--ink-soft);
+  font-size: 9px;
+}
+.workspace-page .report-library-empty h3 {
+  font: 30px/1.15 var(--serif);
+  margin: 12px 0;
+}
+.workspace-page .report-library-empty > .muted {
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+@media (max-width: 900px) {
+  .workspace-page .report-editor-layout {
+    grid-template-columns: 218px minmax(0, 1fr);
+  }
+  .workspace-page .report-writing-tools {
+    padding: 22px 16px;
+  }
+  .workspace-page .report-editor-main {
+    padding-inline: 20px;
+  }
+  .workspace-page .report-editor-sheet {
+    padding: 24px;
+  }
+  .workspace-page .report-overlay .report-title-label input {
+    font-size: 30px;
+  }
+}
+@media (max-width: 680px) {
+  .workspace-page .report-overlay-header {
+    min-height: 68px;
+    padding: 10px 16px;
+    gap: 10px;
+  }
+  .workspace-page .report-heading-icon {
+    width: 30px;
+    height: 36px;
+  }
+  .workspace-page .report-overlay-header h2 {
+    font-size: 21px;
+  }
+  .workspace-page .report-overlay-header .eyebrow {
+    font-size: 8px;
+  }
+  .workspace-page .report-unsaved {
+    display: none;
+  }
+  .workspace-page .report-editor-layout {
+    display: block;
+    overflow: auto;
+  }
+  .workspace-page .report-writing-tools {
+    display: block;
+    padding: 12px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+    overflow: visible;
+  }
+  .workspace-page .report-tools-heading,
+  .workspace-page .report-writing-note {
+    display: none;
+  }
+  .workspace-page .report-overlay .report-tools {
+    grid-template-columns: 1fr 1fr;
+  }
+  .workspace-page .report-tool {
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    min-height: 52px;
+  }
+  .workspace-page .report-tool small {
+    display: none;
+  }
+  .workspace-page .report-tool strong {
+    font-size: 11px;
+  }
+  .workspace-page .report-tool .ic {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+  }
+  .workspace-page .report-overlay .report-ai-context {
+    padding-top: 16px;
+  }
+  .workspace-page .report-editor-main {
+    padding: 12px 16px 20px;
+    gap: 12px;
+    overflow: visible;
+  }
+  .workspace-page .report-view-switch button {
+    min-height: 36px;
+  }
+  .workspace-page .report-editor-sheet {
+    min-height: 360px;
+    padding: 20px;
+    gap: 14px;
+  }
+  .workspace-page .report-overlay .report-title-label input {
+    font-size: 28px;
+  }
+  .workspace-page .report-overlay .report-body-label textarea {
+    min-height: 200px;
+    font-size: 14px;
+  }
+  .workspace-page .report-overlay .report-actions {
+    flex-wrap: wrap;
+    gap: 12px;
+    min-height: 0;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+  .workspace-page .report-overlay .report-share-choice {
+    flex-basis: 100%;
+    font-size: 11px;
+  }
+  .workspace-page .report-share-choice small {
+    display: none;
+  }
+  .workspace-page .report-save-note {
+    flex-basis: 100%;
+    font-size: 11px;
+  }
+  .workspace-page .report-save-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .workspace-page .report-overlay-notice,
+  .workspace-page .report-discard-prompt {
+    padding-inline: 16px;
+  }
+  .workspace-page .report-reader {
+    width: calc(100% - 32px);
+    margin: 16px auto;
+    padding: 24px;
+  }
+  .workspace-page .report-preview h3,
+  .workspace-page .report-reader > h3 {
+    font-size: 30px;
+  }
+  .workspace-page .report-reader > .report-text {
+    font-size: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-page dialog.report-overlay {
+    animation: none;
+    transition: none;
+  }
+  .workspace-page .report-tool,
+  .workspace-page .report-library > button {
+    transition: none;
+  }
+}

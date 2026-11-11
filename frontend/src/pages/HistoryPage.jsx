@@ -3,6 +3,7 @@ import { api, formatTime } from '../lib/api';
 import { normalizeRequest } from '../hooks/useWorkbench';
 import { SqlBlock } from '../components/SqlBlock';
 import { CommandOutput, operationOf } from '../components/CommandResult';
+import { Icon } from '../components/Icon';
 import '../styles/history.css';
 import { canConfirmCommand, databaseAccess } from '../lib/access';
 
@@ -96,6 +97,8 @@ function HistoryNavigation({ page, offset, loading, disabled, onPage, placement 
   const count = page?.requests.length || 0;
   const total = page?.total || 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const showButtons = loading || pages > 1;
+  if (placement === 'bottom' && !showButtons) return null;
   return (
     <nav className="history-pagination" aria-label={`History pages ${placement}`}>
       <span className="history-page-count" {...(placement === 'top' ? { role: 'status' } : {})}>
@@ -105,29 +108,31 @@ function HistoryNavigation({ page, offset, loading, disabled, onPage, placement 
             ? `${offset + 1}–${offset + count} of ${total.toLocaleString()} ${total === 1 ? 'request' : 'requests'} · Page ${Math.floor(offset / PAGE_SIZE) + 1} of ${pages.toLocaleString()}`
             : '0 requests'}
       </span>
-      <div className="history-page-buttons">
-        <button
-          className="btn"
-          disabled={disabled || loading || offset === 0}
-          onClick={() => onPage(0)}
-        >
-          Newest
-        </button>
-        <button
-          className="btn"
-          disabled={disabled || loading || offset === 0}
-          onClick={() => onPage(Math.max(0, offset - PAGE_SIZE))}
-        >
-          Previous
-        </button>
-        <button
-          className="btn"
-          disabled={disabled || loading || !page?.has_more}
-          onClick={() => onPage(offset + PAGE_SIZE)}
-        >
-          Next
-        </button>
-      </div>
+      {showButtons && (
+        <div className="history-page-buttons">
+          <button
+            className="btn"
+            disabled={disabled || loading || offset === 0}
+            onClick={() => onPage(0)}
+          >
+            Newest
+          </button>
+          <button
+            className="btn"
+            disabled={disabled || loading || offset === 0}
+            onClick={() => onPage(Math.max(0, offset - PAGE_SIZE))}
+          >
+            Previous
+          </button>
+          <button
+            className="btn"
+            disabled={disabled || loading || !page?.has_more}
+            onClick={() => onPage(offset + PAGE_SIZE)}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </nav>
   );
 }
@@ -269,6 +274,7 @@ export default function HistoryPage({ workbench, onReuse }) {
               />
             </label>
             <button className="btn pri" disabled={!target}>
+              <Icon name="search" />
               Search
             </button>
             {(search || operation || filters.search || filters.operation) && (
@@ -290,6 +296,7 @@ export default function HistoryPage({ workbench, onReuse }) {
               type="button"
               onClick={() => setRevision((value) => value + 1)}
             >
+              <Icon name="replay" />
               Refresh
             </button>
           </div>

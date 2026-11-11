@@ -4,6 +4,7 @@ import re
 
 from . import workbench
 from .reports import ReportStore
+from . import report_pdf
 from .workspaces import WorkspaceStore, AUTHORIZATION_LOCK
 
 
@@ -35,6 +36,16 @@ def get(handler, path, user):
     if reports:
         handler.json(ReportStore(workbench.get_repository()).list_reports(account_id, reports[1]))
         return True
+    report_download = re.fullmatch(r"/api/workspaces/([A-Za-z0-9-]+)/reports/([A-Za-z0-9-]+)/pdf", path)
+    if report_download:
+        report = ReportStore(workbench.get_repository()).get_report(account_id, report_download[1], report_download[2])
+        try:
+            content = report_pdf.render_report(report)
+        except report_pdf.PdfExportUnavailable as error:
+            handler.json({'error': str(error), 'code': 'pdf_export_unavailable'}, 503)
+            return True
+        handler.send_body(content, 'application/pdf', filename=report_pdf.filename(report['title']))
+        return True
     match = re.fullmatch(r"/api/workspaces/([A-Za-z0-9-]+)", path)
     if match:
         handler.json(store().get_workspace(account_id, match[1]))
@@ -60,6 +71,11 @@ def post(handler, path, user):
         result = (service.generate(account_id, reports[1], payload) if reports[2]
                   else service.save_report(account_id, reports[1], payload))
         handler.json(result)
+        return True
+    report_delete = re.fullmatch(r"/api/workspaces/([A-Za-z0-9-]+)/reports/([A-Za-z0-9-]+)/delete", path)
+    if report_delete:
+        handler.json(ReportStore(workbench.get_repository()).delete_report(
+            account_id, report_delete[1], report_delete[2], payload.get('version')))
         return True
     match = re.fullmatch(r"/api/workspaces/([A-Za-z0-9-]+)/(invite|members|remove|grants|invitations/revoke|open|attach|delete)", path)
     if not match:

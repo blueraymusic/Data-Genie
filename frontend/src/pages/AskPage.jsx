@@ -11,12 +11,18 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
   const textarea = useRef(null),
     feed = useRef(null),
     wasBlocked = useRef(false),
-    lastJump = useRef(0);
+    lastJump = useRef(0),
+    fileRevision = useRef(0);
   const [validation, setValidation] = useState(''),
     [attachments, setAttachments] = useState([]),
     [readingFiles, setReadingFiles] = useState(false);
   useLayoutEffect(() => {
+    fileRevision.current++;
     setAttachments([]);
+    setReadingFiles(false);
+    return () => {
+      fileRevision.current++;
+    };
   }, [workbench.session.session_id]);
   const requestWindow = useRequestWindow(workbench.feed, workbench.session.session_id);
   const aiAvailable = Boolean(workbench.session.ai?.enabled);
@@ -252,6 +258,7 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
               multiple
               disabled={blocked}
               onChange={async (event) => {
+                const revision = fileRevision.current;
                 const files = [...event.target.files];
                 event.target.value = '';
                 if (
@@ -294,12 +301,13 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
                         }),
                     ),
                   );
+                  if (revision !== fileRevision.current) return;
                   setAttachments((current) => [...current, ...loaded]);
                   setValidation('');
                 } catch (error) {
-                  setValidation(error.message);
+                  if (revision === fileRevision.current) setValidation(error.message);
                 } finally {
-                  setReadingFiles(false);
+                  if (revision === fileRevision.current) setReadingFiles(false);
                 }
               }}
             />

@@ -95,14 +95,21 @@ export const faqGroups = [
       {
         question: 'Can I create and share reports?',
         search:
-          'In Teams open Reports and New report. Write from a blank page, use a template, or draft with Data Genie AI from source notes you supply. Members can edit their own drafts. Owners review and share reports with workspace members and viewers. Viewers see only shared reports, not database rows, chats or SQL. Reports are saved snapshots, not live dashboards.',
+          'In Teams open Reports and New report. Write from a blank page, use a template, or draft with Data Genie AI from source notes you supply. Members can edit their own drafts. Owners review and share reports with workspace members and viewers. Viewers see only shared reports, not database rows, chats or SQL. Anyone allowed to read a saved report can Download PDF. Only the creator can Delete report while a Member or Owner, with permanent deletion after confirmation. Reports are saved snapshots, not live dashboards.',
         answer: (
-          <p>
-            Open <strong>Teams → Reports → New report</strong>. Write from a blank page, use a
-            template, or draft with Data Genie AI from notes you supply. Members can edit their own
-            drafts; the owner reviews and shares them. Viewers see only shared reports. Reports are
-            saved snapshots, not live dashboards.
-          </p>
+          <>
+            <p>
+              Open <strong>Teams → Reports → New report</strong>. Write from a blank page, use a
+              template, or draft with Data Genie AI from notes you supply. Members can edit their
+              own drafts; the owner reviews and shares them. Viewers see only shared reports.
+              Reports are saved snapshots, not live dashboards.
+            </p>
+            <p>
+              Anyone who can read a saved report can choose <strong>Download PDF</strong>, including
+              viewers. Only its creator can choose <strong>Delete report</strong>, while they are a
+              Member or Owner in that workspace. Deletion is permanent and asks for confirmation.
+            </p>
+          </>
         ),
       },
       {

@@ -241,26 +241,24 @@
 .workspace-page .database-form .database-modes {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 0;
+  gap: 8px;
 }
 .workspace-page .database-form .database-modes > label {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
   gap: 12px;
   align-items: start;
+  min-width: 0;
   padding: 12px;
-  border: 0;
-  border-bottom: 1px solid var(--rule);
-  border-radius: 0;
-  background: transparent;
-}
-.workspace-page .database-form .database-modes > label:first-child {
-  border-top: 1px solid var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper);
 }
 .workspace-page .database-form .database-modes > label:has(input:checked) {
   background: var(--lapis-wash);
+  border-color: var(--lapis);
 }
-.workspace-page .database-form .database-modes > label:hover {
+.workspace-page .database-form .database-modes > label:not(:has(input:checked)):hover {
   background: color-mix(in srgb, var(--lapis-wash) 45%, var(--chalk));
 }
 .workspace-page .database-form .database-modes input {
@@ -323,8 +321,6 @@
     min-height: 62px;
     padding: 9px 10px;
     gap: 9px;
-    border: 1px solid var(--rule);
-    border-radius: 6px;
   }
   .workspace-page .database-entry-layout .database-modes small {
     font-size: 11px;

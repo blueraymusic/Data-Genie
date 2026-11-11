@@ -1,4 +1,5 @@
 # Small hosted runtime. The local SQLite app still runs without these packages.
+-r ../backend/requirements-reports.txt
 gunicorn==26.2.0
 python-tds==1.17.1
 pyOpenSSL==26.4.0

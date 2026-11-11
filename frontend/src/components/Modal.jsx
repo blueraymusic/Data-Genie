@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
-export function Modal({ titleId, onClose, children }) {
+export function Modal({ titleId, onClose, children, className }) {
   const ref = useRef(null);
   useLayoutEffect(() => {
     const dialog = ref.current;
@@ -9,6 +9,7 @@ export function Modal({ titleId, onClose, children }) {
   return (
     <dialog
       ref={ref}
+      className={className}
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();

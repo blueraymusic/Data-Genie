@@ -1,0 +1,2 @@
+# PDF regression checks only; not included in the hosted application.
+pypdf==7.0.1; python_version >= '3.10'

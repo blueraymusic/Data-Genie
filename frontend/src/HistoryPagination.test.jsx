@@ -255,3 +255,18 @@ it('clears applied text with the search field and keeps Clear filters available 
   expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull();
   expect(search.value).toBe('');
 });
+
+it('keeps the empty state compact and restores pagination when requests become available', async () => {
+  serve([]);
+  const events = userEvent.setup();
+  render(<HistoryPage workbench={workbench()} onReuse={vi.fn()} />);
+  await screen.findByText('No saved requests match these filters.');
+  expect(screen.getByRole('status').textContent).toBe('0 requests');
+  expect(screen.queryByRole('navigation', { name: 'History pages bottom' })).toBeNull();
+  expect(screen.queryByRole('button', { name: /^(Newest|Previous|Next)$/ })).toBeNull();
+  serve();
+  await events.click(screen.getByRole('button', { name: 'Refresh', exact: true }));
+  const top = screen.getByRole('navigation', { name: 'History pages top' });
+  await within(top).findByText('1–20 of 45 requests · Page 1 of 3');
+  expect(within(top).getByRole('button', { name: 'Next', exact: true }).disabled).toBe(false);
+});

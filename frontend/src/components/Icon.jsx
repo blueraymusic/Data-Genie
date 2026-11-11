@@ -20,6 +20,8 @@ export function Icon({ name, className = 'ic', ...props }) {
     arrow: 'M5 12h14m-5-5 5 5-5 5',
     send: 'M12 19V5m-6 6 6-6 6 6',
     workspace: 'M8 3v18M8 9h13',
+    report: 'M14 3H5v18h14V8l-5-5ZM14 3v5h5M8 12h8M8 16h6',
+    download: 'M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5',
     account: 'M5 21v-2a7 7 0 0 1 14 0v2',
   };
   return (

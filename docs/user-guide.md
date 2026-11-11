@@ -35,7 +35,9 @@ Choose **Attach PDF or image** beside the Ask composer. You can add up to two PD
 
 ## Reports
 
-In **Teams**, select a workspace and open **Reports**. Create a blank report, use the template, or generate a draft from source notes you supply. Review AI text before saving. Members can edit their own drafts; only the owner can share a report with all workspace members and viewers. Viewers get a reading surface without raw database access. See the [report workflow](workspaces.md#reports).
+In **Teams**, select a workspace and open **Reports**. Reports open in a full-screen view with a fixed Close button and save controls. Switch between **Write** and **Preview** without losing your text; the word count updates as you write. Closing an edited report asks before discarding unsaved work. Create a blank report, use the template, or generate a draft from source notes you supply. Review AI text before saving. Members can edit their own drafts; only the owner can edit shared reports or share a report with all workspace members and viewers. Viewers get a reading surface without raw database access. See the [report workflow](workspaces.md#reports).
+
+Anyone who can read a saved report can choose **Download PDF**, including viewers. Only its creator can choose **Delete report**, and only while they are a Member or Owner in that workspace. Deletion asks for confirmation and is permanent.
 
 ## Run SQL
 

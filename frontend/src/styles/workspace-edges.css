@@ -1,0 +1,95 @@
+/* One border treatment for workspace surfaces and flat section navigation. */
+.workspace-page .workspaces-page {
+  --workspace-edge: color-mix(in srgb, var(--ink-soft) 30%, var(--paper));
+}
+.workspace-page .workspace-main,
+.workspace-page .workspace-person-detail,
+.workspace-page .workspace-access-card,
+.workspace-page .report-document {
+  border: 1px solid var(--workspace-edge, var(--rule));
+  border-radius: 10px;
+  background-clip: padding-box;
+}
+.workspace-page .workspace-section-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 20px;
+  flex: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  border-bottom: 1px solid var(--workspace-edge, var(--rule));
+  padding: 3px 3px 0;
+  scroll-padding-inline: 8px;
+}
+.workspace-page .workspace-section-tabs > button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  margin: 0;
+  padding: 9px 2px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease;
+}
+.workspace-page .workspace-section-tabs > button[aria-current='page'] {
+  color: var(--lapis);
+  border-bottom-color: var(--lapis);
+  background: transparent;
+  box-shadow: none;
+}
+.workspace-page .workspace-section-tabs > button:hover {
+  color: var(--ink);
+  background: transparent;
+}
+.workspace-page .workspace-section-tabs > button:focus-visible {
+  outline: 2px solid var(--lapis);
+  outline-offset: -3px;
+  border-radius: 4px;
+}
+.workspace-page .workspace-section-tabs > button > span {
+  min-width: 20px;
+  padding-inline: 5px;
+  height: 20px;
+  border: 1px solid var(--workspace-edge, var(--rule));
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.workspace-page .workspace-section-tabs > button[aria-current='page'] > span {
+  color: var(--lapis);
+  border-color: color-mix(in srgb, var(--lapis) 40%, var(--rule));
+  background: var(--lapis-wash);
+}
+.workspace-page .workspace-access-card > footer,
+.workspace-page .report-actions {
+  border-top: 1px solid var(--workspace-edge, var(--rule));
+}
+.workspace-page .report-actions {
+  gap: 10px;
+}
+.workspace-page .report-text,
+.workspace-page .reports-list strong,
+.workspace-page .workspace-person-heading h3 {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 620px) {
+  .workspace-page .workspace-section-tabs {
+    gap: 14px;
+  }
+  .workspace-page .workspace-section-tabs > button {
+    font-size: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-page .workspace-section-tabs > button {
+    transition: none;
+  }
+}

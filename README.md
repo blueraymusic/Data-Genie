@@ -13,7 +13,7 @@ Ask your database questions in plain English. Use a SQLite file or connect Postg
 - Add, rename, or delete tables and columns in Structure, with a SQL preview before each change.
 - Sort, copy, or export results as CSV, and revisit saved requests in History.
 - Create a team, invite teammates with a private code, and grant or revoke access per database.
-- Write reports from a blank page or template, or draft with Data Genie AI. Owners share approved reports; viewers see only shared reports.
+- Write full-screen reports from a blank page or template, or draft from your notes with Data Genie AI. Owners share approved reports; viewers see only shared reports.
 - Attach PDFs or images to an Ask request for extra context.
 
 Choose **Create team workspace** on the database screen, name it, then add a database in the new workspace. Existing databases stay in your personal workspace. Invitations use a private code you share yourself; Data Genie does not send email.
@@ -21,6 +21,10 @@ Choose **Create team workspace** on the database screen, name it, then add a dat
 See the [workspace guide](docs/user-guide.md) for examples and [workspaces and access](docs/workspaces.md) for sharing. Account, Teams, and saved History are available without a database connection.
 
 ![Workspace showing a request, its SQL translation, and matching customers](docs/images/workspace.jpg)
+
+Reports have a focused writing view, a preview, and a live word count. Writing tools sit beside the document, with Save and Close always in reach. Owners share reports; viewers can read them and download a PDF without database access. Creators can permanently delete their own saved reports after confirming, while they are a Member or Owner.
+
+![Full-screen report editor with writing tools](docs/images/reports.jpg)
 
 Built with React, Vite, Python, and SQLite. Screenshots use sample data.
 
@@ -54,6 +58,12 @@ For local development, open the address printed by `npm start`, sign up, and cho
 `npm start` uses the project's `.venv` when available. `npm run dev` starts the frontend only; keep the server running too.
 
 If port 8000 is busy, run `npm start -- 8001`.
+
+For PDF report downloads locally, install the optional report package, then restart the server:
+
+```bash
+python3 -m pip install -r backend/requirements-reports.txt
+```
 
 For live frontend updates, start Vite in another terminal:
 

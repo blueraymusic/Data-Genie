@@ -134,7 +134,10 @@ function PersonAccess({ member, details, disabled, onAction }) {
   }, [details.databases]);
   const owner = member.role === 'owner';
   return (
-    <section className="workspace-person-detail" aria-label={'Access for ' + member.email}>
+    <section
+      className={'workspace-person-detail' + (owner ? ' is-owner' : '')}
+      aria-label={'Access for ' + member.email}
+    >
       <header className="workspace-person-heading">
         <div>
           <h3>

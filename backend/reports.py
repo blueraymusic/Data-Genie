@@ -12,6 +12,24 @@ class ReportStore(WorkspaceStore):
         if workspace['role'] == 'viewer':
             raise PermissionError('Viewers can read shared reports only.')
 
+    @staticmethod
+    def _permissions(workspace, row, account_id):
+        return {**dict(row), 'published': bool(row['published']),
+                'can_edit': workspace['role'] == 'owner' or (workspace['role'] == 'member' and row['author_id'] == account_id and not row['published']),
+                'can_delete': workspace['role'] != 'viewer' and row['author_id'] == account_id}
+
+    @staticmethod
+    def _visible_report(connection, workspace, account_id, report_id):
+        if not isinstance(report_id, str) or not report_id or len(report_id) > 100:
+            raise PermissionError('This report is not available for your account.')
+        row = connection.execute('''SELECT r.*,a.first_name,a.last_name FROM workspace_reports r
+            JOIN accounts a ON a.account_id=r.author_id WHERE r.workspace_id=? AND r.report_id=?
+            AND (?='owner' OR r.published=1 OR (?='member' AND r.author_id=?))''',
+            (workspace['workspace_id'], report_id, workspace['role'], workspace['role'], account_id)).fetchone()
+        if row is None:
+            raise PermissionError('This report is not available for your account.')
+        return row
+
     @_serialized
     def list_reports(self, account_id, workspace_id):
         with self.repository._connection() as connection:
@@ -20,8 +38,28 @@ class ReportStore(WorkspaceStore):
                 JOIN accounts a ON a.account_id=r.author_id WHERE r.workspace_id=?
                 AND (?='owner' OR r.published=1 OR (?='member' AND r.author_id=?)) ORDER BY r.updated_at DESC,r.report_id''',
                 (workspace_id, workspace['role'], workspace['role'], account_id)).fetchall()
-            return {'reports': [{**dict(row), 'published': bool(row['published']),
-                                 'can_edit': workspace['role'] == 'owner' or (workspace['role'] == 'member' and row['author_id'] == account_id)} for row in rows]}
+            return {'reports': [self._permissions(workspace, row, account_id) for row in rows]}
+
+    @_serialized
+    def get_report(self, account_id, workspace_id, report_id):
+        with self.repository._connection() as connection:
+            workspace = self._membership(connection, account_id, workspace_id)
+            row = self._visible_report(connection, workspace, account_id, report_id)
+            return self._permissions(workspace, row, account_id)
+
+    @_serialized
+    def delete_report(self, account_id, workspace_id, report_id, version):
+        with self.repository._connection(write=True) as connection:
+            workspace = self._membership(connection, account_id, workspace_id)
+            self._editor(workspace)
+            row = self._visible_report(connection, workspace, account_id, report_id)
+            if row['author_id'] != account_id:
+                raise PermissionError('Only the report creator can delete this report.')
+            if type(version) is not int or version != row['version']:
+                raise ValueError('This report changed in another session. Reopen it before deleting.')
+            connection.execute('DELETE FROM workspace_reports WHERE report_id=? AND workspace_id=? AND version=?',
+                               (report_id, workspace_id, version))
+            return {'deleted': True, 'report_id': report_id}
 
     @_serialized
     def save_report(self, account_id, workspace_id, payload):
@@ -33,6 +71,9 @@ class ReportStore(WorkspaceStore):
         if type(payload.get('published', False)) is not bool:
             raise ValueError('Choose draft or shared.')
         published = payload.get('published', False)
+        report_id = payload.get('report_id')
+        if report_id is not None and (not isinstance(report_id, str) or not report_id.strip() or len(report_id) > 100):
+            raise ValueError('Choose a valid report.')
         with self.repository._connection(write=True) as connection:
             workspace = self._membership(connection, account_id, workspace_id)
             self._editor(workspace)
@@ -43,7 +84,7 @@ class ReportStore(WorkspaceStore):
                 if not isinstance(report_id, str) or len(report_id) > 100:
                     raise ValueError('Choose a valid report.')
                 row = connection.execute('SELECT * FROM workspace_reports WHERE report_id=? AND workspace_id=?', (report_id, workspace_id)).fetchone()
-                if row is None or (workspace['role'] != 'owner' and row['author_id'] != account_id):
+                if row is None or (workspace['role'] != 'owner' and (row['author_id'] != account_id or row['published'])):
                     raise PermissionError('This report is not available for editing.')
                 if type(payload.get('version')) is not int or payload['version'] != row['version']:
                     raise ValueError('This report changed in another session. Reopen it before saving.')
@@ -64,6 +105,9 @@ class ReportStore(WorkspaceStore):
             raise ValueError('Describe the report, up to 1,000 characters.')
         with self.repository._connection(write=True) as connection:
             self._editor(self._membership(connection, account_id, workspace_id))
+            config = settings.gemini_settings()
+            if not config['api_key']:
+                raise ValueError('Data Genie AI is unavailable. You can write a report manually.')
             now = int(time.time())
             row = connection.execute('SELECT * FROM report_ai_budgets WHERE account_id=?', (account_id,)).fetchone()
             if row and now - row['started_at'] < 3600 and row['attempts'] >= 10:
@@ -74,9 +118,6 @@ class ReportStore(WorkspaceStore):
                 connection.execute('UPDATE report_ai_budgets SET started_at=?,attempts=1 WHERE account_id=?', (now, account_id))
             else:
                 connection.execute('UPDATE report_ai_budgets SET attempts=attempts+1 WHERE account_id=?', (account_id,))
-        config = settings.gemini_settings()
-        if not config['api_key']:
-            raise ValueError('Data Genie AI is unavailable. You can write a report manually.')
         try:
             response = gemini_provider._request_json(
                 f"{gemini_provider.API_ROOT}/{config['model']}:generateContent", config['api_key'], {

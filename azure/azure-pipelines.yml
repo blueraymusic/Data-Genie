@@ -34,7 +34,7 @@ stages:
             inputs: { versionSpec: '3.12' }
           - script: |
               set -eu
-              python -m pip install -r azure/requirements.txt -r backend/requirements-postgres.txt
+              python -m pip install -r azure/requirements.txt -r backend/requirements-postgres.txt -r tests/requirements.txt
               npm ci
               npm test
               npm run build

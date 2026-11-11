@@ -411,6 +411,23 @@
   overflow-wrap: anywhere;
   font-size: 11px;
 }
+.workspace-page .workspace-person-detail.is-owner {
+  align-self: start;
+  flex: 0 0 auto;
+  width: 100%;
+  height: fit-content;
+}
+.workspace-page .workspace-person-detail.is-owner .workspace-person-heading {
+  margin-bottom: 14px;
+}
+.workspace-page .workspace-person-detail.is-owner .workspace-access-explanation h4 {
+  margin-bottom: 6px;
+}
+.workspace-page .workspace-person-detail.is-owner .workspace-access-explanation p {
+  max-width: 76ch;
+  margin: 0;
+  line-height: 1.65;
+}
 .workspace-page .workspace-member-role {
   display: flex;
   align-items: end;
@@ -533,7 +550,10 @@
   color: var(--remove);
 }
 .workspace-page .workspace-people-tab > .workspace-section + .workspace-section {
-  border-top: 1px solid var(--rule);
+  border-top: 0;
+}
+.workspace-page .workspace-people-tab + .workspace-settings {
+  border-top: 0;
 }
 .workspace-page .workspace-invite-form,
 .workspace-page .workspace-attach,

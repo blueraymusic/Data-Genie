@@ -106,23 +106,54 @@
   align-items: end;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px 24px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--rule);
-  background: var(--chalk);
+  gap: 12px 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: var(--shadow-raised);
 }
 .workspace-page .schema-toolbar > label {
   display: grid;
   gap: 6px;
-  flex: 1 1 180px;
-  max-width: 300px;
+  flex: 1 1 200px;
+  max-width: 320px;
   min-width: 0;
-  font-size: 12px;
+  margin: 0;
+  font: 500 12px/18px var(--sans);
   color: var(--ink-soft);
 }
 .workspace-page .schema-toolbar select {
   width: 100%;
   min-width: 0;
+  min-height: 44px;
+  height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 7px;
+  background: var(--chalk);
+  color: var(--ink);
+  font: 400 13px/20px var(--sans);
+}
+.workspace-page .schema-toolbar > .schema-actions {
+  gap: 8px;
+  margin: 0;
+}
+.workspace-page .schema-toolbar .btn {
+  min-height: 44px;
+  height: 44px;
+  padding: 10px 14px;
+  border-radius: 7px;
+  font: 500 13px/20px var(--sans);
+}
+.workspace-page .schema-toolbar .ic {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.workspace-page .schema-toolbar :is(select, button):focus-visible {
+  outline: 2px solid var(--lapis);
+  outline-offset: 2px;
 }
 .workspace-page .tbl[id^='schema-table-'] {
   scroll-margin-top: 140px;
@@ -165,7 +196,8 @@
     width: 100%;
   }
   .workspace-page .schema-toolbar > .schema-actions .btn {
-    flex: 1 1 auto;
+    flex: 1 1 140px;
+    min-width: 0;
   }
   .workspace-page .structure-page .tbl {
     padding-block: 18px;

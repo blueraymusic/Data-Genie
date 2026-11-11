@@ -1,0 +1,2 @@
+# Optional PDF report downloads. Core local SQLite features use only Python.
+reportlab==5.1.0

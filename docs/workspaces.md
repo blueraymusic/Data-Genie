@@ -65,10 +65,16 @@ Deleting ends the team's sharing: memberships, invitations, workspace reports an
 
 ## Reports
 
-Choose **Reports** in a workspace, then **New report**. Start with a blank page, choose **Use a template**, or select **Draft with Data Genie AI**. AI generation sends only the goal and source notes you enter; it does not run database queries. Check its facts before saving. Generation is limited to ten drafts per account per hour.
+Choose **Reports** in a workspace, then **New report**. Reports open in a full-screen view with a fixed Close button and save controls. The writing tools sit beside the document on desktop and above it on mobile. **Write** and **Preview** show the same draft, with a live word count. Closing an edited report asks before discarding unsaved work. Start with a blank page, choose **Use a template**, or select **Draft with Data Genie AI**. AI generation sends only the goal and source notes you enter; it does not run database queries. Check its facts before saving. Generation is limited to ten drafts per account per hour.
 
-Members can create and edit their own drafts. Owners can review every report and choose **Share with all workspace members and viewers** when saving. Viewers can read only shared reports and cannot create reports or access the underlying databases, chats, SQL, or History. Drafts are visible only to their author and the owner. Reports are snapshots, not live dashboards; update them manually when source data changes. Editing a shared report returns it to draft unless the owner shares it again when saving.
+Members can create and edit their own drafts. Once shared, only the owner can edit or unshare a report. Owners can review every report and choose **Share with all workspace members and viewers** when saving. Viewers can read only shared reports and cannot create reports or access the underlying databases, chats, SQL, or History. Drafts are visible only to their author and the owner. Reports are snapshots, not live dashboards; update them manually when source data changes. Editing a shared report returns it to draft unless the owner shares it again when saving.
 
 Report saves check a version number. If another session has saved changes first, reopen the report before editing again; stale edits cannot silently overwrite it.
 
-Charts in shared reports, public links, report exports, and scheduled delivery are not included yet.
+Choose **Download PDF** on a saved report to keep a copy. Anyone who can read that report can download it: viewers can download shared reports, while drafts remain limited to their author and the owner. PDF downloads do not grant access to the underlying database.
+
+Only the report's creator can choose **Delete report**, and only while they are a Member or Owner of the workspace. Confirming permanently removes the saved report, including a shared report. Owners cannot delete reports written by someone else; viewers cannot delete reports.
+
+For local PDF downloads, install `python3 -m pip install -r backend/requirements-reports.txt` and restart the server. The Azure deployment includes this package.
+
+Charts in shared reports, public links, and scheduled delivery are not included yet.

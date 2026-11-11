@@ -3,6 +3,7 @@ import { api } from '../lib/api';
 import { ResultTable } from '../components/ResultTable';
 import { Translation } from '../components/CommandResult';
 import { SchemaChangeDialog } from '../components/SchemaChangeDialog';
+import { Icon } from '../components/Icon';
 import { schemaDialect } from '../lib/schemaSql';
 import { Link } from '../lib/router';
 import '../styles/structure.css';
@@ -329,15 +330,18 @@ export default function StructurePage({ workbench }) {
             disabled={disabled || tables === null || Boolean(error)}
             onClick={() => setChange({ action: 'create-table' })}
           >
+            <Icon name="plus" />
             Create table
           </button>
           <button
             className="btn"
+            disabled={tables === null}
             onClick={() => {
               setRevision((value) => value + 1);
               setError('');
             }}
           >
+            <Icon name="replay" />
             Refresh structure
           </button>
         </div>

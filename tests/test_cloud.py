@@ -297,6 +297,11 @@ class HostingTests(unittest.TestCase):
             with zipfile.ZipFile(archive) as bundle:
                 names = bundle.namelist()
                 self.assertIn("backend/wsgi.py", names)
+                self.assertIn("backend/requirements-reports.txt", names)
+                for font in ('NotoSans-Regular.ttf', 'NotoSans-Bold.ttf', 'NotoSansSymbols2-Regular.ttf',
+                             'NotoSansCJK-Regular.ttf', 'OFL.txt', 'NotoSansCJK-OFL.txt', 'SOURCES.txt'):
+                    self.assertIn('backend/assets/fonts/' + font, names)
+                self.assertIn(b'../backend/requirements-reports.txt', bundle.read('azure/requirements.txt'))
                 self.assertTrue(any(name.startswith("frontend/dist/assets/") for name in names))
                 self.assertFalse(any(name.startswith(("db/", ".git/", ".env")) or name.endswith((".sqlite3", ".key")) for name in names))
                 self.assertEqual(bundle.read("requirements.txt"), b"-r azure/requirements.txt\n-r backend/requirements-postgres.txt\n")
