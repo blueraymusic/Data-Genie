@@ -231,3 +231,25 @@ class AgentApiTests(HttpHarness, unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn('/api/v1/actions/prepare_change', schema['paths'])
         self.assertEqual(schema['components']['securitySchemes']['agentKey']['scheme'], 'bearer')
+
+    def test_default_key_is_read_only_for_seven_days(self):
+        status, key = self.request('POST', '/api/agent-tokens', {'name': 'Default fixture', 'workspace_id': self.workspace_id, 'password': self.password})
+        self.assertEqual(status, 201)
+        self.assertEqual(key['scopes'], ['databases:read'])
+        self.assertEqual(key['expires_at'] - key['created_at'], 7 * 86400)
+
+    def test_read_only_sqlite_engine_denies_writes_even_without_parser(self):
+        with workbench.session_scope(self.session_id):
+            for sql in ('DELETE FROM notes', 'CREATE TEMP TABLE hostile(id)', "ATTACH DATABASE ':memory:' AS hostile", 'PRAGMA query_only=OFF'):
+                with workbench.db(readonly=True) as connection:
+                    with self.assertRaises(sqlite3.DatabaseError):
+                        connection.execute(sql)
+        key = self.key()
+        for sql in ("ATTACH DATABASE ':memory:' AS hostile", 'PRAGMA query_only=OFF', "SELECT load_extension('hostile')", 'WITH gone AS (DELETE FROM notes RETURNING *) SELECT * FROM gone'):
+            status, result = self.agent(key, 'query', {'database_id': self.session['database_id'], 'sql': sql})
+            self.assertIn(status, (200, 400))
+            if status == 200:
+                self.assertFalse(result.get('matched'), sql)
+                self.assertFalse(result.get('requires_confirmation'), sql)
+        with workbench.session_scope(self.session_id), workbench.db(readonly=True) as connection:
+            self.assertEqual(connection.execute('SELECT COUNT(*) FROM notes').fetchone()[0], 2)

@@ -15,6 +15,7 @@ import sqlite3
 import sys
 import tempfile
 import errno
+import time
 
 from . import workbench
 from . import settings
@@ -129,6 +130,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def accounts(self):
         self.account_deletion().cleanup()
+        repository = workbench.get_repository()
+        with repository._connection() as connection:
+            expired = connection.execute('SELECT 1 FROM signup_verifications WHERE expires_at<=? LIMIT 1', (int(time.time()),)).fetchone()
+        if expired:
+            with repository._connection(write=True) as connection:
+                connection.execute('DELETE FROM signup_verifications WHERE expires_at<=?', (int(time.time()),))
         return authentication.Accounts(workbench.get_repository())
 
     def account_deletion(self):
@@ -439,7 +446,7 @@ class Handler(BaseHTTPRequestHandler):
                         login_hash=authentication.token_hash(self.login_token()))
                 self.set_microsoft_cookie(browser)
                 return self.json({"url": "/api/auth/microsoft/start?intent=link"})
-            if parsed.path in {"/api/auth/register", "/api/auth/login"}:
+            if parsed.path in {"/api/auth/register", "/api/auth/login", "/api/auth/verify-email", "/api/auth/verification/resend"}:
                 accounts = self.accounts()
                 try:
                     if not self.headers.get("Content-Type", "").startswith("application/json"):
@@ -449,7 +456,15 @@ class Handler(BaseHTTPRequestHandler):
                     # Invalid bodies still spend IP capacity without inventing an email key.
                     accounts._reserve_attempt(self.client_address[0], parsed.path.rsplit("/", 1)[1])
                     raise
-                if parsed.path.endswith("register"):
+                from .signup_verification import SignupVerification, required as verification_required
+                verification = SignupVerification(workbench.get_repository())
+                if parsed.path.endswith("resend"):
+                    return self.json(verification.resend(payload, self.client_address[0]), 202)
+                if parsed.path.endswith("verify-email"):
+                    user = verification.verify(payload, self.client_address[0])
+                elif parsed.path.endswith("register"):
+                    if verification_required():
+                        return self.json(verification.start(payload, self.client_address[0]), 202)
                     user = accounts.register(payload.get("first_name"), payload.get("last_name"), payload.get("email"), payload.get("password"), self.client_address[0])
                 else:
                     user = accounts.login(payload.get("email"), payload.get("password"), self.client_address[0])

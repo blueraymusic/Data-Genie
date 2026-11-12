@@ -81,10 +81,16 @@ resource "azapi_resource" "free_state" {
 }
 
 resource "azurerm_linux_web_app" "app" {
-  name                                           = var.app_name
-  resource_group_name                            = data.azurerm_resource_group.existing.name
-  location                                       = local.location
-  service_plan_id                                = azurerm_service_plan.hosting.id
+  name                = var.app_name
+  resource_group_name = data.azurerm_resource_group.existing.name
+  location            = local.location
+  service_plan_id     = azurerm_service_plan.hosting.id
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.runtime.id]
+  }
+  key_vault_reference_identity_id                = azurerm_user_assigned_identity.runtime.id
+  depends_on                                     = [azurerm_key_vault_access_policy.web_app]
   https_only                                     = true
   ftp_publish_basic_authentication_enabled       = false
   webdeploy_publish_basic_authentication_enabled = false
@@ -99,16 +105,18 @@ resource "azurerm_linux_web_app" "app" {
     SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
     GENIE_CLOUD_STATE              = "azure_sql"
     GENIE_DATA_DIR                 = "/tmp/data-genie"
-    GENIE_CONNECTION_KEY           = replace(replace(base64sha256(random_password.connection_key.result), "+", "-"), "/", "_")
+    GENIE_CONNECTION_KEY           = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["connection-key"].versionless_id})"
     GENIE_SQL_HOST                 = azurerm_mssql_server.state.fully_qualified_domain_name
     GENIE_SQL_DATABASE             = azapi_resource.free_state.name
     GENIE_SQL_USER                 = azurerm_mssql_server.state.administrator_login
-    GENIE_SQL_PASSWORD             = random_password.sql.result
-    GEMINI_API_KEY                 = var.gemini_api_key
+    GENIE_SQL_PASSWORD             = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["sql-password"].versionless_id})"
+    GEMINI_API_KEY                 = var.gemini_api_key != "" ? "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["ai-key"].versionless_id})" : ""
     GEMINI_MODEL                   = var.gemini_model
     GENIE_PUBLIC_URL               = var.public_url
     GENIE_MICROSOFT_CLIENT_ID      = var.microsoft_client_id
-    GENIE_MICROSOFT_CLIENT_SECRET  = var.microsoft_client_secret
+    GENIE_MICROSOFT_CLIENT_SECRET  = var.microsoft_client_secret != "" ? "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["microsoft-secret"].versionless_id})" : ""
+    BREVO_API_KEY                  = var.brevo_api_key != "" ? "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["brevo-key"].versionless_id})" : ""
+    BREVO_SENDER_EMAIL             = var.brevo_sender_email
     GENIE_MICROSOFT_TENANT         = var.microsoft_tenant
     GENIE_MICROSOFT_REDIRECT_URI   = var.microsoft_redirect_uri
   }

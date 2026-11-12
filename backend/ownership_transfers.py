@@ -24,7 +24,7 @@ class OwnershipTransfers(WorkspaceStore):
     @classmethod
     def inbox(cls, connection, account_id):
         rows = connection.execute('''SELECT t.* FROM ownership_transfers t JOIN workspaces w USING(workspace_id)
-            JOIN workspace_members m ON m.workspace_id=t.workspace_id AND m.account_id=t.recipient_account_id
+
             WHERE t.recipient_account_id=? AND t.status='pending' AND t.expires_at>?
             AND w.owner_account_id=t.sender_account_id AND w.archived_at IS NULL ORDER BY t.created_at DESC''', (account_id, int(time.time())))
         return [cls.public(connection, row) for row in rows]
@@ -67,14 +67,20 @@ class OwnershipTransfers(WorkspaceStore):
             self._membership(connection, account_id, workspace_id, owner=True)
         credential = self.reauthenticate(account_id, payload.get('password'), login_token, client)
         target = payload.get('recipient_account_id')
+        email = payload.get('recipient_email')
+        if email is not None:
+            with self.repository._connection() as connection:
+                recipient = connection.execute('SELECT account_id FROM accounts WHERE email=? COLLATE NOCASE AND password_hash<>?', (str(email).strip().lower()[:254], '!deleted')).fetchone()
+            target = recipient['account_id'] if recipient else None
         if type(target) is not int or target == account_id:
-            raise ValueError('Choose another existing workspace member.')
+            raise ValueError('Enter the email of another existing Data Genie account.')
         with AUTHORIZATION_LOCK, self.repository._connection(write=True) as connection:
             self.recheck(connection, account_id, credential, login_token)
             workspace = self._membership(connection, account_id, workspace_id, owner=True)
             if workspace['kind'] != 'team' or payload.get('name') != workspace['name']:
                 raise ValueError('Type the team workspace name exactly to request a transfer.')
-            self._membership(connection, target, workspace_id)
+            if not connection.execute("SELECT 1 FROM accounts WHERE account_id=? AND password_hash<>'!deleted'", (target,)).fetchone():
+                raise ValueError('Choose an existing Data Genie account.')
             now = int(time.time())
             connection.execute("UPDATE ownership_transfers SET status='cancelled',decided_at=? WHERE workspace_id=? AND status='pending' AND expires_at<=?", (now, workspace_id, now))
             if connection.execute("SELECT 1 FROM ownership_transfers WHERE workspace_id=? AND status='pending'", (workspace_id,)).fetchone():
@@ -90,7 +96,6 @@ class OwnershipTransfers(WorkspaceStore):
                 raise PermissionError('This ownership request is not available for your account.')
             result = self.public(connection, row)
             if result['status'] == 'pending':
-                self._membership(connection, account_id, row['workspace_id'])
                 self._membership(connection, row['sender_account_id'], row['workspace_id'], owner=True)
                 result.update(self.inventory(connection, row))
             return result
@@ -111,7 +116,6 @@ class OwnershipTransfers(WorkspaceStore):
             self._membership(connection, row['sender_account_id'], row['workspace_id'], owner=True)
             if action == 'accept':
                 self.recheck(connection, account_id, credential, login_token)
-                self._membership(connection, account_id, row['workspace_id'])
                 if payload.get('review_version') != self.inventory(connection, row)['review_version']:
                     raise ValueError('The workspace changed since your review. Refresh the review before accepting.')
                 self._apply(connection, row['sender_account_id'], account_id, row['workspace_id'])
@@ -123,7 +127,7 @@ class OwnershipTransfers(WorkspaceStore):
     def _apply(cls, connection, sender, recipient, workspace_id):
         connection.execute('UPDATE workspace_invitations SET revoked_at=? WHERE workspace_id=? AND accepted_at IS NULL AND revoked_at IS NULL', (int(time.time()), workspace_id))
         connection.execute("UPDATE workspace_members SET role='member' WHERE workspace_id=? AND account_id=?", (workspace_id, sender))
-        connection.execute("UPDATE workspace_members SET role='owner' WHERE workspace_id=? AND account_id=?", (workspace_id, recipient))
+        connection.execute("INSERT INTO workspace_members(workspace_id,account_id,role,joined_at) VALUES(?,?,'owner',?) ON CONFLICT(workspace_id,account_id) DO UPDATE SET role='owner'", (workspace_id, recipient, int(time.time())))
         connection.execute('UPDATE workspaces SET owner_account_id=? WHERE workspace_id=?', (recipient, workspace_id))
         connection.execute('''UPDATE external_connections SET account_id=? WHERE connection_id IN
             (SELECT d.connection_id FROM databases d JOIN workspace_databases wd USING(database_id) WHERE wd.workspace_id=?)''', (recipient, workspace_id))

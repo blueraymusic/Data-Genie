@@ -52,11 +52,11 @@ class OwnershipTransferTests(AccountWorkspaceFixture, HttpHarness, unittest.Test
         self.as_user(self.member)
         self.assertEqual(self.decide(transfer, 'accept', password=self.password)[0], 400)
 
-    def test_non_owner_non_recipient_self_and_non_member_are_rejected(self):
+    def test_non_owner_non_recipient_self_and_unknown_account_are_rejected(self):
         team = self.team()
         self.assertEqual(self.send(team, recipient_account_id=self.owner)[0], 400)
         outsider = self.accounts.register('Outside', 'Fixture', 'outside@example.test', self.password, 'outside-fixture')['account_id']
-        self.assertEqual(self.send(team, recipient_account_id=outsider)[0], 403)
+        self.assertEqual(self.send(team, recipient_email="missing@example.test")[0], 400)
         _, transfer = self.send(team)
         self.assertEqual(self.decide(transfer, 'accept', password=self.password)[0], 403)
         self.as_user(self.viewer)
@@ -111,4 +111,18 @@ class OwnershipTransferTests(AccountWorkspaceFixture, HttpHarness, unittest.Test
         self.assertEqual(self.request('POST', '/api/auth/delete', {'email': 'ada@example.com', 'confirmation': 'DELETE', 'password': self.password})[0], 200)
         self.as_user(self.member)
         self.assertEqual(self.review(transfer)[0], 403)
+        self.check_integrity()
+
+    def test_email_recipient_gets_no_access_until_accepting(self):
+        team = self.team(members=False)
+        status, transfer = self.send(team, recipient_email='MEMBER@example.test')
+        self.assertEqual(status, 200)
+        with self.assertRaises(PermissionError):
+            self.store.get_workspace(self.member, team)
+        self.as_user(self.member)
+        self.assertEqual(self.request('GET', '/api/workspaces')[1]['ownership_transfers'][0]['transfer_id'], transfer['transfer_id'])
+        status, review = self.review(transfer)
+        self.assertEqual(status, 200)
+        self.assertEqual(self.decide(transfer, 'accept', password=self.password, review_version=review['review_version'])[0], 200)
+        self.assertEqual(self.store.get_workspace(self.member, team)['workspace']['role'], 'owner')
         self.check_integrity()

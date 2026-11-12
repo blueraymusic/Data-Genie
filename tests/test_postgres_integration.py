@@ -285,3 +285,14 @@ class PostgresIntegrationTests(unittest.TestCase):
             with self.psycopg.connect(self.url) as connection:
                 connection.execute(sql.SQL("DROP OWNED BY {}").format(sql.Identifier(role)))
                 connection.execute(sql.SQL("DROP ROLE {}").format(sql.Identifier(role)))
+
+    def test_database_read_only_transaction_blocks_hostile_cte_without_parser(self):
+        from backend.connections import PostgresConnector, connection_config
+        connector = PostgresConnector(connection_config(self.payload))
+        for sql in (f'DELETE FROM "{self.schema}".customers',
+                    f'WITH removed AS (DELETE FROM "{self.schema}".orders RETURNING *) SELECT * FROM removed'):
+            with self.assertRaises(Exception) as denied:
+                with connector.connection(read_only=True) as connection:
+                    connection.execute(sql)
+            # The engine must refuse the write, rather than a parsing failure.
+            self.assertEqual(getattr(denied.exception.__context__, 'sqlstate', None), '25006')

@@ -52,7 +52,7 @@ it('sends a request without transferring immediately or deleting the account', a
   render(<WorkspaceOwnership workspace={workspace} members={members} onChanged={changed} />);
   expect(fetch).not.toHaveBeenCalled();
   await events.click(screen.getByRole('button', { name: 'Transfer ownership', exact: true }));
-  await events.selectOptions(screen.getByLabelText('Recipient'), '2');
+  await events.type(screen.getByLabelText('Recipient email'), 'jo@example.test');
   await events.type(screen.getByLabelText('Type the workspace name'), workspace.name);
   await events.type(screen.getByLabelText('Current password'), 'fixture-only passphrase');
   await events.click(screen.getByRole('button', { name: 'Send ownership request' }));
@@ -60,7 +60,7 @@ it('sends a request without transferring immediately or deleting the account', a
   const [path, options] = fetch.mock.calls[0];
   expect(path).toBe('/api/workspaces/studio/ownership-transfer');
   expect(JSON.parse(options.body)).toEqual({
-    recipient_account_id: 2,
+    recipient_email: 'jo@example.test',
     name: workspace.name,
     password: 'fixture-only passphrase',
   });
@@ -90,14 +90,12 @@ it('does not expose owner controls or make requests for a member', () => {
   expect(fetch).not.toHaveBeenCalled();
 });
 
-it('offers an invitation step if no other members have joined', async () => {
-  const invite = vi.fn();
-  render(<WorkspaceOwnership workspace={workspace} members={[members[0]]} onInvite={invite} />);
+it('accepts an account email even when no other members have joined', async () => {
+  render(<WorkspaceOwnership workspace={workspace} members={[members[0]]} />);
   await userEvent
     .setup()
     .click(screen.getByRole('button', { name: 'Transfer ownership', exact: true }));
-  await userEvent.setup().click(screen.getByRole('button', { name: 'People & access' }));
-  expect(invite).toHaveBeenCalledOnce();
+  expect(screen.getByLabelText('Recipient email')).toBeTruthy();
   expect(fetch).not.toHaveBeenCalled();
 });
 

@@ -88,6 +88,7 @@ export function AuthProvider({ children }) {
       }
       throw error;
     }
+    if (data.verification_required) return data;
     if (generation.current !== revision) return data.user;
     rememberSession(null);
     account.current = data.user.account_id;

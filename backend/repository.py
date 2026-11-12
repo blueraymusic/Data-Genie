@@ -163,6 +163,16 @@ CREATE TABLE IF NOT EXISTS ownership_transfers (
     expires_at INTEGER NOT NULL,
     decided_at INTEGER
 );
+CREATE TABLE IF NOT EXISTS signup_verifications (
+    challenge_hash TEXT PRIMARY KEY,
+    code_hash TEXT NOT NULL,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0
+);
 CREATE UNIQUE INDEX IF NOT EXISTS ownership_transfer_pending ON ownership_transfers(workspace_id) WHERE status='pending';
 CREATE TABLE IF NOT EXISTS workspace_reports (
     report_id TEXT PRIMARY KEY,

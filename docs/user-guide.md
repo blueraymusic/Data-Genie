@@ -20,11 +20,13 @@ Use `https://data-genie.space/mcp` in a client supporting custom remote MCP with
 
 ## Your account
 
+On the hosted site, signup sends a six-digit email code from **Blueray Inc.** Codes expire after **five minutes** and allow **three incorrect attempts**. A replacement code invalidates the previous one; resends have a one-minute cooldown and rate limits. The account is created only after verification. Existing accounts can still log in.
+
 Open **Account & preferences** from your user menu. **General** shows your name, email, account creation date, sign-in methods, light/dark appearance, and default workspace view. General and Sign-in & security sit together on desktop; they stack on smaller screens. Choose **Edit profile** to update your name or photo, then **Save changes**. PNG, JPEG, and WebP photos up to 5 MB are cropped to a square and resized on your device before upload. Removing a photo restores your initials. Email stays unchanged because it identifies your login and workspace invitations.
 
 **Sign-in & security** contains password settings. Changing your password signs out other browser sessions and revokes agent access. **Agents & API** has the MCP server URL, API endpoint, and connection controls. Agent connections load only when you open that panel.
 
-Ownership transfer is separate from deletion. In **Teams → Workspace settings → Transfer ownership**, choose an existing member and send a request. The recipient reviews it in **Teams → Ownership requests** and accepts or declines. You keep control until acceptance. Sending a transfer request does not delete your account. See [transfer steps](workspaces.md#transfer-ownership).
+Ownership transfer is separate from deletion. In **Teams → Workspace settings → Transfer ownership**, enter an existing account’s email and send a request. The recipient reviews it in **Teams → Ownership requests** and accepts or declines. You keep control until acceptance. Sending a transfer request does not delete your account. See [transfer steps](workspaces.md#transfer-ownership).
 
 **Delete account** opens an impact review. Confirm your email, type **DELETE**, and enter your current password. Microsoft-only accounts must have signed in again within five minutes. Deletion removes your remaining owned Data Genie database copies, connections, private history, logins, invitations, pending transfers, and agent access. Finish any desired transfer in Teams first; move personal databases into a team before transferring them.
 

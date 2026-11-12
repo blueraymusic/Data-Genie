@@ -109,3 +109,15 @@ variable "tfc_azure_dynamic_credentials" {
   default   = null
   sensitive = true
 }
+
+variable "brevo_api_key" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Brevo transactional email key. Supply privately; the web app receives a Key Vault reference."
+}
+variable "brevo_sender_email" {
+  type        = string
+  default     = "no-reply@data-genie.space"
+  description = "Verified Brevo sender for Blueray Inc. signup verification."
+}

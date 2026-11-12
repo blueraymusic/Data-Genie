@@ -46,8 +46,8 @@ it('creates an expiring workspace key, shows it once, and clears it on Done', as
   );
   expect(JSON.parse(request[1].body)).toMatchObject({
     workspace_id: 'team',
-    days: 30,
-    scopes: ['databases:read', 'reports:read'],
+    days: 7,
+    scopes: ['databases:read'],
   });
   await user.click(screen.getByRole('button', { name: 'Done' }));
   expect(screen.queryByDisplayValue('dg_fixture_secret')).toBeNull();
@@ -70,7 +70,7 @@ it('limits viewer creation to report reading and revokes without touching other 
   expect(within(dialog).getAllByRole('checkbox')).toHaveLength(1);
   expect(within(dialog).getByLabelText('Read reports')).toBeTruthy();
   await user.click(within(dialog).getByLabelText('Read reports'));
-  expect(within(dialog).getByRole('button', { name: 'Create key' }).disabled).toBe(true);
+  expect(within(dialog).getByRole('button', { name: 'Create key' }).disabled).toBe(false);
   await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
   await user.click(screen.getByRole('button', { name: 'Revoke Research' }));
   await screen.findByText('Research revoked. It can no longer make requests.');

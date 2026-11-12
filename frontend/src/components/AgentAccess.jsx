@@ -20,7 +20,7 @@ export function AgentAccess({ passwordEnabled, active = true }) {
     [busy, setBusy] = useState(false),
     [created, setCreated] = useState(null),
     [workspaceId, setWorkspaceId] = useState(''),
-    [scopes, setScopes] = useState(['databases:read', 'reports:read']),
+    [scopes, setScopes] = useState(['databases:read']),
     [notice, setNotice] = useState(''),
     [revision, setRevision] = useState(0);
   useEffect(() => {
@@ -327,7 +327,7 @@ export function AgentAccess({ passwordEnabled, active = true }) {
                 </label>
                 <label>
                   Expires in
-                  <select name="days" defaultValue="30">
+                  <select name="days" defaultValue="7">
                     <option value="1">1 day</option>
                     <option value="7">7 days</option>
                     <option value="30">30 days</option>

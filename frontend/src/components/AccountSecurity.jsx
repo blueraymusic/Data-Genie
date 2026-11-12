@@ -2,6 +2,7 @@ import { MicrosoftMark, microsoftError } from './MicrosoftSignIn';
 import { AccountPasswordForm } from './AccountPasswordForm';
 import { Icon } from './Icon';
 import { DeleteAccount } from './DeleteAccount';
+import { Link } from '../lib/router';
 
 export function AccountSecurity({
   user,
@@ -98,6 +99,15 @@ export function AccountSecurity({
         <Icon name="clock" />
         Browser logins expire after 30 minutes of inactivity or 12 hours in total.
       </p>
+      <section className="account-danger-row" aria-label="Transfer ownership">
+        <div>
+          <h3>Transfer ownership</h3>
+          <p>Choose a workspace and send a request to another account.</p>
+        </div>
+        <Link className="btn quiet" href="/workspaces">
+          Transfer ownership
+        </Link>
+      </section>
       <DeleteAccount user={user} />
     </>
   );

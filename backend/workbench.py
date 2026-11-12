@@ -98,7 +98,23 @@ def db(readonly=False):
         connection = sqlite3.connect(path, factory=Conn, timeout=10)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys=ON")
+    if readonly:
+        _protect_readonly(connection)
     return connection
+
+
+def _protect_readonly(connection):
+    connection.execute("PRAGMA query_only=ON")
+    # Protect attached/temp databases as well as the main mode=ro file.
+    def authorize(action, first, second, database, source):
+        if action in (sqlite3.SQLITE_ATTACH, sqlite3.SQLITE_DETACH):
+            return sqlite3.SQLITE_DENY
+        if action == sqlite3.SQLITE_PRAGMA and (first or '').lower() == 'query_only' and second is not None:
+            return sqlite3.SQLITE_DENY
+        if action == sqlite3.SQLITE_FUNCTION and (second or '').lower() in {'load_extension', 'readfile', 'writefile'}:
+            return sqlite3.SQLITE_DENY
+        return sqlite3.SQLITE_OK
+    connection.set_authorizer(authorize)
 
 
 @contextmanager
@@ -269,6 +285,8 @@ def execute_sql(sql, operation, expected_guard=None):
                 actual = preview_guard.sqlite_snapshot(connection, guard_targets)
                 preview_guard.verify(expected_guard, actual, details["targets"])
             with sqlite_permissions(connection, access, sql):
+                if operation == "read":
+                    _protect_readonly(connection)
                 result = execute(connection, sql, operation, commit=expected_guard is None)
             if operation == "write" and expected_guard is not None:
                 result["_guard_after"] = preview_guard.sqlite_snapshot(connection, guard_targets)

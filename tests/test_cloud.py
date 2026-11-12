@@ -187,13 +187,18 @@ class CloudStateTests(unittest.TestCase):
                 response = {}
                 def start(status, headers): response.update(status=status,headers=dict(headers))
                 result = json.loads(b"".join(wsgi.application(environ,start)))
-                self.assertTrue(response["status"].startswith(("200","201")),(response["status"],result))
+                self.assertTrue(response["status"].startswith(("200","201","202")),(response["status"],result))
                 if "Set-Cookie" in response["headers"]:
                     self.assertIn("Secure",response["headers"]["Set-Cookie"])
                     cookie = response["headers"]["Set-Cookie"].split(";",1)[0]
                 csrf = result.get("csrf_token",csrf)
                 return result
-            request("POST","/api/auth/register",{"first_name":"Cloud","last_name":"Fixture","email":"cloud@example.test","password":"a long cloud fixture password"})
+            with patch('backend.signup_verification.send_code') as mail:
+                challenge = request("POST","/api/auth/register",{"first_name":"Cloud","last_name":"Fixture","email":"cloud@example.test","password":"a long cloud fixture password"})
+                code = mail.call_args.args[1]
+            cloud_state.restore(self.root, None)
+            cloud_state._version = None
+            request('POST', '/api/auth/verify-email', {'challenge': challenge['challenge'], 'code': code})
             session = request("POST","/api/sessions",{"database_mode":"create","database_name":"cloud","starter":False})["session_id"]
             pending = request("POST","/api/query",{"sql":"CREATE TABLE tasks(id INTEGER PRIMARY KEY,title TEXT)"},session)
             request("POST","/api/commands/confirm",{"command_id":pending["command_id"],"confirmation_token":pending["confirmation_token"]},session)

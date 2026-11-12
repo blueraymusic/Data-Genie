@@ -807,14 +807,14 @@ export const faqGroups = [
       {
         question: 'Can I transfer ownership without deleting my account?',
         search:
-          'Transfer workspace ownership Teams Workspace settings recipient existing member accepts declines cancel request seven days separate from account deletion databases PostgreSQL saved connections transferred current password Microsoft fresh sign in.',
+          'Transfer workspace ownership Teams Workspace settings recipient existing account email accepts declines cancel request seven days separate from account deletion databases PostgreSQL saved connections transferred current password Microsoft fresh sign in.',
         answer: (
           <>
             <p>
-              Yes. In <strong>Teams → Workspace settings → Transfer ownership</strong>, select an
-              existing member, type the workspace name, and confirm your password. Invite them to
-              the workspace first if needed. Your account stays active and you remain the owner
-              while the request is pending.
+              Yes. In <strong>Teams → Workspace settings → Transfer ownership</strong>, enter an
+              existing Data Genie account’s email, type the workspace name, and confirm your
+              password. They do not need to join first. Your account stays active and you remain the
+              owner while the request is pending.
             </p>
             <p>
               The recipient sees the request in <strong>Teams → Ownership requests</strong>. They
@@ -824,6 +824,20 @@ export const faqGroups = [
               email.
             </p>
           </>
+        ),
+      },
+      {
+        question: 'How do signup verification codes work?',
+        search:
+          'Sign up email code Blueray Inc. six digits five minutes three attempts resend sixty seconds account created only after verification.',
+        answer: (
+          <p>
+            On the hosted site, sign up and enter the six-digit code from Blueray Inc. It expires in
+            five minutes and allows three incorrect attempts. A replacement code invalidates the old
+            one; resends have a one-minute cooldown and rate limits. Your account is created only
+            after verification. Check spam if the message is missing. Existing accounts can still
+            log in. Signup verification does not reset passwords.
+          </p>
         ),
       },
       {

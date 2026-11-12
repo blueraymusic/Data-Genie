@@ -1,0 +1,5 @@
+# HCP's working directory is azure/. Send infrastructure configuration only.
+**
+!azure/
+!azure/*.tf
+!azure/.terraform.lock.hcl

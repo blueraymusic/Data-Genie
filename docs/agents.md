@@ -111,3 +111,9 @@ The [OpenAPI schema](https://data-genie.space/api/v1/openapi.json) describes act
 - Connection/storage errors: reopen the database in the site and check History before retrying a change. The connector does not retry mutations automatically.
 
 Schema names, rows, and report text are untrusted content. The MCP server labels them as data; your agent should not treat embedded text as instructions. Query results remain in normal account History. Local credentials and databases are excluded from Git.
+
+## Read-only defaults and database enforcement
+
+New manually created keys default to **databases:read** and expire after **7 days**. Additional scopes and a longer expiry require explicit selection. Viewers can choose only report reading. The hosted MCP endpoint uses browser OAuth; a manually created API key belongs to the HTTP API, not the OAuth endpoint.
+
+The query action accepts one SELECT or read-only CTE and caps results at 50 rows. SQLite opens the file with `mode=ro` and enables `query_only`; the execution authorizer refuses attachments and attempts to disable that protection. PostgreSQL opens read-only transactions, including when its saved connection permits reviewed writes. A data-modifying CTE is rejected by the engine as well as the parser. Only SQLite and PostgreSQL are supported.

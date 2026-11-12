@@ -12,7 +12,6 @@ export function WorkspaceOwnership({ workspace, members, disabled, onChanged, on
     [notice, setNotice] = useState('');
   const request = workspace.ownership_transfer;
   const pending = request?.status === 'pending';
-  const recipients = members.filter((member) => member.account_id !== workspace.owner_account_id);
   if (workspace.role !== 'owner' || workspace.personal || workspace.archived_at) return null;
   async function send(event) {
     event.preventDefault();
@@ -25,7 +24,7 @@ export function WorkspaceOwnership({ workspace, members, disabled, onChanged, on
         '/api/workspaces/' + encodeURIComponent(workspace.workspace_id) + '/ownership-transfer',
         {
           method: 'POST',
-          body: { ...values, recipient_account_id: Number(values.recipient_account_id) },
+          body: values,
         },
       );
       setOpen(false);
@@ -100,25 +99,24 @@ export function WorkspaceOwnership({ workspace, members, disabled, onChanged, on
           onClose={() => setOpen(false)}
           busy={busy}
         >
-          {recipients.length ? (
+          {
             <form className="ownership-form" onSubmit={send}>
               <p>
                 Transfer <strong>{workspace.name}</strong>, including its databases and saved
-                connections, to another workspace member. After acceptance, you become a member and
-                the new owner controls your access.
+                connections, to an existing Data Genie account. After acceptance, you become a
+                member and the new owner controls your access.
               </p>
               <label>
-                Recipient
-                <select name="recipient_account_id" required defaultValue="" disabled={busy}>
-                  <option value="" disabled>
-                    Choose a workspace member
-                  </option>
-                  {recipients.map((member) => (
-                    <option key={member.account_id} value={member.account_id}>
-                      {member.first_name} {member.last_name} ({member.email})
-                    </option>
-                  ))}
-                </select>
+                Recipient email
+                <input
+                  name="recipient_email"
+                  type="email"
+                  required
+                  maxLength={254}
+                  autoComplete="off"
+                  placeholder="teammate@example.com"
+                  disabled={busy}
+                />
               </label>
               <label>
                 Type the workspace name
@@ -164,23 +162,7 @@ export function WorkspaceOwnership({ workspace, members, disabled, onChanged, on
                 </button>
               </div>
             </form>
-          ) : (
-            <div className="ownership-form">
-              <p>
-                Invite the recipient to this workspace first. They need an existing Data Genie
-                account and must join before you can request a transfer.
-              </p>
-              <button
-                className="btn pri"
-                onClick={() => {
-                  setOpen(false);
-                  onInvite();
-                }}
-              >
-                People &amp; access
-              </button>
-            </div>
-          )}
+          }
         </WorkspaceDialog>
       )}
     </div>

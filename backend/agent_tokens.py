@@ -30,7 +30,7 @@ class AgentTokens(WorkspaceStore):
 
     @_serialized
     def create(self, account_id, payload):
-        name, scopes, days = payload.get('name'), payload.get('scopes'), payload.get('days', 30)
+        name, scopes, days = payload.get('name'), payload.get('scopes', ['databases:read']), payload.get('days', 7)
         if not isinstance(name, str) or not name.strip() or len(name) > 80 or any(ord(c) < 32 for c in name):
             raise ValueError('Give this key a name, up to 80 characters.')
         if not isinstance(scopes, list) or not scopes or any(not isinstance(s, str) or s not in SCOPES for s in scopes):

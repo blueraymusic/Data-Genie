@@ -31,7 +31,7 @@ An agent connection acts within the signed-in account's current role and databas
 | Viewer | Has no direct database, chat, SQL, or schema access in the shared workspace. Can read only reports the owner has shared with the workspace. |
 
 A person can own their personal workspace and be a Member or Viewer in another workspace.
-Only the owner can manage a workspace. They can [request an ownership transfer](#transfer-ownership) to an existing member; ownership changes only after the recipient accepts.
+Only the owner can manage a workspace. They can [request an ownership transfer](#transfer-ownership) to an existing Data Genie account; ownership changes only after the recipient accepts.
 
 ## Permissions for each database
 
@@ -87,7 +87,7 @@ Charts in shared reports, public links, and scheduled delivery are not included 
 
 ### Transfer ownership
 
-This is a separate action from account deletion. In **Teams**, select a team and choose **Transfer ownership** under **Workspace settings**. Select an existing member, type the workspace name, and confirm your password. Invite the recipient first if they have not joined. Your account and ownership stay unchanged while the request is pending.
+This is a separate action from account deletion. In **Teams**, select a team and choose **Transfer ownership** under **Workspace settings**. Enter the recipient’s existing Data Genie account email, type the workspace name, and confirm your password. They do not need to join first and receive no workspace access while the request is pending. Your account and ownership stay unchanged while the request is pending.
 
 The recipient sees an **Ownership requests** section in Teams and a pending-request badge in navigation. They choose **Review request**, inspect the current database and connection counts, then **Accept ownership** or **Decline request**. Acceptance requires their current password, or a Microsoft sign-in within five minutes. If the workspace changes after review, they must refresh before accepting.
 
