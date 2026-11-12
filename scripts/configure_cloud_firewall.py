@@ -10,6 +10,16 @@ def azure(*arguments):
     return subprocess.check_output(["az", *arguments, "--output", "json", "--only-show-errors"], text=True)
 
 
+def arm_value(document, name):
+    """Azure CLI returns either its flattened SDK shape or ARM properties."""
+    if not isinstance(document, dict) or not isinstance(document.get('properties', {}), dict):
+        raise SystemExit('Azure returned malformed resource properties.')
+    flattened, nested = document.get(name), document.get('properties', {}).get(name)
+    if flattened is not None and nested is not None and (type(flattened) is not type(nested) or flattened != nested):
+        raise SystemExit('Azure returned conflicting resource properties.')
+    return flattened if flattened is not None else nested
+
+
 def configured_sql_server(group, name):
     # Query only the host setting, never the app's API keys or SQL password.
     host = json.loads(azure("webapp", "config", "appsettings", "list",
@@ -28,7 +38,10 @@ def main(check_only=False):
     group, name = os.environ["GENIE_RESOURCE_GROUP"], os.environ["GENIE_APP_NAME"]
     app = json.loads(azure("webapp", "show", "--resource-group", group, "--name", name))
     # Match the reviewed tier and OS; Windows B1 has a different price.
-    plan = json.loads(azure("appservice", "plan", "show", "--ids", app["serverFarmId"]))
+    plan_id = arm_value(app, 'serverFarmId')
+    if not isinstance(plan_id, str) or not plan_id:
+        raise SystemExit('Azure did not return the web app hosting plan ID.')
+    plan = json.loads(azure("appservice", "plan", "show", "--ids", plan_id))
     expected_sku = os.environ.get("GENIE_APP_SERVICE_SKU", "F1")
     if not isinstance(plan, dict) or not isinstance(plan.get("sku"), dict) or not isinstance(plan.get("properties", {}), dict):
         raise SystemExit("Azure did not return a usable hosting plan for validation.")
@@ -45,10 +58,13 @@ def main(check_only=False):
     server = configured_sql_server(group, name)
     database = json.loads(azure("sql", "db", "show", "--resource-group", group,
                                 "--server", server, "--name", "data-genie-state"))
-    if database.get("useFreeLimit") is not True or database.get("freeLimitExhaustionBehavior") != "AutoPause":
+    if arm_value(database, "useFreeLimit") is not True or arm_value(database, "freeLimitExhaustionBehavior") != "AutoPause":
         raise SystemExit("The database must confirm useFreeLimit=true and AutoPause before deployment.")
+    outbound = arm_value(app, 'outboundIpAddresses')
+    if not isinstance(outbound, str):
+        raise SystemExit('Azure did not return usable web-app egress addresses.')
     addresses = sorted({str(ipaddress.IPv4Address(value.strip()))
-                        for value in app.get("outboundIpAddresses", "").split(",") if value.strip()})
+                        for value in outbound.split(",") if value.strip()})
     if not addresses:
         raise SystemExit("No web-app egress addresses were returned.")
     if check_only:

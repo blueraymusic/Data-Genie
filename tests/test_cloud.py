@@ -313,6 +313,19 @@ class HostingTests(unittest.TestCase):
 
 
 class DeploymentFirewallTests(unittest.TestCase):
+    def test_raw_arm_web_app_and_sql_properties_preserve_budget_and_network_checks(self):
+        replies = [
+            json.dumps({'properties': {'serverFarmId': '/plans/fixture', 'outboundIpAddresses': '192.0.2.5'}}),
+            json.dumps({'sku': {'name': 'B1', 'capacity': 1}, 'properties': {'reserved': True}}),
+            json.dumps('genie-custom-sql.database.windows.net'),
+            json.dumps({'properties': {'useFreeLimit': True, 'freeLimitExhaustionBehavior': 'AutoPause'}}),
+            json.dumps([{'startIpAddress': '192.0.2.5', 'endIpAddress': '192.0.2.5'}]),
+        ]
+        with patch.dict('os.environ', {'GENIE_RESOURCE_GROUP': 'fixture', 'GENIE_APP_NAME': 'genie', 'GENIE_APP_SERVICE_SKU': 'B1'}), patch('scripts.configure_cloud_firewall.azure', side_effect=replies) as command:
+            configure_firewall(check_only=True)
+        self.assertFalse(any('create' in call.args or 'delete' in call.args for call in command.call_args_list))
+
+
     def test_only_the_reviewed_linux_tier_and_instance_count_are_accepted(self):
         for expected, actual, linux, count in (("F1", "B1", True, 1), ("B1", "B1", False, 1),
                                                 ("B1", "B1", True, 2), ("B1", "B1", True, True),
