@@ -115,6 +115,34 @@ export function AuthProvider({ children }) {
     announce();
     return data.message;
   }, []);
+  const updateProfile = useCallback(async (body) => {
+    const owner = account.current;
+    const data = await api('/api/auth/profile', { method: 'POST', body });
+    if (owner !== null && account.current === owner && data.user.account_id === owner) {
+      setUser(data.user);
+      announce();
+    }
+    return data.user;
+  }, []);
+  const deleteAccount = useCallback(async (body) => {
+    const owner = account.current;
+    const result = await api('/api/auth/delete', { method: 'POST', body });
+    if (!result.deleted)
+      throw new Error(
+        'Account deletion was not confirmed. Please check your account before retrying.',
+      );
+    if (account.current === owner) {
+      generation.current++;
+      account.current = null;
+      rememberSession(null);
+      setCsrfToken('');
+      setUser(null);
+      setError('');
+      setConnectionError(false);
+      announce();
+    }
+    return result;
+  }, []);
   return (
     <Context.Provider
       value={{
@@ -125,6 +153,8 @@ export function AuthProvider({ children }) {
         authenticate,
         logout,
         changePassword,
+        updateProfile,
+        deleteAccount,
         refresh,
       }}
     >

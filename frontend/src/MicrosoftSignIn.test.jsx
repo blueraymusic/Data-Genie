@@ -19,12 +19,14 @@ const localUser = {
 };
 const response = (data, status = 200) =>
   Promise.resolve({ ok: status < 400, status, json: async () => data });
-const account = () =>
-  render(
+const account = () => {
+  const view = render(
     <Router>
       <AccountPage workbench={{ session: null }} />
     </Router>,
   );
+  return view;
+};
 beforeEach(() => {
   history.replaceState({}, '', '/signin');
   window.scrollTo = vi.fn();

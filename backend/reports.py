@@ -9,14 +9,16 @@ from . import gemini_provider, settings
 class ReportStore(WorkspaceStore):
     @staticmethod
     def _editor(workspace):
+        if workspace['archived_at']:
+            raise PermissionError('This workspace is archived. Shared reports are read-only.')
         if workspace['role'] == 'viewer':
             raise PermissionError('Viewers can read shared reports only.')
 
     @staticmethod
     def _permissions(workspace, row, account_id):
-        return {**dict(row), 'published': bool(row['published']),
-                'can_edit': workspace['role'] == 'owner' or (workspace['role'] == 'member' and row['author_id'] == account_id and not row['published']),
-                'can_delete': workspace['role'] != 'viewer' and row['author_id'] == account_id}
+        return {**dict(row), 'published': bool(row['published']), 'archived': bool(workspace['archived_at']),
+                'can_edit': not workspace['archived_at'] and (workspace['role'] == 'owner' or (workspace['role'] == 'member' and row['author_id'] == account_id and not row['published'])),
+                'can_delete': bool(workspace['archived_at']) or (workspace['role'] != 'viewer' and row['author_id'] == account_id)}
 
     @staticmethod
     def _visible_report(connection, workspace, account_id, report_id):
@@ -51,10 +53,11 @@ class ReportStore(WorkspaceStore):
     def delete_report(self, account_id, workspace_id, report_id, version):
         with self.repository._connection(write=True) as connection:
             workspace = self._membership(connection, account_id, workspace_id)
-            self._editor(workspace)
             row = self._visible_report(connection, workspace, account_id, report_id)
-            if row['author_id'] != account_id:
-                raise PermissionError('Only the report creator can delete this report.')
+            if not workspace['archived_at']:
+                self._editor(workspace)
+                if row['author_id'] != account_id:
+                    raise PermissionError('Only the report creator can delete this report.')
             if type(version) is not int or version != row['version']:
                 raise ValueError('This report changed in another session. Reopen it before deleting.')
             connection.execute('DELETE FROM workspace_reports WHERE report_id=? AND workspace_id=? AND version=?',

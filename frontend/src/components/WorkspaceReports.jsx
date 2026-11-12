@@ -32,7 +32,7 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
     surface = useRef(null);
   useEnterMotion(surface, workspace.workspace_id, !loading);
   const owner = workspace.role === 'owner',
-    viewer = workspace.role === 'viewer';
+    viewer = workspace.role === 'viewer' || Boolean(workspace.archived_at);
   const base = '/api/workspaces/' + encodeURIComponent(workspace.workspace_id) + '/reports';
   useEffect(() => {
     const controller = new AbortController();
@@ -140,7 +140,7 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
     setSource('');
   }
   async function deleteReport(item) {
-    if (disabled || lock.current || viewer || !item.can_delete) return;
+    if (disabled || lock.current || !item.can_delete) return;
     lock.current = true;
     setBusy(true);
     setActivity('delete');
@@ -212,9 +212,11 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
           >
             {loading
               ? 'Loading reports…'
-              : viewer
-                ? 'Reports approved and shared by your workspace owner.'
-                : 'Your findings, the evidence, and what comes next.'}
+              : workspace.archived_at
+                ? 'Archived reports are read-only. Workspace members can download or delete reports they can view.'
+                : viewer
+                  ? 'Reports approved and shared by your workspace owner.'
+                  : 'Your findings, the evidence, and what comes next.'}
           </p>
         </div>
         {!viewer && (

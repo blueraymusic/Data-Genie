@@ -18,6 +18,17 @@ Teams uses the available screen width. On phones, use **Select workspace** to sw
 
 Use `https://data-genie.space/mcp` in a client supporting custom remote MCP with OAuth. Sign in, review the callback address, and choose one workspace and the actions you want to allow. Your current permissions still apply. SQL edits wait for your review in Data Genie; reports stay private drafts. Revoke a connection in **Account → Agents & API**. For scripts and API keys, see the [agent guide](agents.md).
 
+## Your account
+
+Open **Account & preferences** from your user menu. **General** shows your name, email, account creation date, sign-in methods, light/dark appearance, and default workspace view. General and Sign-in & security sit together on desktop; they stack on smaller screens. Choose **Edit profile** to update your name or photo, then **Save changes**. PNG, JPEG, and WebP photos up to 5 MB are cropped to a square and resized on your device before upload. Removing a photo restores your initials. Email stays unchanged because it identifies your login and workspace invitations.
+
+**Sign-in & security** contains password settings. Changing your password signs out other browser sessions and revokes agent access. **Agents & API** has the MCP server URL, API endpoint, and connection controls. Agent connections load only when you open that panel.
+
+**Delete account** opens an impact review. Confirm your email, type **DELETE**, and enter your current password. Microsoft-only accounts must have signed in again within five minutes. For each owned team, you can transfer ownership to an existing member, including its databases and saved connections. Move personal databases into a team first if you want to transfer them.
+
+Without a transfer, owned Data Genie database copies, connections, history, logins, invitations, and agent access are removed. Team reports remain in a read-only archive for remaining members; anyone who can view an archived report can delete it. Private drafts are not made public. If no members remain, the workspace and its reports are deleted too. External PostgreSQL servers are never dropped by account deletion. See [ownership and archives](workspaces.md#account-deletion-transfers-and-archives).
+
+
 ## Choose how to work
 
 | View          | Use it for                                                                                |
@@ -43,7 +54,7 @@ Choose **Attach PDF or image** beside the Ask composer. You can add up to two PD
 
 In **Teams**, select a workspace and open **Reports**. Reports open in a full-screen view with a fixed Close button and save controls. Switch between **Write** and **Preview** without losing your text; the word count updates as you write. Closing an edited report asks before discarding unsaved work. Create a blank report, use the template, or generate a draft from source notes you supply. Review AI text before saving. Members can edit their own drafts; only the owner can edit shared reports or share a report with all workspace members and viewers. Viewers get a reading surface without raw database access. See the [report workflow](workspaces.md#reports).
 
-Anyone who can read a saved report can choose **Download PDF**, including viewers. Only its creator can choose **Delete report**, and only while they are a Member or Owner in that workspace. Deletion asks for confirmation and is permanent.
+Anyone who can read a saved report can choose **Download PDF**, including viewers. In an active workspace, only its creator can choose **Delete report**, and only while they are a Member or Owner. In an archived workspace, anyone who can view the report can delete it. Deletion asks for confirmation and is permanent.
 
 ## Run SQL
 

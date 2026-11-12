@@ -26,7 +26,7 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
     { details } = teams,
     workspace = details?.workspace,
     owner = workspace?.role === 'owner',
-    viewer = workspace?.role === 'viewer';
+    viewer = workspace?.role === 'viewer' || Boolean(workspace?.archived_at);
   const [deleteName, setDeleteName] = useState(''),
     [tab, setTab] = useState('databases'),
     [modal, setModal] = useState(null),
@@ -293,13 +293,15 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                 </p>
                 <h2>{currentName}</h2>
                 <p className="muted">
-                  {workspace?.personal
-                    ? 'Your databases, just for you.'
-                    : owner
-                      ? 'Manage your shared databases and the people who use them.'
-                      : viewer
-                        ? 'Reports shared with you will appear in this workspace.'
-                        : 'Databases your team has shared with you.'}
+                  {workspace?.archived_at
+                    ? 'Archived workspace. Reports are retained; databases and editing are unavailable.'
+                    : workspace?.personal
+                      ? 'Your databases, just for you.'
+                      : owner
+                        ? 'Manage your shared databases and the people who use them.'
+                        : viewer
+                          ? 'Reports shared with you will appear in this workspace.'
+                          : 'Databases your team has shared with you.'}
                 </p>
               </div>
               {workspace && (
@@ -309,7 +311,9 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                     (owner && !workspace.personal ? ' workspace-team-actions' : '')
                   }
                 >
-                  <span className="workspace-role">{workspace.role}</span>
+                  <span className="workspace-role">
+                    {workspace.archived_at ? 'Archived' : workspace.role}
+                  </span>
                   {owner && !workspace.personal && tab === 'databases' && (
                     <button
                       className={'btn' + (tab === 'databases' ? ' pri' : '')}

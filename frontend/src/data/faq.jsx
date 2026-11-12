@@ -95,7 +95,7 @@ export const faqGroups = [
       {
         question: 'Can I create and share reports?',
         search:
-          'In Teams open Reports and New report. Write from a blank page, use a template, or draft with Data Genie AI from source notes you supply. Members can edit their own drafts. Owners review and share reports with workspace members and viewers. Viewers see only shared reports, not database rows, chats or SQL. Anyone allowed to read a saved report can Download PDF. Only the creator can Delete report while a Member or Owner, with permanent deletion after confirmation. Reports are saved snapshots, not live dashboards.',
+          'In Teams open Reports and New report. Write from a blank page, use a template, or draft with Data Genie AI from source notes you supply. Members can edit their own drafts. Owners review and share reports with workspace members and viewers. Viewers see only shared reports, not database rows, chats or SQL. Anyone allowed to read a saved report can Download PDF. Only the creator can Delete report while a Member or Owner in active workspaces. In archived workspaces, anyone who can view a report can delete it, with confirmation. Reports are saved snapshots, not live dashboards.',
         answer: (
           <>
             <p>
@@ -107,7 +107,8 @@ export const faqGroups = [
             <p>
               Anyone who can read a saved report can choose <strong>Download PDF</strong>, including
               viewers. Only its creator can choose <strong>Delete report</strong>, while they are a
-              Member or Owner in that workspace. Deletion is permanent and asks for confirmation.
+              Member or Owner in an active workspace. In an archived workspace, anyone who can view
+              a report can delete it. Deletion is permanent and asks for confirmation.
             </p>
           </>
         ),
@@ -799,6 +800,54 @@ export const faqGroups = [
             <p>
               Microsoft-only accounts manage their password with Microsoft. Signing out of Data
               Genie ends your Data Genie login; it does not sign you out of Microsoft everywhere.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'What happens when I delete my account?',
+        search:
+          'Account preferences Sign-in security Delete account. Transfer a team workspace to an existing member including its databases and saved PostgreSQL connections, or remove owned databases and archive reports for remaining members. Anyone who can view an archived report can delete it. Empty workspaces without remaining members are deleted. Private drafts stay private. Current password email DELETE confirmation Microsoft fresh login five minutes. External PostgreSQL servers are not dropped.',
+        answer: (
+          <>
+            <p>
+              Open <strong>Account &amp; preferences → Delete account</strong> to review the impact.
+              You can transfer each owned team to an existing member, including its databases and
+              saved connections. Move personal databases into a team first to transfer them.
+            </p>
+            <p>
+              Otherwise, owned Data Genie database copies, connections, private history,
+              invitations, logins, and agent access are removed. Reports remain available to their
+              existing audience, attributed to <strong>Deleted account</strong>. Teams with
+              remaining members become read-only archives; anyone who can view an archived report
+              can delete it. A workspace without remaining members is deleted with its reports.
+              Private drafts are not made public, and the departing owner's private drafts in their
+              deleted workspaces are removed.
+            </p>
+            <p>
+              Confirm your email, type <strong>DELETE</strong>, and enter your current password.
+              Microsoft-only accounts require a new sign-in within five minutes. External PostgreSQL
+              servers are never dropped by account deletion.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'Can I change my name or profile photo?',
+        search:
+          'Open Account & preferences, General, then Edit profile. Update your name or choose a PNG, JPEG or WebP photo up to 5 MB and Save changes. Photos are cropped and resized on your device before upload and saved with your account. Remove photo returns to initials. Email cannot be changed here because it is used for sign-in and workspace invitations.',
+        answer: (
+          <>
+            <p>
+              Open <strong>Account &amp; preferences → General → Edit profile</strong>. Update your
+              name or choose a PNG, JPEG, or WebP photo up to 5 MB, then choose{' '}
+              <strong>Save changes</strong>.
+            </p>
+            <p>
+              Your photo is cropped to a square and resized on your device before upload. It is
+              stored with your account. Choose <strong>Remove photo</strong> and save to use your
+              initials again. Email stays unchanged because it is used for sign-in and workspace
+              invitations.
             </p>
           </>
         ),

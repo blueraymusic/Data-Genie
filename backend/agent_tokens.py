@@ -44,6 +44,8 @@ class AgentTokens(WorkspaceStore):
         token = 'dg_' + secrets.token_urlsafe(32)
         with self.repository._connection(write=True) as connection:
             workspace = self._membership(connection, account_id, payload.get('workspace_id'))
+            if workspace['archived_at'] and scopes != ['reports:read']:
+                raise PermissionError('Archived workspaces allow report reading only.')
             if workspace['role'] == 'viewer' and scopes != ['reports:read']:
                 raise PermissionError('Viewers can connect agents to shared reports only.')
             if 'databases:create' in scopes and workspace['role'] != 'owner':

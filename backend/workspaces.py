@@ -88,7 +88,7 @@ class WorkspaceStore:
         row = connection.execute("""SELECT w.*,m.role FROM workspaces w
             JOIN workspace_members m USING(workspace_id)
             WHERE w.workspace_id=? AND m.account_id=?""", (_reference(workspace_id), account_id)).fetchone()
-        if row is None or (owner and (row["role"] != "owner" or row["owner_account_id"] != account_id)):
+        if row is None or (owner and (row["role"] != "owner" or row["owner_account_id"] != account_id or row["archived_at"])):
             raise PermissionError(_UNAVAILABLE)
         return row
 
@@ -102,7 +102,7 @@ class WorkspaceStore:
         result["member_count"] = connection.execute(
             "SELECT COUNT(*) FROM workspace_members WHERE workspace_id=?", (workspace_id,)).fetchone()[0]
         # Viewers see reports only, so do not disclose raw database inventory.
-        if row["role"] == "viewer":
+        if row["role"] == "viewer" or row["archived_at"]:
             result["database_count"] = 0
         elif row["role"] == "member":
             result["database_count"] = connection.execute("""SELECT COUNT(*) FROM workspace_grants g
@@ -118,7 +118,7 @@ class WorkspaceStore:
         row = connection.execute("SELECT * FROM workspaces WHERE owner_account_id=? AND kind='personal'", (account_id,)).fetchone()
         if row is None:
             workspace_id, now = str(uuid.uuid4()), int(time.time())
-            connection.execute("INSERT INTO workspaces VALUES(?,?,'personal',?,?)",
+            connection.execute("INSERT INTO workspaces(workspace_id,name,kind,owner_account_id,created_at) VALUES(?,?,'personal',?,?)",
                                (workspace_id, "Personal workspace", account_id, now))
             connection.execute("INSERT INTO workspace_members VALUES(?,?,'owner',?)", (workspace_id, account_id, now))
         else:
@@ -165,14 +165,14 @@ class WorkspaceStore:
     @classmethod
     def _access(cls, connection, account_id, database_id, workspace_id=None):
         _integer(database_id)
-        row = connection.execute("""SELECT w.workspace_id,w.name AS workspace_name,m.role,
+        row = connection.execute("""SELECT w.workspace_id,w.name AS workspace_name,w.archived_at,m.role,
                 g.can_read,g.can_write,g.can_delete,g.can_structure,g.can_export
             FROM workspace_databases d JOIN workspaces w USING(workspace_id)
             JOIN workspace_members m ON m.workspace_id=w.workspace_id AND m.account_id=?
             LEFT JOIN workspace_grants g ON g.workspace_id=w.workspace_id AND g.account_id=m.account_id
                 AND g.database_id=d.database_id
             WHERE d.database_id=?""", (account_id, database_id)).fetchone()
-        if (row is None or row["role"] == "viewer"
+        if (row is None or row["role"] == "viewer" or row["archived_at"]
                 or (workspace_id is not None and row["workspace_id"] != workspace_id)
                 or (row["role"] != "owner" and not row["can_read"])):
             raise PermissionError(_UNAVAILABLE)
@@ -194,7 +194,7 @@ class WorkspaceStore:
                 FROM workspace_members m JOIN accounts a USING(account_id) WHERE m.workspace_id=?
                 ORDER BY CASE m.role WHEN 'owner' THEN 0 ELSE 1 END,m.joined_at,m.account_id""", (workspace_id,)).fetchall()
             databases = []
-            if workspace["role"] != "viewer":
+            if workspace["role"] != "viewer" and not workspace["archived_at"]:
                 for row in connection.execute("""SELECT d.database_id,d.database_name,d.connection_id
                     FROM workspace_databases wd JOIN databases d USING(database_id)
                     WHERE wd.workspace_id=? ORDER BY d.database_name COLLATE NOCASE,d.database_id""", (workspace_id,)):
@@ -227,7 +227,7 @@ class WorkspaceStore:
         with self.repository._connection(write=True) as connection:
             self._ensure_personal(connection, account_id)
             workspace_id, now = str(uuid.uuid4()), int(time.time())
-            connection.execute("INSERT INTO workspaces VALUES(?,?,'team',?,?)", (workspace_id, name.strip(), account_id, now))
+            connection.execute("INSERT INTO workspaces(workspace_id,name,kind,owner_account_id,created_at) VALUES(?,?,'team',?,?)", (workspace_id, name.strip(), account_id, now))
             connection.execute("INSERT INTO workspace_members VALUES(?,?,'owner',?)", (workspace_id, account_id, now))
             return self._workspace(connection, self._membership(connection, account_id, workspace_id))
 

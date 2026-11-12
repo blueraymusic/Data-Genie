@@ -23,6 +23,8 @@ Copy `.env.example` to `.env` for optional AI configuration. The existing `GEMIN
 ## Connections and APIs
 
 - Browser API routes use the signed-in account, CSRF protection, and current workspace permissions.
+- `GET /api/auth/deletion` reviews account deletion; `POST /api/auth/delete` requires email, `DELETE`, password/fresh Microsoft sign-in, and optional workspace transfers to existing members. Database/history removal is transactional; managed file cleanup is retried. See [retention rules](../docs/workspaces.md#account-deletion-transfers-and-archives).
+- `POST /api/auth/profile` updates only the signed-in account's name and optional photo. It uses browser login and CSRF, not agent keys. Photos are bounded JPEG data stored with account metadata; email and account ownership cannot be changed here.
 - `/api/v1` discovers key-authorized actions; `POST /api/v1/actions/{name}` calls one.
 - `/api/v1/openapi.json` describes the HTTP action inputs.
 - `/mcp` provides the official SDK's Streamable HTTP transport with browser-based OAuth.

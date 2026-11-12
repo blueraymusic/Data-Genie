@@ -77,8 +77,18 @@ Report saves check a version number. If another session has saved changes first,
 
 Choose **Download PDF** on a saved report to keep a copy. Anyone who can read that report can download it: viewers can download shared reports, while drafts remain limited to their author and the owner. PDF downloads do not grant access to the underlying database.
 
-Only the report's creator can choose **Delete report**, and only while they are a Member or Owner of the workspace. Confirming permanently removes the saved report, including a shared report. Owners cannot delete reports written by someone else; viewers cannot delete reports.
+Only the report's creator can choose **Delete report**, and only while they are a Member or Owner of the workspace. Confirming permanently removes the saved report, including a shared report. Owners cannot delete reports written by someone else; viewers cannot delete reports in an active workspace. In an archived workspace, anyone who can view the report may delete it after confirmation.
 
 For local PDF downloads, install `python3 -m pip install -r backend/requirements-reports.txt` and restart the server. The Azure deployment includes this package.
 
 Charts in shared reports, public links, and scheduled delivery are not included yet.
+
+## Account deletion, transfers, and archives
+
+In **Account & preferences → Sign-in & security → Delete account**, review the affected databases and choose what happens to each owned team. Transfer to an existing workspace member to move ownership, database copies, and saved PostgreSQL connection credentials together. This gives that member full control. Personal databases must first be moved to a team to transfer them.
+
+Otherwise, deleting the account removes its owned Data Genie databases, connections, private history, invitations, browser logins, and agent keys/OAuth grants. It never drops an external PostgreSQL server or an original file outside Data Genie's managed storage.
+
+Teams with remaining members and reports become **Archived**. Existing report visibility is preserved: shared reports stay available, private reports by remaining authors stay private, and the departing owner's private drafts in their deleted workspaces are removed. Retained authorship is shown as **Deleted account**. Archives cannot add databases, edit reports, invite people, or generate AI drafts. Any current member who can view an archived report may download its PDF or permanently delete that report after confirmation. An archive disappears when its final real member deletes their account. A workspace without remaining members is deleted with its reports.
+
+Reports in someone else's workspace remain there, attributed to **Deleted account**; their owner retains normal management rights. Account deletion requires the current password, matching account email, and the exact word **DELETE**. Microsoft-only accounts require a fresh sign-in within five minutes. These account actions use browser login and CSRF protection and are not agent API actions.

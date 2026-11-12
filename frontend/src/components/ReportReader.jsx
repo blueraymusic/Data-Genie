@@ -26,7 +26,11 @@ export function ReportReader({ report, disabled, activity, onEdit, onDelete, onD
       <header>
         <div>
           <span className="report-status-badge">
-            {report.published ? 'Shared report' : 'Draft · private to author & owner'}
+            {report.archived
+              ? 'Archived report'
+              : report.published
+                ? 'Shared report'
+                : 'Draft · private to author & owner'}
           </span>
           <p className="small muted">
             {report.first_name} {report.last_name} · Updated{' '}

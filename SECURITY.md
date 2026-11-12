@@ -12,6 +12,8 @@ If private reporting is unavailable, open an issue asking for a private contact 
 
 ## Accounts, data, and AI
 
+- Account deletion requires browser login, CSRF protection, matching email, explicit confirmation, and the current password (or a Microsoft sign-in within five minutes). Workspace ownership can transfer only to an existing member. Untransferred owned databases and credentials are removed; existing report audiences are retained in read-only archives. Archive members may delete reports they can view. See the [retention details](docs/workspaces.md#account-deletion-transfers-and-archives).
+
 - Accounts, History, and saved result rows belong to the Data Genie installation you use. Hosted accounts are separate from accounts on your laptop.
 - Passwords are salted and hashed; the original password is not stored. Login expires after 30 minutes of inactivity or 12 hours in total. Changing a password signs out the other browser logins. This version has no email-based password recovery.
 - Optional Microsoft sign-in identifies accounts by the verified issuer and subject. A matching email never links an existing account automatically; linking requires the current password from an authenticated account. Microsoft-only accounts have no usable local password. See [Microsoft sign-in setup](docs/microsoft-sign-in.md).

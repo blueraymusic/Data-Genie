@@ -4,6 +4,7 @@ import { ThemeToggle } from './PublicHeader';
 import { Link } from '../lib/router';
 import { databaseAccess } from '../lib/access';
 import { useInvitationCount } from '../hooks/useInvitationCount';
+import { ProfileAvatar } from './ProfileAvatar';
 function SessionTimer({ started }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -105,7 +106,7 @@ export function WorkspaceHeader({
             title={name}
             onClick={() => setMenu(!menu)}
           >
-            {[identity.first_name[0], identity.last_name[0]].join('').toUpperCase()}
+            <ProfileAvatar user={identity} />
           </button>
           {menu && (
             <div className="user-menu-panel" id="userMenuPanel">

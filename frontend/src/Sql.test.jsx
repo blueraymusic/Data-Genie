@@ -417,19 +417,19 @@ describe('SQL workspace', () => {
     localStorage.setItem('dg-request-mode:7', 'keywords');
     const events = userEvent.setup();
     render(<App />);
-    const mode = await screen.findByRole('combobox', {
+    const mode = await screen.findByRole('group', {
       name: 'Default workspace view',
       exact: true,
     });
-    expect(mode.value).toBe('sql');
+    expect(within(mode).getByRole('radio', { name: 'SQL', exact: true }).checked).toBe(true);
     expect(localStorage.getItem('dg-request-mode:7')).toBe('sql');
     expect(
       within(mode)
-        .getAllByRole('option')
-        .map((option) => option.textContent),
+        .getAllByRole('radio')
+        .map((option) => option.getAttribute('aria-label')),
     ).toEqual(['Data Genie AI', 'SQL']);
     expect(screen.getByText(/Local SQLite works offline while Data Genie is running/)).toBeTruthy();
-    await events.selectOptions(mode, 'gemini');
+    await events.click(within(mode).getByRole('radio', { name: 'Data Genie AI' }));
     expect(localStorage.getItem('dg-request-mode:7')).toBe('gemini');
     expect(location.pathname).toBe('/account');
   });

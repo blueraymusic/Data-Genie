@@ -68,6 +68,11 @@ export default function AuthPage() {
           Sign up
         </Link>
       </nav>
+      {new URLSearchParams(route.split('?')[1] || '').get('account') === 'deleted' && (
+        <p className="ok" role="status">
+          Your Data Genie account has been deleted.
+        </p>
+      )}
       {microsoftError(route) && (
         <p className="err" role="alert">
           {microsoftError(route)}

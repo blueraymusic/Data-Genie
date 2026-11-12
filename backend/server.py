@@ -128,7 +128,12 @@ class Handler(BaseHTTPRequestHandler):
         return True
 
     def accounts(self):
+        self.account_deletion().cleanup()
         return authentication.Accounts(workbench.get_repository())
+
+    def account_deletion(self):
+        from .account_deletion import AccountDeletion
+        return AccountDeletion(workbench.get_repository(), (workbench.DATABASE_DIRECTORY, workbench.UPLOAD_DIRECTORY))
 
     def local_host(self):
         try:
@@ -316,6 +321,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self.json({"user": user, "csrf_token": authentication.csrf_token(self.login_token())})
                 except authentication.LoginRequired:
                     return self.json({"user": None})
+            if parsed.path == "/api/auth/deletion":
+                return self.json(self.account_deletion().summary(self.account()["account_id"]))
             if agent_api.handle(self, parsed.path):
                 return
             user = self.account()
@@ -463,6 +470,14 @@ class Handler(BaseHTTPRequestHandler):
                 token = self.accounts().issue_login(user["account_id"])
                 self.set_login_cookie(token)
                 return self.json({"user": user, "csrf_token": authentication.csrf_token(token), "message": "Password updated. Other logins have been signed out."})
+            if parsed.path == "/api/auth/profile":
+                payload = self.read_json(150 * 1024)
+                updated = self.accounts().update_profile(user["account_id"], payload)
+                return self.json({"user": updated})
+            if parsed.path == "/api/auth/delete":
+                result = self.account_deletion().delete(user["account_id"], self.read_json(16 * 1024), self.login_token(), self.client_address[0])
+                self.set_login_cookie("")
+                return self.json(result)
             if workspace_api.post(self, parsed.path, user):
                 return
             if parsed.path == "/api/sessions/end":

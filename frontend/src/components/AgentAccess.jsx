@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, formatTime } from '../lib/api';
 import { WorkspaceDialog } from './WorkspaceDialog';
+import { Icon } from './Icon';
 import '../styles/agents.css';
 
 const labels = {
@@ -12,7 +13,7 @@ const labels = {
   'reports:generate': 'Draft with Data Genie AI',
 };
 
-export function AgentAccess({ passwordEnabled }) {
+export function AgentAccess({ passwordEnabled, active = true }) {
   const [data, setData] = useState(null),
     [error, setError] = useState(''),
     [dialog, setDialog] = useState(false),
@@ -23,6 +24,7 @@ export function AgentAccess({ passwordEnabled }) {
     [notice, setNotice] = useState(''),
     [revision, setRevision] = useState(0);
   useEffect(() => {
+    if (!active) return;
     const controller = new AbortController();
     setError('');
     Promise.all([
@@ -39,10 +41,10 @@ export function AgentAccess({ passwordEnabled }) {
         if (!controller.signal.aborted) setError(e.message);
       });
     return () => controller.abort();
-  }, [revision]);
+  }, [revision, active]);
   const workspace = data?.workspaces.find((item) => item.workspace_id === workspaceId);
   const allowed = Object.keys(labels).filter((scope) =>
-    workspace?.role === 'viewer'
+    workspace?.role === 'viewer' || workspace?.archived_at
       ? scope === 'reports:read'
       : scope !== 'databases:create' || workspace?.role === 'owner',
   );
@@ -105,15 +107,57 @@ export function AgentAccess({ passwordEnabled }) {
   }
   return (
     <div className="agent-access">
-      <p className="small">
-        For browser sign-in, use <code>{window.location.origin}/mcp</code> as your agent’s remote
-        MCP URL. Choose a workspace and permissions when Data Genie asks. Connections can be revoked
-        below.
-      </p>
+      <div className="agent-connection-methods">
+        <section aria-label="Browser agents">
+          <span className="agent-method-label">
+            <Icon name="workspace" />
+            Browser agents
+          </span>
+          <h3>Sign in through your agent</h3>
+          <p>
+            Add this MCP server URL in your agent. Data Genie will ask you to choose a workspace and
+            permissions.
+          </p>
+          <div className="agent-endpoint">
+            <code>{window.location.origin}/mcp</code>
+            <button
+              className="btn quiet"
+              aria-label="Copy MCP server URL"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(window.location.origin + '/mcp');
+                  setNotice('MCP server URL copied.');
+                } catch {
+                  setNotice('Select and copy the MCP server URL above.');
+                }
+              }}
+            >
+              <Icon name="copy" />
+            </button>
+          </div>
+        </section>
+        <section aria-label="Scripts and apps">
+          <span className="agent-method-label">
+            <Icon name="layers" />
+            Scripts &amp; apps
+          </span>
+          <h3>Connect with an API key</h3>
+          <p>
+            Create a key below for one workspace. Send it as a Bearer token when calling the HTTP
+            API.
+          </p>
+          <div className="agent-endpoint">
+            <code>{window.location.origin}/api/v1</code>
+          </div>
+        </section>
+      </div>
       <div className="agent-intro">
-        <p className="muted small">
-          Connect an agent to one workspace. Its key never grants more access than your account.
-        </p>
+        <div>
+          <h3>Keys &amp; connections</h3>
+          <p className="muted small">
+            Access stays within your permissions. Revoke it here at any time.
+          </p>
+        </div>
         <button
           className="btn"
           disabled={!data?.workspaces.length || !passwordEnabled || busy}

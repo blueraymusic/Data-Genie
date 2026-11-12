@@ -226,6 +226,7 @@ export default function WorkspaceApp() {
       </a>
       <div id="app">
         <WorkspaceHeader
+          identity={user}
           session={session}
           view={view}
           onNavigate={go}

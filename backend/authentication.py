@@ -78,9 +78,10 @@ def csrf_token(token):
 
 
 def public_user(row):
-    user = {key: row[key] for key in ("account_id", "first_name", "last_name", "email")}
+    user = {key: row[key] for key in ("account_id", "first_name", "last_name", "email", "created_at")}
     user["password_enabled"] = bool(row["password_hash"] and row["password_hash"].startswith("pbkdf2_sha256$"))
     user["microsoft_linked"] = bool(row["microsoft_linked"]) if "microsoft_linked" in row.keys() else False
+    user["profile_photo"] = row["profile_photo"] if "profile_photo" in row.keys() else None
     return user
 
 
@@ -296,3 +297,23 @@ class Accounts:
             connection.execute("UPDATE accounts SET password_hash=? WHERE account_id=?", (encoded, account_id))
             connection.execute("DELETE FROM browser_logins WHERE account_id=?", (account_id,))
             connection.execute("UPDATE agent_tokens SET revoked_at=COALESCE(revoked_at,?) WHERE account_id=?", (int(time.time()), account_id))
+
+    def update_profile(self, account_id, payload):
+        from .profile import profile_photo
+        names = [payload.get(key) for key in ("first_name", "last_name")]
+        if any(not isinstance(name, str) for name in names):
+            raise ValueError("Provide your first and last name, up to 100 characters each.")
+        names = [name.strip() for name in names]
+        if not names[0] or any(len(name) > 100 or any(ord(char) < 32 or ord(char) == 127 for char in name) for name in names):
+            raise ValueError("Provide a first name and use up to 100 characters per name.")
+        photo = profile_photo(payload["profile_photo"]) if "profile_photo" in payload else None
+        with self.repository._connection(write=True) as connection:
+            account = self._account(connection, "account_id", account_id)
+            if not account:
+                raise LoginRequired("Log in to continue.")
+            if "profile_photo" not in payload:
+                photo = account["profile_photo"]
+            connection.execute("UPDATE accounts SET first_name=?,last_name=?,profile_photo=? WHERE account_id=?",
+                               (*names, photo, account_id))
+            connection.execute("UPDATE users SET first_name=?,last_name=? WHERE email=?", (*names, account["email"]))
+            return public_user(self._account(connection, "account_id", account_id))
