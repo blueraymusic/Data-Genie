@@ -773,3 +773,24 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+.account-delete-form,
+.account-delete-form > *,
+.account-delete-fields > label,
+.account-transfer-choices label {
+  min-width: 0;
+}
+@media (max-width: 760px) {
+  .account-delete-form .account-profile-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    position: sticky;
+    bottom: -18px;
+    z-index: 1;
+    padding-block: 10px;
+    border-top: 1px solid var(--rule);
+    background: var(--paper);
+  }
+  .workspace-dialog:has(.account-delete-form) {
+    scroll-padding-bottom: 120px;
+  }
+}
