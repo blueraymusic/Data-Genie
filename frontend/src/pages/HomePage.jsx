@@ -164,7 +164,7 @@ export default function HomePage() {
           </div>
           <div className="footer-meta">
             <p className="eyebrow">Your words. Your data.</p>
-            <span>Made by Adel Sissoko.</span>
+            <span>Made by Blueray Inc.</span>
           </div>
         </div>
       </footer>
