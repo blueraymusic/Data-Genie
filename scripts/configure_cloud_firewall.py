@@ -36,7 +36,10 @@ def configured_sql_server(group, name):
 
 def main(check_only=False):
     group, name = os.environ["GENIE_RESOURCE_GROUP"], os.environ["GENIE_APP_NAME"]
-    app = json.loads(azure("webapp", "show", "--resource-group", group, "--name", name))
+    # The typed webapp command can omit plan metadata in newer SDK responses.
+    # Read the stable ARM resource representation instead.
+    app = json.loads(azure("resource", "show", "--resource-type", "Microsoft.Web/sites",
+                           "--api-version", "2022-03-01", "--resource-group", group, "--name", name))
     # Match the reviewed tier and OS; Windows B1 has a different price.
     plan_id = arm_value(app, 'serverFarmId')
     if not isinstance(plan_id, str) or not plan_id:
