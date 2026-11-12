@@ -171,6 +171,32 @@ CREATE TABLE IF NOT EXISTS agent_tokens (
     revoked_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS agent_token_account ON agent_tokens(account_id);
+CREATE TABLE IF NOT EXISTS oauth_clients (
+    client_id TEXT PRIMARY KEY,
+    encrypted_json TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_flows (
+    flow_hash TEXT PRIMARY KEY,
+    client_id TEXT NOT NULL REFERENCES oauth_clients(client_id),
+    params_json TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_codes (
+    code_hash TEXT PRIMARY KEY,
+    token_id TEXT NOT NULL REFERENCES agent_tokens(token_id) ON DELETE CASCADE,
+    client_id TEXT NOT NULL REFERENCES oauth_clients(client_id),
+    params_json TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_tokens (
+    token_hash TEXT PRIMARY KEY,
+    kind TEXT NOT NULL CHECK(kind IN ('access','refresh')),
+    token_id TEXT NOT NULL REFERENCES agent_tokens(token_id) ON DELETE CASCADE,
+    client_id TEXT NOT NULL REFERENCES oauth_clients(client_id),
+    scopes_json TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS agent_sessions (
     token_id TEXT NOT NULL REFERENCES agent_tokens(token_id) ON DELETE CASCADE,
     database_id INTEGER NOT NULL REFERENCES databases(database_id),

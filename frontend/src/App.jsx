@@ -8,18 +8,24 @@ import FaqPage from './pages/FaqPage';
 import ContactPage from './pages/ContactPage';
 import AuthPage from './pages/AuthPage';
 import WorkspaceApp from './pages/WorkspaceApp';
+import AgentConsentPage from './pages/AgentConsentPage';
+import { captureAgentAuthorization, pendingAgentAuthorization } from './lib/agentAuthorization';
 import { captureWorkspaceInvitation, readWorkspaceInvitation } from './lib/workspaceInvites';
 
 function ProtectedPages() {
   const { user, loading } = useAuth(),
     { pathname, route, navigate } = useRouter();
   useLayoutEffect(() => {
+    captureAgentAuthorization(route);
     if (captureWorkspaceInvitation(route)) navigate('/workspaces', true);
   }, [route, navigate]);
   useEffect(() => {
     if (!loading && !user && !['/signin', '/signup'].includes(pathname)) navigate('/signin', true);
     if (!loading && user && ['/signin', '/signup'].includes(pathname))
-      navigate(readWorkspaceInvitation() ? '/workspaces' : '/databases', true);
+      navigate(
+        pendingAgentAuthorization() || (readWorkspaceInvitation() ? '/workspaces' : '/databases'),
+        true,
+      );
   }, [loading, user, pathname, navigate]);
   if (loading)
     return (
@@ -27,7 +33,15 @@ function ProtectedPages() {
         <p role="status">Loading…</p>
       </AuthShell>
     );
-  return user ? <WorkspaceApp key={user.account_id} /> : <AuthPage />;
+  return user ? (
+    pathname === '/connect-agent' ? (
+      <AgentConsentPage />
+    ) : (
+      <WorkspaceApp key={user.account_id} />
+    )
+  ) : (
+    <AuthPage />
+  );
 }
 function Pages() {
   const { pathname } = useRouter();

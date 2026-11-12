@@ -53,6 +53,14 @@ def handle(handler, path):
 
 
 def browser_get(handler, path, user):
+    if path == '/api/oauth/flow':
+        from urllib.parse import urlparse, parse_qs
+        from .oauth_provider import OAuthProvider
+        from . import settings
+        origin = settings.public_url() or 'http://' + handler.headers['Host']
+        flow = parse_qs(urlparse(handler.path).query).get('flow', [''])[0]
+        handler.json(OAuthProvider(origin).flow_info(user['account_id'], flow))
+        return True
     if path != '/api/agent-tokens':
         return False
     handler.json(AgentTokens(workbench.get_repository()).list(user['account_id']))
@@ -60,6 +68,12 @@ def browser_get(handler, path, user):
 
 
 def browser_post(handler, path, user):
+    if path == '/api/oauth/consent':
+        from .oauth_provider import OAuthProvider
+        from . import settings
+        origin = settings.public_url() or 'http://' + handler.headers['Host']
+        handler.json(OAuthProvider(origin).consent(user['account_id'], handler.read_json(16384)))
+        return True
     if path not in {'/api/agent-tokens', '/api/agent-tokens/revoke'}:
         return False
     payload = handler.read_json(16 * 1024)

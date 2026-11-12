@@ -29,6 +29,7 @@ from .connections import ConnectionFailure
 ROOT = Path(__file__).resolve().parents[1]
 MAX_JSON_BYTES = 36 * 1024 * 1024
 STATIC_FILES = {
+    "/connect-agent": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/favicon.svg": ("frontend/public/favicon.svg", "image/svg+xml"),
     "/": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/index.html": ("frontend/dist/index.html", "text/html; charset=utf-8"),
@@ -88,6 +89,43 @@ class Handler(BaseHTTPRequestHandler):
         if not isinstance(value, dict):
             raise ValueError("Provide a JSON object.")
         return value
+
+    def remote_mcp(self):
+        from .remote_mcp import PATHS
+        if urlparse(self.path).path not in PATHS:
+            return False
+        from .wsgi import application
+        from io import BytesIO
+        try:
+            length = int(self.headers.get('Content-Length', '0'))
+        except ValueError:
+            length = -1
+        if not 0 <= length <= 65536:
+            self.json({'error': 'Request body is too large or invalid.'}, 413)
+            return True
+        parsed = urlparse(self.path)
+        environ = {'REQUEST_METHOD': self.command, 'PATH_INFO': parsed.path, 'QUERY_STRING': parsed.query,
+            'SERVER_NAME': '127.0.0.1', 'SERVER_PORT': str(getattr(self.server, 'server_port', 8000)),
+            'SERVER_PROTOCOL': 'HTTP/1.1', 'wsgi.url_scheme': 'http', 'wsgi.input': BytesIO(self.rfile.read(length)),
+            'wsgi.errors': sys.stderr, 'wsgi.version': (1, 0), 'wsgi.multithread': True,
+            'wsgi.multiprocess': False, 'wsgi.run_once': False, 'REMOTE_ADDR': self.client_address[0],
+            'CONTENT_TYPE': self.headers.get('Content-Type', ''), 'CONTENT_LENGTH': str(length)}
+        for name, value in self.headers.items():
+            if name.lower() not in {'content-type', 'content-length'}:
+                environ['HTTP_' + name.upper().replace('-', '_')] = value
+        def start(status, headers, exc_info=None):
+            self.send_response(int(status.split()[0]))
+            for name, value in headers:
+                self.send_header(name, value)
+            self.end_headers()
+        response = application(environ, start)
+        try:
+            for chunk in response:
+                self.wfile.write(chunk)
+        finally:
+            if hasattr(response, 'close'):
+                response.close()
+        return True
 
     def accounts(self):
         return authentication.Accounts(workbench.get_repository())
@@ -251,6 +289,8 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query)
         try:
+            if self.remote_mcp():
+                return
             if parsed.path == "/healthz":
                 return self.json({"status": "ok"})
             if parsed.path.startswith("/assets/"):
@@ -366,6 +406,8 @@ class Handler(BaseHTTPRequestHandler):
         if not self.local_host():
             return self.json({"error": "Use the local Data Genie address."}, 403)
         parsed = urlparse(self.path)
+        if self.remote_mcp():
+            return
         origin = self.headers.get("Origin")
         host = self.headers.get("Host", "")
         expected = settings.public_url() or ("http://" + host)

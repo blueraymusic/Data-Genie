@@ -1,5 +1,7 @@
 # Workspaces and database access
 
+[Main README](../README.md) · [All guides](README.md) · [Agent permissions](agents.md)
+
 On [Choose your database](https://data-genie.space/databases), choose **Create team workspace** to start a team before opening a database. Enter a **New workspace name** and choose **Create workspace**. The new workspace opens in **Teams** with that team selected.
 
 You can also create a team from **Databases** while a database is open, or choose **New workspace** in [Teams](https://data-genie.space/workspaces). Creating a workspace keeps your current connection; it does not move that database automatically.
@@ -19,6 +21,8 @@ Accounts and workspaces belong to the installation you are using; the hosted sit
 Invitation codes and links are credentials: send them only to the intended recipient. Acceptance needs both the private code and the matching signed-in account. The code is shown once when an invitation is created. Replacing an invitation creates a new code and invalidates the previous one.
 
 ## Roles
+
+An agent connection acts within the signed-in account's current role and database grants. Connecting an agent does not add a member or create new database permissions. OAuth consent and API keys can narrow access further. See [agent setup](agents.md).
 
 | Role   | Access                                                                                                                                      |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------- |

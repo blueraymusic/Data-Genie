@@ -105,6 +105,11 @@ export function AgentAccess({ passwordEnabled }) {
   }
   return (
     <div className="agent-access">
+      <p className="small">
+        For browser sign-in, use <code>{window.location.origin}/mcp</code> as your agent’s remote
+        MCP URL. Choose a workspace and permissions when Data Genie asks. Connections can be revoked
+        below.
+      </p>
       <div className="agent-intro">
         <p className="muted small">
           Connect an agent to one workspace. Its key never grants more access than your account.

@@ -388,7 +388,7 @@ export const faqGroups = [
       {
         question: 'Is this an MCP connector?',
         search:
-          'PostgreSQL connects directly using its native database protocol. Agents can separately use the authenticated HTTP API or optional local stdio MCP bridge. Create an expiring workspace-scoped key in Account Agents & API. No public remote MCP URL or OAuth connector is included yet.',
+          'PostgreSQL connects directly using its native database protocol. Agents can use the hosted MCP endpoint https://data-genie.space/mcp with browser OAuth sign-in and workspace consent, the HTTP API with an agent key, or the optional local stdio bridge.',
         answer: (
           <>
             <p>
@@ -396,10 +396,11 @@ export const faqGroups = [
               MCP server to connect a database.
             </p>
             <p>
-              To use Data Genie from an agent, create a workspace-scoped key in{' '}
-              <strong>Account → Agents &amp; API</strong>. Connect a desktop or IDE client through
-              the optional local stdio MCP bridge, or call the HTTP API directly. This release does
-              not include a public remote MCP URL or OAuth connector.
+              For a remote MCP connection, enter <code>https://data-genie.space/mcp</code> in a
+              client that supports custom servers with OAuth. Sign in to Data Genie, choose a
+              workspace and allowed actions, then approve the connection. You can revoke it in{' '}
+              <strong>Account → Agents &amp; API</strong>. The local bridge and HTTP API remain
+              available for scripts using agent keys.
             </p>
             <p>
               <a

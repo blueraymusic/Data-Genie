@@ -50,6 +50,9 @@ class Request(Handler):
 
 
 def application(environ, start_response):
+    from .remote_mcp import PATHS, application as remote_application
+    if environ.get('PATH_INFO') in PATHS:
+        return remote_application(environ, start_response)
     request = Request(environ)
     hosted = False
     try:

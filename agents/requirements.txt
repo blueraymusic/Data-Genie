@@ -1,2 +1,2 @@
-# Installed on the agent's machine, not on the Data Genie web server.
+# Local stdio bridge dependencies. Hosted MCP is configured in azure/requirements.txt.
 mcp==2.3.0

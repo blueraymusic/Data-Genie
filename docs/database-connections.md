@@ -1,5 +1,7 @@
 # Database connections
 
+[Main README](../README.md) · [All guides](README.md) · [Backend](../backend/README.md) · [Agent connections](agents.md)
+
 Data Genie supports local SQLite files and live PostgreSQL databases, including standard PostgreSQL connections from Supabase and Neon. The database connector uses PostgreSQL's native protocol; no MCP server is needed to connect a database. Separately, the [agent API and optional MCP bridge](agents.md) let agents use Data Genie under your current workspace permissions.
 
 ## Connect on the hosted site

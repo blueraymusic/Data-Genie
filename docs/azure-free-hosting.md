@@ -1,5 +1,7 @@
 # Azure hosting with free services and student credit
 
+[Main README](../README.md) · [All guides](README.md) · [Azure overview](../azure/README.md) · [Hosted MCP](agents.md)
+
 Target: HCP Terraform organization `blueray321`, project `Blueray`, workspace `Data-Genie`, and the existing Azure resource group `data_genie`.
 
 The configured deployment uses **France Central**, app `data-genie-blueray321`, one **Linux B1** instance with Always On enabled, and SQL server `data-genie-blueray321-fr-sql` / database `data-genie-state`. The site is [data-genie.space](https://data-genie.space/). The [manual deployment pipeline](https://dev.azure.com/as4dc/blueray/_build?definitionId=1) is in `as4dc/blueray`; select `appServiceSku=B1` when running it.

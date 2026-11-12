@@ -11,6 +11,20 @@
   padding-top: 14px;
   min-width: 0;
 }
+.agent-callback {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper);
+  overflow-wrap: anywhere;
+}
+.agent-callback strong {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 400;
+}
 .agent-intro,
 .agent-key-list li,
 .agent-dialog-actions {

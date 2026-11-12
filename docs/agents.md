@@ -1,6 +1,20 @@
 # Connect an agent
 
-Data Genie has a workspace-scoped HTTP API and an optional MCP server that runs on your computer. The MCP server forwards tools to the API over HTTPS. Your agent never needs the database password or Data Genie's AI key.
+[Main README](../README.md) · [All guides](README.md) · [Agent overview](../agents/README.md) · [Backend/API](../backend/README.md)
+
+Data Genie provides a hosted MCP server at **`https://data-genie.space/mcp`**, a workspace-scoped HTTP API, and an optional local MCP bridge. Your agent never needs the database password or Data Genie's AI key.
+
+## Connect through your browser
+
+1. In a client supporting custom remote MCP servers with OAuth, enter `https://data-genie.space/mcp` as the server URL.
+2. Follow its sign-in link to Data Genie. Log in or create a Data Genie account.
+3. Review the client name and callback address. Names are self-reported, so check the destination.
+4. Choose one workspace and the actions you want to allow, then select **Allow connection**.
+5. Return to your agent. It discovers only the tools permitted by the connection and your current role.
+
+No local Python installation or copied key is required for this flow. Client support and subscription requirements are controlled by the client provider. OAuth connections last 30 days; access tokens expire after one hour and refresh tokens rotate. Revoke a connection under **Account → Agents & API**, or change your Data Genie password to revoke all agent access. Revocation blocks subsequent requests and refreshes.
+
+The endpoint shares the existing Azure B1 app and cloud storage. It adds no hosting instance or paid authentication service; existing Azure usage limits and AI quotas still apply. The browser flow uses OAuth authorization codes with S256 PKCE, registered callback validation, resource-bound tokens, and explicit consent. SQL changes still require review in the site, and reports remain private drafts.
 
 ## Create a key
 
@@ -13,7 +27,7 @@ Keys expire after 1, 7, 30, or 90 days. Revoke them in Account at any time. Chan
 
 A key's actions are limited by both its selected scopes and your **current** workspace role and database grants. A viewer can access shared reports only. Revoking database access or removing a member also blocks their agent's subsequent requests. A request already running may finish; revocation does not undo completed work.
 
-## Use MCP
+## Optional local MCP bridge
 
 Use a desktop or IDE client that supports local **stdio MCP servers**. Download or clone this repository, then install the optional connector in a Python 3.11+ environment:
 
@@ -42,7 +56,7 @@ Use the interpreter where you installed `agents/requirements.txt`. For a local D
 
 Restart or reconnect the MCP client. Ask it to list available Data Genie databases, inspect a database's structure, then query it or draft a report. Tools are discovered from the server according to the key and your current role. Reconnect to refresh discovery after role changes; every tool call still checks access.
 
-This release uses a local stdio bridge, **not a public `/mcp` endpoint or OAuth connector**. Clients that only support remote MCP URLs cannot connect directly yet. A cloud agent can use the HTTP API below without running the bridge. The MCP SDK is needed only on the agent machine, not the web server.
+The local stdio bridge uses manually created agent keys and calls the HTTP API. The hosted `/mcp` endpoint uses browser-based OAuth instead; manually created keys are not OAuth tokens and cannot be used interchangeably. A cloud agent can also call the HTTP API below without either bridge.
 
 ## Available actions
 

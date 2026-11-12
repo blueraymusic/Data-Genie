@@ -1,5 +1,7 @@
 # Using Data Genie
 
+[Main README](../README.md) · [All guides](README.md) · [Agent connections](agents.md)
+
 [Open Data Genie](https://data-genie.space/) · [FAQ](https://data-genie.space/faq)
 
 Sign up or log in, then choose a database. You can create an empty SQLite database, upload a SQLite file, try the sample, or connect PostgreSQL. Hosted accounts and laptop accounts are separate.
@@ -11,6 +13,10 @@ Your **Personal workspace** keeps your databases private. To work together, choo
 The same action is available on **Databases** while a database is open. Creating a team keeps that connection and does not move its database. In **Teams**, use **Databases** to add or open a database and **People & access** to invite teammates and grant access. See [workspaces and access](workspaces.md) for the private invitation-code steps and permissions.
 
 Teams uses the available screen width. On phones, use **Select workspace** to switch teams. Primary controls stay on screen; long member lists, permissions, and report text scroll inside their panels.
+
+## Connect an agent
+
+Use `https://data-genie.space/mcp` in a client supporting custom remote MCP with OAuth. Sign in, review the callback address, and choose one workspace and the actions you want to allow. Your current permissions still apply. SQL edits wait for your review in Data Genie; reports stay private drafts. Revoke a connection in **Account → Agents & API**. For scripts and API keys, see the [agent guide](agents.md).
 
 ## Choose how to work
 
