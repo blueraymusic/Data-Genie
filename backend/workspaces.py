@@ -159,8 +159,10 @@ class WorkspaceStore:
                 JOIN workspaces w USING(workspace_id) WHERE i.email=? COLLATE NOCASE
                 AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at>?
                 ORDER BY i.created_at,i.invitation_id""", (email, int(time.time()))).fetchall()
+            from .ownership_transfers import OwnershipTransfers
             return {"workspaces": [self._workspace(connection, row) for row in rows],
-                    "invitations": [self._invitation(row) for row in invitations]}
+                    "invitations": [self._invitation(row) for row in invitations],
+                    "ownership_transfers": OwnershipTransfers.inbox(connection, account_id)}
 
     @classmethod
     def _access(cls, connection, account_id, database_id, workspace_id=None):
@@ -214,6 +216,9 @@ class WorkspaceStore:
                     FROM workspace_invitations i JOIN workspaces w USING(workspace_id)
                     WHERE i.workspace_id=? ORDER BY i.created_at DESC,i.invitation_id""", (workspace_id,))]
             result = self._workspace(connection, workspace)
+            if workspace['role'] == 'owner':
+                from .ownership_transfers import OwnershipTransfers
+                result['ownership_transfer'] = OwnershipTransfers.outgoing(connection, workspace_id)
             # _workspace has no member id on a single membership lookup.
             result["database_count"] = len(databases)
             return {"workspace": result, "members": [dict(row) for row in members] if workspace["role"] == "owner" else [], "databases": databases,
@@ -337,6 +342,7 @@ class WorkspaceStore:
             self._end_shared_sessions(connection, workspace_id, target_id)
             connection.execute("DELETE FROM workspace_grants WHERE workspace_id=? AND account_id=?", (workspace_id, target_id))
             connection.execute("DELETE FROM workspace_members WHERE workspace_id=? AND account_id=?", (workspace_id, target_id))
+            connection.execute("UPDATE ownership_transfers SET status='cancelled',decided_at=? WHERE workspace_id=? AND recipient_account_id=? AND status='pending'", (int(time.time()), workspace_id, target_id))
             return {"removed": True}
 
     def _end_shared_sessions(self, connection, workspace_id, account_id, database_id=None):

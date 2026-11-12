@@ -29,6 +29,11 @@ def attach_session(account_id, workspace_id, result):
 
 def get(handler, path, user):
     account_id = user["account_id"]
+    transfer = re.fullmatch(r'/api/ownership-transfers/([A-Za-z0-9_-]+)', path)
+    if transfer:
+        from .ownership_transfers import OwnershipTransfers
+        handler.json(OwnershipTransfers(workbench.get_repository()).review(account_id, transfer[1]))
+        return True
     if path == "/api/workspaces":
         handler.json(store().list_workspaces(account_id))
         return True
@@ -54,6 +59,18 @@ def get(handler, path, user):
 
 
 def post(handler, path, user):
+    transfer = re.fullmatch(r'/api/ownership-transfers/([A-Za-z0-9_-]+)/(accept|decline|cancel)', path)
+    start = re.fullmatch(r'/api/workspaces/([A-Za-z0-9-]+)/ownership-transfer', path)
+    if transfer or start:
+        from .ownership_transfers import OwnershipTransfers
+        service = OwnershipTransfers(workbench.get_repository())
+        payload = handler.read_json(16 * 1024)
+        if start:
+            result = service.create(user['account_id'], start[1], payload, handler.login_token(), handler.client_address[0])
+        else:
+            result = service.decide(user['account_id'], transfer[1], transfer[2], payload, handler.login_token(), handler.client_address[0])
+        handler.json(result)
+        return True
     if not (path == "/api/workspaces" or path.startswith("/api/workspaces/")):
         return False
     payload = handler.read_json(128 * 1024)

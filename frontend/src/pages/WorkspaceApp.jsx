@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useWorkbench } from '../hooks/useWorkbench';
 import { useEnterMotion } from '../hooks/useMotion';
 import { useAuth } from '../context/AuthContext';
@@ -17,7 +17,7 @@ import HistoryPage from './HistoryPage';
 import AccountPage from './AccountPage';
 import DatabasesPage from './DatabasesPage';
 import SqlPage from './SqlPage';
-import WorkspacesPage from './WorkspacesPage';
+const WorkspacesPage = lazy(() => import('./WorkspacesPage'));
 import { databaseAccess } from '../lib/access';
 import { DatabaseAccess } from '../components/DatabaseAccess';
 export const viewRoutes = {
@@ -175,13 +175,21 @@ export default function WorkspaceApp() {
   )
     return (
       <PersonalWorkspace user={user} view="workspaces" onNavigate={go} logout={logout}>
-        <WorkspacesPage
-          workbench={workbench}
-          onOpened={opened}
-          initialWorkspaceId={new URLSearchParams((route.split('?')[1] || '').split('#')[0]).get(
-            'workspace',
-          )}
-        />
+        <Suspense
+          fallback={
+            <p className="workspace-loading" role="status">
+              Loading workspaces…
+            </p>
+          }
+        >
+          <WorkspacesPage
+            workbench={workbench}
+            onOpened={opened}
+            initialWorkspaceId={new URLSearchParams((route.split('?')[1] || '').split('#')[0]).get(
+              'workspace',
+            )}
+          />
+        </Suspense>
       </PersonalWorkspace>
     );
   if (session && !access.canRead && view === 'account')

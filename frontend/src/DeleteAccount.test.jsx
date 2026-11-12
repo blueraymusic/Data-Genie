@@ -55,12 +55,12 @@ it('loads impact only on request and lets the user back out without a deletion',
   expect(remove).not.toHaveBeenCalled();
 });
 
-it('requires explicit confirmation and submits the chosen workspace transfer with the current password', async () => {
+it('requires explicit confirmation and keeps account deletion separate from ownership transfer', async () => {
   const events = userEvent.setup();
   setup();
   await events.click(screen.getByRole('button', { name: 'Delete account', exact: true }));
   await screen.findByText('2 owned databases');
-  await events.selectOptions(screen.getByLabelText('Ownership of Studio'), '2');
+  expect(screen.queryByLabelText('Ownership of Studio')).toBeNull();
   await events.type(screen.getByLabelText('Your account email'), user.email);
   await events.type(screen.getByLabelText('Type DELETE to confirm'), 'DELETE');
   const submit = screen.getByRole('button', { name: 'Delete account permanently' });
@@ -73,7 +73,6 @@ it('requires explicit confirmation and submits the chosen workspace transfer wit
     email: user.email,
     confirmation: 'DELETE',
     password: 'fixture-only passphrase',
-    transfers: { studio: 2 },
   });
   expect(location.pathname + location.search).toBe('/signin?account=deleted');
 });

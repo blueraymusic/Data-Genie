@@ -10,7 +10,7 @@ Ask your database questions in plain English, inspect the SQL, and follow up. Us
 
 - Ask questions or run SQL directly.
 - Manage tables and columns with a preview before changes.
-- Work with a team and grant access per database.
+- Work with a team, grant database access, and transfer ownership with recipient approval.
 - Write reports, share approved findings, and download PDFs.
 - Connect an agent through MCP or the HTTP API.
 

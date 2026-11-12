@@ -11,7 +11,8 @@ export function useInvitationCount() {
       controller = current;
       api('/api/workspaces', { signal: current.signal })
         .then((data) => {
-          if (!current.signal.aborted) setCount(data.invitations?.length || 0);
+          if (!current.signal.aborted)
+            setCount((data.invitations?.length || 0) + (data.ownership_transfers?.length || 0));
         })
         .catch(() => {});
     };

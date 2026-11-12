@@ -152,6 +152,18 @@ CREATE TABLE IF NOT EXISTS report_ai_budgets (
 CREATE TABLE IF NOT EXISTS account_file_deletions (
     path TEXT PRIMARY KEY
 );
+CREATE TABLE IF NOT EXISTS ownership_transfers (
+    transfer_id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+    workspace_name TEXT NOT NULL,
+    sender_account_id INTEGER NOT NULL REFERENCES accounts(account_id) ON DELETE CASCADE,
+    recipient_account_id INTEGER NOT NULL REFERENCES accounts(account_id) ON DELETE CASCADE,
+    status TEXT NOT NULL CHECK(status IN ('pending','accepted','declined','cancelled')),
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    decided_at INTEGER
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ownership_transfer_pending ON ownership_transfers(workspace_id) WHERE status='pending';
 CREATE TABLE IF NOT EXISTS workspace_reports (
     report_id TEXT PRIMARY KEY,
     workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,

@@ -31,7 +31,7 @@ An agent connection acts within the signed-in account's current role and databas
 | Viewer | Has no direct database, chat, SQL, or schema access in the shared workspace. Can read only reports the owner has shared with the workspace. |
 
 A person can own their personal workspace and be a Member or Viewer in another workspace.
-Only the owner can manage a workspace. Ownership transfer is not included in this version.
+Only the owner can manage a workspace. They can [request an ownership transfer](#transfer-ownership) to an existing member; ownership changes only after the recipient accepts.
 
 ## Permissions for each database
 
@@ -77,7 +77,7 @@ Report saves check a version number. If another session has saved changes first,
 
 Choose **Download PDF** on a saved report to keep a copy. Anyone who can read that report can download it: viewers can download shared reports, while drafts remain limited to their author and the owner. PDF downloads do not grant access to the underlying database.
 
-Only the report's creator can choose **Delete report**, and only while they are a Member or Owner of the workspace. Confirming permanently removes the saved report, including a shared report. Owners cannot delete reports written by someone else; viewers cannot delete reports in an active workspace. In an archived workspace, anyone who can view the report may delete it after confirmation.
+For active reports, only the creator can choose **Delete report**, and only while they are a Member or Owner of the workspace. Confirming permanently removes the saved report. Anyone who can view an archived report may delete it after confirmation, including reports retained from a deleted author in an otherwise active workspace.
 
 For local PDF downloads, install `python3 -m pip install -r backend/requirements-reports.txt` and restart the server. The Azure deployment includes this package.
 
@@ -85,10 +85,20 @@ Charts in shared reports, public links, and scheduled delivery are not included 
 
 ## Account deletion, transfers, and archives
 
-In **Account & preferences → Sign-in & security → Delete account**, review the affected databases and choose what happens to each owned team. Transfer to an existing workspace member to move ownership, database copies, and saved PostgreSQL connection credentials together. This gives that member full control. Personal databases must first be moved to a team to transfer them.
+### Transfer ownership
 
-Otherwise, deleting the account removes its owned Data Genie databases, connections, private history, invitations, browser logins, and agent keys/OAuth grants. It never drops an external PostgreSQL server or an original file outside Data Genie's managed storage.
+This is a separate action from account deletion. In **Teams**, select a team and choose **Transfer ownership** under **Workspace settings**. Select an existing member, type the workspace name, and confirm your password. Invite the recipient first if they have not joined. Your account and ownership stay unchanged while the request is pending.
 
-Teams with remaining members and reports become **Archived**. Existing report visibility is preserved: shared reports stay available, private reports by remaining authors stay private, and the departing owner's private drafts in their deleted workspaces are removed. Retained authorship is shown as **Deleted account**. Archives cannot add databases, edit reports, invite people, or generate AI drafts. Any current member who can view an archived report may download its PDF or permanently delete that report after confirmation. An archive disappears when its final real member deletes their account. A workspace without remaining members is deleted with its reports.
+The recipient sees an **Ownership requests** section in Teams and a pending-request badge in navigation. They choose **Review request**, inspect the current database and connection counts, then **Accept ownership** or **Decline request**. Acceptance requires their current password, or a Microsoft sign-in within five minutes. If the workspace changes after review, they must refresh before accepting.
 
-Reports in someone else's workspace remain there, attributed to **Deleted account**; their owner retains normal management rights. Account deletion requires the current password, matching account email, and the exact word **DELETE**. Microsoft-only accounts require a fresh sign-in within five minutes. These account actions use browser login and CSRF protection and are not agent API actions.
+Acceptance transfers the workspace, its databases, and saved PostgreSQL connection credentials. The recipient becomes Owner; the sender becomes Member and the new owner controls their database access. Existing members keep their grants; outstanding membership invitations are revoked so the new owner can review new invitations. Declining or cancelling leaves ownership unchanged. The sender can cancel a pending request; requests expire after seven days. Notifications are in Data Genie, not email.
+
+### Delete account
+
+In **Account & preferences → Sign-in & security → Delete account**, review the deletion impact, confirm your email, type **DELETE**, and enter your current password. Microsoft-only accounts require a fresh sign-in within five minutes. Complete any desired ownership transfer in Teams before deleting your account; a pending request does not preserve ownership or data and is cancelled by deletion. Personal databases must first move into a team if you want to transfer them.
+
+Deletion removes remaining owned Data Genie databases, saved connections, private history, invitations, browser logins, and agent keys/OAuth grants. It never drops an external PostgreSQL server or an original file outside Data Genie's managed storage.
+
+Teams with remaining members and reports become **Archived**. Existing visibility is preserved: shared reports stay available, private reports by remaining authors stay private, and the departing owner's private drafts in their deleted workspaces are removed. Retained authorship is shown as **Deleted account**. Archives cannot add databases, edit reports, invite people, or generate AI drafts. Any current member who can view an archived report may download its PDF or permanently delete that report after confirmation. An archive disappears when its final real member deletes their account. A workspace without remaining members is deleted with its reports.
+
+Reports in someone else's workspace remain there as read-only archived reports, attributed to **Deleted account**. Anyone in that workspace who can view an archived report can delete it; its previous visibility is preserved. Ownership and deletion actions use browser login and CSRF protection and are not agent API actions.

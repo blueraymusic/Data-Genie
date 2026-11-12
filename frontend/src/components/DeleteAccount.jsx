@@ -13,8 +13,7 @@ function DeleteAccountDialog({ user, onClose }) {
     [busy, setBusy] = useState(false),
     [revision, setRevision] = useState(0),
     [email, setEmail] = useState(''),
-    [confirmation, setConfirmation] = useState(''),
-    [transfers, setTransfers] = useState({});
+    [confirmation, setConfirmation] = useState('');
   const passwordEnabled = user.password_enabled !== false;
   useEffect(() => {
     const controller = new AbortController();
@@ -23,7 +22,6 @@ function DeleteAccountDialog({ user, onClose }) {
       .then((data) => {
         if (!controller.signal.aborted) {
           setSummary(data);
-          setTransfers({});
         }
       })
       .catch((error) => {
@@ -42,7 +40,6 @@ function DeleteAccountDialog({ user, onClose }) {
         email: email.trim().toLowerCase(),
         confirmation,
         password: new FormData(event.currentTarget).get('password'),
-        transfers,
       });
       navigate('/signin?account=deleted', true);
     } catch (error) {
@@ -53,7 +50,7 @@ function DeleteAccountDialog({ user, onClose }) {
   return (
     <WorkspaceDialog
       title="Delete your account?"
-      description="This is permanent. Decide what happens to your workspaces before continuing."
+      description="This is permanent. Review what will be removed before continuing."
       onClose={onClose}
       busy={busy}
       wide
@@ -73,49 +70,32 @@ function DeleteAccountDialog({ user, onClose }) {
                   {summary.databases} owned {summary.databases === 1 ? 'database' : 'databases'}
                 </strong>
                 <p>
-                  Deleted unless you transfer the team workspace below. Personal databases are
-                  deleted; move them into a team first to transfer them.
+                  Permanently removed with your account. Transfer any work you want to keep from
+                  Teams before continuing.
                 </p>
               </div>
             </div>
             {summary.workspaces.length > 0 && (
-              <fieldset className="account-transfer-choices">
-                <legend>Your team workspaces</legend>
-                {summary.workspaces.map((space) => (
-                  <label key={space.workspace_id}>
-                    <span>{space.name}</span>
-                    <select
-                      aria-label={'Ownership of ' + space.name}
-                      value={transfers[space.workspace_id] || ''}
-                      disabled={busy}
-                      onChange={(event) => {
-                        const next = { ...transfers };
-                        if (event.target.value)
-                          next[space.workspace_id] = Number(event.target.value);
-                        else delete next[space.workspace_id];
-                        setTransfers(next);
-                      }}
-                    >
-                      <option value="">
-                        {space.members.length
-                          ? 'Delete databases; archive reports'
-                          : 'Delete workspace and its contents'}
-                      </option>
-                      {space.members.map((member) => (
-                        <option key={member.account_id} value={member.account_id}>
-                          Transfer to {member.first_name} {member.last_name} ({member.email})
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
-              </fieldset>
+              <div className="account-owned-workspaces">
+                <strong>Owned team workspaces</strong>
+                <ul>
+                  {summary.workspaces.map((space) => (
+                    <li key={space.workspace_id}>
+                      {space.name} ·{' '}
+                      {space.members.length
+                        ? 'Reports archived for remaining members'
+                        : 'Workspace and reports deleted'}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
             <p className="account-delete-explanation">
-              Transfers include full control of database connections. Otherwise, remaining members
-              retain reports in a read-only archive and can delete them. Empty workspaces, your
-              private history, logins, invitations and agent access are removed. Private drafts are
-              not shared. External PostgreSQL data stays on its server.
+              To keep a workspace and its databases, complete an ownership transfer in Teams first.
+              Deletion removes your owned Data Genie databases, private history, logins, invitations
+              and agent access. Remaining members retain reports in a read-only archive and can
+              delete them. Private drafts are not shared. External PostgreSQL data stays on its
+              server.
             </p>
             <div className="account-delete-fields">
               <label>
@@ -197,7 +177,7 @@ export function DeleteAccount({ user }) {
       <section className="account-danger-row" aria-label="Delete account">
         <div>
           <h3>Delete account</h3>
-          <p>Transfer your work or permanently remove your account.</p>
+          <p>Permanently remove your account and owned databases.</p>
         </div>
         <button className="btn quiet account-delete-trigger" onClick={() => setOpen(true)}>
           Delete account

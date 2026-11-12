@@ -676,8 +676,7 @@
   display: grid;
   gap: 14px;
 }
-.account-delete-form > label,
-.account-transfer-choices label {
+.account-delete-form > label {
   display: grid;
   gap: 6px;
   font-size: 13px;
@@ -701,19 +700,6 @@
   color: var(--ink-soft);
   font-size: 12px;
   line-height: 1.65;
-}
-.account-transfer-choices {
-  display: grid;
-  gap: 12px;
-  padding: 0;
-  margin: 0;
-  border: 0;
-  min-width: 0;
-}
-.account-transfer-choices legend {
-  margin-bottom: 10px;
-  font-weight: 500;
-  font-size: 13px;
 }
 @media (max-width: 760px) {
   .account-danger-row {
@@ -759,24 +745,15 @@
   grid-column: 1 / -1;
   grid-row: 1;
 }
-.account-transfer-choices {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  max-height: 170px;
-  overflow: auto;
-  padding: 3px;
-  scroll-padding: 3px;
-}
 @media (max-width: 760px) {
   .account-delete-fields,
-  .account-delete-fields:has(> p),
-  .account-transfer-choices {
+  .account-delete-fields:has(> p) {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 .account-delete-form,
 .account-delete-form > *,
-.account-delete-fields > label,
-.account-transfer-choices label {
+.account-delete-fields > label {
   min-width: 0;
 }
 @media (max-width: 760px) {
@@ -793,4 +770,16 @@
   .workspace-dialog:has(.account-delete-form) {
     scroll-padding-bottom: 120px;
   }
+}
+
+.account-owned-workspaces {
+  font-size: 12px;
+}
+.account-owned-workspaces ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  max-height: 110px;
+  overflow: auto;
+  color: var(--ink-soft);
+  line-height: 1.8;
 }

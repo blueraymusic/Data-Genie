@@ -95,7 +95,7 @@ export const faqGroups = [
       {
         question: 'Can I create and share reports?',
         search:
-          'In Teams open Reports and New report. Write from a blank page, use a template, or draft with Data Genie AI from source notes you supply. Members can edit their own drafts. Owners review and share reports with workspace members and viewers. Viewers see only shared reports, not database rows, chats or SQL. Anyone allowed to read a saved report can Download PDF. Only the creator can Delete report while a Member or Owner in active workspaces. In archived workspaces, anyone who can view a report can delete it, with confirmation. Reports are saved snapshots, not live dashboards.',
+          'In Teams open Reports and New report. Write from a blank page, use a template, or draft with Data Genie AI from source notes you supply. Members can edit their own drafts. Owners review and share reports with workspace members and viewers. Viewers see only shared reports, not database rows, chats or SQL. Anyone allowed to read a saved report can Download PDF. Only the creator can Delete an active report while a Member or Owner. Anyone who can view an archived report can delete it, with confirmation. Reports are saved snapshots, not live dashboards.',
         answer: (
           <>
             <p>
@@ -106,9 +106,9 @@ export const faqGroups = [
             </p>
             <p>
               Anyone who can read a saved report can choose <strong>Download PDF</strong>, including
-              viewers. Only its creator can choose <strong>Delete report</strong>, while they are a
-              Member or Owner in an active workspace. In an archived workspace, anyone who can view
-              a report can delete it. Deletion is permanent and asks for confirmation.
+              viewers. Only its creator can delete an active report, while they are a Member or
+              Owner. Anyone who can view an archived report can delete it, including reports
+              retained from a deleted author. Deletion is permanent and asks for confirmation.
             </p>
           </>
         ),
@@ -805,29 +805,50 @@ export const faqGroups = [
         ),
       },
       {
+        question: 'Can I transfer ownership without deleting my account?',
+        search:
+          'Transfer workspace ownership Teams Workspace settings recipient existing member accepts declines cancel request seven days separate from account deletion databases PostgreSQL saved connections transferred current password Microsoft fresh sign in.',
+        answer: (
+          <>
+            <p>
+              Yes. In <strong>Teams → Workspace settings → Transfer ownership</strong>, select an
+              existing member, type the workspace name, and confirm your password. Invite them to
+              the workspace first if needed. Your account stays active and you remain the owner
+              while the request is pending.
+            </p>
+            <p>
+              The recipient sees the request in <strong>Teams → Ownership requests</strong>. They
+              review the databases and saved connections, then accept or decline. Only acceptance
+              moves ownership and the databases; you then become a Member. You can cancel before
+              acceptance, and requests expire after seven days. Notifications are in Data Genie, not
+              email.
+            </p>
+          </>
+        ),
+      },
+      {
         question: 'What happens when I delete my account?',
         search:
-          'Account preferences Sign-in security Delete account. Transfer a team workspace to an existing member including its databases and saved PostgreSQL connections, or remove owned databases and archive reports for remaining members. Anyone who can view an archived report can delete it. Empty workspaces without remaining members are deleted. Private drafts stay private. Current password email DELETE confirmation Microsoft fresh login five minutes. External PostgreSQL servers are not dropped.',
+          'Account preferences Sign-in security Delete account separate ownership transfer. Finish transfers in Teams before deleting. Owned database copies credentials private history invitations agent access and pending transfers removed. Reports archive remaining members can delete visible reports. No remaining members workspace cascades. Password email DELETE Microsoft fresh sign in five minutes.',
         answer: (
           <>
             <p>
               Open <strong>Account &amp; preferences → Delete account</strong> to review the impact.
-              You can transfer each owned team to an existing member, including its databases and
-              saved connections. Move personal databases into a team first to transfer them.
-            </p>
-            <p>
-              Otherwise, owned Data Genie database copies, connections, private history,
-              invitations, logins, and agent access are removed. Reports remain available to their
-              existing audience, attributed to <strong>Deleted account</strong>. Teams with
-              remaining members become read-only archives; anyone who can view an archived report
-              can delete it. A workspace without remaining members is deleted with its reports.
-              Private drafts are not made public, and the departing owner's private drafts in their
-              deleted workspaces are removed.
-            </p>
-            <p>
               Confirm your email, type <strong>DELETE</strong>, and enter your current password.
-              Microsoft-only accounts require a new sign-in within five minutes. External PostgreSQL
-              servers are never dropped by account deletion.
+              Microsoft-only accounts require a new sign-in within five minutes.
+            </p>
+            <p>
+              Deletion removes your remaining owned Data Genie database copies, connections, private
+              history, invitations, logins, pending transfer requests, and agent access. To keep a
+              workspace and its databases, complete a separate ownership transfer in Teams first; a
+              pending request does not transfer ownership.
+            </p>
+            <p>
+              Reports remain available to their existing audience, attributed to{' '}
+              <strong>Deleted account</strong>. Teams with remaining members become read-only
+              archives; anyone who can view an archived report can delete it. A workspace without
+              remaining members is deleted with its reports. Private drafts are not made public.
+              External PostgreSQL servers are never dropped by account deletion.
             </p>
           </>
         ),

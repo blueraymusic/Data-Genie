@@ -85,7 +85,7 @@ export function WorkspaceHeader({
               {id === 'workspaces' && invitationCount > 0 && (
                 <span
                   className="invitation-count"
-                  aria-label={`${invitationCount} pending invitations`}
+                  aria-label={`${invitationCount} pending team requests`}
                 >
                   {invitationCount}
                 </span>

@@ -3,9 +3,18 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import WorkspacesPage from './pages/WorkspacesPage';
 import { captureWorkspaceInvitation, readWorkspaceInvitation } from './lib/workspaceInvites';
+vi.mock('./context/AuthContext', () => ({
+  useAuth: () => ({ user: { account_id: 1, password_enabled: true } }),
+}));
 
 const all = { read: true, write: true, delete: true, structure: true, export: true };
-const team = { workspace_id: 'team', name: 'Operations', personal: false, role: 'owner' };
+const team = {
+  workspace_id: 'team',
+  name: 'Operations',
+  personal: false,
+  role: 'owner',
+  owner_account_id: 1,
+};
 const personal = { workspace_id: 'personal', name: 'Personal', personal: true, role: 'owner' };
 const people = [
   {

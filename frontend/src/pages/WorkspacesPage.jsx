@@ -10,6 +10,8 @@ import { useWorkspaces } from '../hooks/useWorkspaces';
 import { useEnterMotion } from '../hooks/useMotion';
 import { api } from '../lib/api';
 import { forgetWorkspaceInvitation } from '../lib/workspaceInvites';
+import { WorkspaceOwnership } from '../components/WorkspaceOwnership';
+import { OwnershipRequests } from '../components/OwnershipRequests';
 
 const permissionLabels = {
   read: 'Read',
@@ -189,6 +191,19 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
         resolved={teams.listResolved}
         disabled={disabled}
         onAccept={accept}
+      />
+      <OwnershipRequests
+        requests={teams.ownershipTransfers}
+        disabled={disabled}
+        onComplete={(result) => {
+          teams.refresh();
+          if (result.status === 'accepted') teams.select(result.workspace_id);
+          teams.setMessage(
+            result.status === 'accepted'
+              ? 'Ownership accepted. You now manage this workspace.'
+              : 'Ownership request declined. Your access is unchanged.',
+          );
+        }}
       />
       <div className="workspace-layout">
         <div className="workspace-mobile-switcher">
@@ -494,6 +509,14 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
               {owner && !workspace.personal && (
                 <footer className="workspace-settings">
                   <p className="small muted">Workspace settings</p>
+                  <WorkspaceOwnership
+                    key={workspace.workspace_id}
+                    workspace={workspace}
+                    members={details.members || []}
+                    disabled={disabled}
+                    onChanged={teams.refresh}
+                    onInvite={() => selectTab('people')}
+                  />
                   <button
                     className="text-button workspace-remove"
                     disabled={disabled}

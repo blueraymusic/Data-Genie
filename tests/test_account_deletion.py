@@ -8,50 +8,14 @@ from backend import authentication, workbench
 from backend.agent_tokens import AgentTokens
 from backend.reports import ReportStore
 from backend.workspaces import WorkspaceStore
+from backend.ownership_transfers import OwnershipTransfers
 from tests.test_http import HttpHarness
 
 
-class AccountDeletionTests(HttpHarness, unittest.TestCase):
-    def setUp(self):
-        super().setUp()
-        self.repository = workbench.get_repository()
-        self.accounts = authentication.Accounts(self.repository)
-        self.store = WorkspaceStore(self.repository)
-        self.reports = ReportStore(self.repository)
-        self.owner = self.account['account_id']
-        self.member = self.accounts.register('Member', 'Fixture', 'member@example.test', self.password, 'member-fixture')['account_id']
-        self.viewer = self.accounts.register('Viewer', 'Fixture', 'viewer@example.test', self.password, 'viewer-fixture')['account_id']
-        self.source = Path(self.session['path'])
+from tests.fixtures_accounts import AccountWorkspaceFixture
 
-    def as_user(self, account_id):
-        token = self.accounts.issue_login(account_id)
-        self.cookie = authentication.COOKIE_NAME + '=' + token
-        self.csrf = authentication.csrf_token(token)
 
-    def team(self, owner=None, members=True):
-        owner = owner or self.owner
-        team = self.store.create_workspace(owner, 'Fixture studio')['workspace_id']
-        if owner == self.owner:
-            self.store.attach_database(owner, team, self.session['database_id'])
-        if members:
-            targets = [(self.member, 'member'), (self.viewer, 'viewer')] if owner == self.owner else [(self.owner, 'member')]
-            for account_id, role in targets:
-                with self.repository._connection() as connection:
-                    email = connection.execute('SELECT email FROM accounts WHERE account_id=?', (account_id,)).fetchone()[0]
-                invite = self.store.invite(owner, team, email, role)
-                self.store.accept_invitation(account_id, invite['invitation_id'], invite['token'])
-        return team
-
-    def report(self, team, author=None, published=True):
-        return self.reports.save_report(author or self.owner, team, {'title': 'Fixture findings', 'body': 'Reviewed fixture snapshot.', 'published': published})['report_id']
-
-    def remove(self, **changes):
-        return self.request('POST', '/api/auth/delete', {'email': 'ada@example.com', 'confirmation': 'DELETE', 'password': self.password, **changes})
-
-    def check_integrity(self):
-        with self.repository._connection() as connection:
-            self.assertEqual(connection.execute('PRAGMA foreign_key_check').fetchall(), [])
-
+class AccountDeletionTests(AccountWorkspaceFixture, HttpHarness, unittest.TestCase):
     def test_requires_current_login_csrf_email_confirmation_and_password(self):
         payload = {'email': 'ada@example.com', 'confirmation': 'DELETE', 'password': self.password}
         self.assertEqual(self.request('POST', '/api/auth/delete', payload, extra_headers={'Cookie': ''})[0], 401)
@@ -99,7 +63,13 @@ class AccountDeletionTests(HttpHarness, unittest.TestCase):
         report = self.report(team)
         remote = self.repository.create_external_session(self.owner, 'External fixture', 'encrypted-fixture-only')
         self.store.attach_database(self.owner, team, remote['database_id'])
-        self.assertEqual(self.remove(transfers={team: self.member})[0], 200)
+        service = OwnershipTransfers(self.repository)
+        token = self.cookie.split('=', 1)[1]
+        pending = service.create(self.owner, team, {'name': 'Fixture studio', 'password': self.password, 'recipient_account_id': self.member}, token, 'fixture')
+        recipient_token = self.accounts.issue_login(self.member)
+        review = service.review(self.member, pending['transfer_id'])
+        service.decide(self.member, pending['transfer_id'], 'accept', {'password': self.password, 'review_version': review['review_version']}, recipient_token, 'recipient-fixture')
+        self.assertEqual(self.remove()[0], 200)
         self.assertTrue(self.source.is_file())
         details = self.store.get_workspace(self.member, team)
         self.assertEqual(details['workspace']['role'], 'owner')
@@ -108,12 +78,15 @@ class AccountDeletionTests(HttpHarness, unittest.TestCase):
         with self.repository._connection() as connection:
             self.assertEqual(connection.execute('SELECT account_id FROM external_connections').fetchone()[0], self.member)
             self.assertEqual({row[0] for row in connection.execute('SELECT owner_account_id FROM workspace_databases WHERE workspace_id=?', (team,))}, {self.member})
-        self.assertTrue(self.reports.get_report(self.member, team, report)['can_edit'])
+        retained = self.reports.get_report(self.member, team, report)
+        self.assertTrue(retained['archived'])
+        self.assertTrue(retained['can_delete'])
+        self.assertFalse(retained['can_edit'])
         self.check_integrity()
 
-    def test_rejects_transfers_to_nonmembers_without_any_partial_change(self):
+    def test_deletion_rejects_embedded_transfers_without_any_partial_change(self):
         team = self.team(members=False)
-        self.assertEqual(self.remove(transfers={team: self.member})[0], 403)
+        self.assertEqual(self.remove(transfers={team: self.member})[0], 400)
         self.assertEqual(self.store.get_workspace(self.owner, team)['workspace']['role'], 'owner')
         self.assertTrue(self.source.is_file())
         self.assertEqual(self.remove(transfers={team: str(self.member)})[0], 400)
@@ -135,10 +108,15 @@ class AccountDeletionTests(HttpHarness, unittest.TestCase):
         self.assertEqual(self.remove()[0], 200)
         self.assertEqual(self.store.get_workspace(self.member, other_team)['workspace']['role'], 'owner')
         self.assertFalse(self.store.get_workspace(self.member, other_team)['workspace']['archived_at'])
-        self.assertEqual(self.reports.get_report(self.member, other_team, report)['first_name'], 'Deleted')
+        retained = self.reports.get_report(self.member, other_team, report)
+        self.assertEqual(retained['first_name'], 'Deleted')
+        self.assertTrue(retained['archived'])
+        self.assertTrue(retained['can_delete'])
+        self.assertFalse(retained['can_edit'])
+        self.reports.delete_report(self.member, other_team, report, retained['version'])
         self.check_integrity()
 
-    def test_metadata_failure_restores_staged_files_and_rolls_back_transfers(self):
+    def test_metadata_failure_restores_staged_files_and_rolls_back_deletion(self):
         team = self.team()
         with self.repository._connection(write=True) as connection:
             connection.execute('CREATE TABLE fixture_dependency(account_id INTEGER REFERENCES accounts(account_id))')

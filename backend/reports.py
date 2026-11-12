@@ -16,15 +16,16 @@ class ReportStore(WorkspaceStore):
 
     @staticmethod
     def _permissions(workspace, row, account_id):
-        return {**dict(row), 'published': bool(row['published']), 'archived': bool(workspace['archived_at']),
-                'can_edit': not workspace['archived_at'] and (workspace['role'] == 'owner' or (workspace['role'] == 'member' and row['author_id'] == account_id and not row['published'])),
-                'can_delete': bool(workspace['archived_at']) or (workspace['role'] != 'viewer' and row['author_id'] == account_id)}
+        archived = bool(workspace['archived_at'] or row['author_deleted'])
+        return {**dict(row), 'published': bool(row['published']), 'archived': archived,
+                'can_edit': not archived and (workspace['role'] == 'owner' or (workspace['role'] == 'member' and row['author_id'] == account_id and not row['published'])),
+                'can_delete': archived or (workspace['role'] != 'viewer' and row['author_id'] == account_id)}
 
     @staticmethod
     def _visible_report(connection, workspace, account_id, report_id):
         if not isinstance(report_id, str) or not report_id or len(report_id) > 100:
             raise PermissionError('This report is not available for your account.')
-        row = connection.execute('''SELECT r.*,a.first_name,a.last_name FROM workspace_reports r
+        row = connection.execute('''SELECT r.*,a.first_name,a.last_name,(a.password_hash='!deleted') AS author_deleted FROM workspace_reports r
             JOIN accounts a ON a.account_id=r.author_id WHERE r.workspace_id=? AND r.report_id=?
             AND (?='owner' OR r.published=1 OR (?='member' AND r.author_id=?))''',
             (workspace['workspace_id'], report_id, workspace['role'], workspace['role'], account_id)).fetchone()
@@ -36,7 +37,7 @@ class ReportStore(WorkspaceStore):
     def list_reports(self, account_id, workspace_id):
         with self.repository._connection() as connection:
             workspace = self._membership(connection, account_id, workspace_id)
-            rows = connection.execute('''SELECT r.*,a.first_name,a.last_name FROM workspace_reports r
+            rows = connection.execute('''SELECT r.*,a.first_name,a.last_name,(a.password_hash='!deleted') AS author_deleted FROM workspace_reports r
                 JOIN accounts a ON a.account_id=r.author_id WHERE r.workspace_id=?
                 AND (?='owner' OR r.published=1 OR (?='member' AND r.author_id=?)) ORDER BY r.updated_at DESC,r.report_id''',
                 (workspace_id, workspace['role'], workspace['role'], account_id)).fetchall()
@@ -54,7 +55,7 @@ class ReportStore(WorkspaceStore):
         with self.repository._connection(write=True) as connection:
             workspace = self._membership(connection, account_id, workspace_id)
             row = self._visible_report(connection, workspace, account_id, report_id)
-            if not workspace['archived_at']:
+            if not workspace['archived_at'] and not row['author_deleted']:
                 self._editor(workspace)
                 if row['author_id'] != account_id:
                     raise PermissionError('Only the report creator can delete this report.')
@@ -89,6 +90,8 @@ class ReportStore(WorkspaceStore):
                 if not isinstance(report_id, str) or len(report_id) > 100:
                     raise ValueError('Choose a valid report.')
                 row = connection.execute('SELECT * FROM workspace_reports WHERE report_id=? AND workspace_id=?', (report_id, workspace_id)).fetchone()
+                if row and connection.execute("SELECT 1 FROM accounts WHERE account_id=? AND password_hash='!deleted'", (row['author_id'],)).fetchone():
+                    raise PermissionError('Archived reports are read-only.')
                 if agent_draft and (row is None or row['author_id'] != account_id or row['published']):
                     raise PermissionError('Agents can update their account’s own unpublished drafts only.')
                 if row is None or (workspace['role'] != 'owner' and (row['author_id'] != account_id or row['published'])):

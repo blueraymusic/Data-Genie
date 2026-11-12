@@ -11,29 +11,13 @@ import secrets
 import time
 
 from .authentication import Accounts, LoginRequired, token_hash
-from .workspaces import AUTHORIZATION_LOCK, WorkspaceStore
+from .workspaces import AUTHORIZATION_LOCK
 
 
 class AccountDeletion:
     def __init__(self, repository, directories):
         self.repository = repository
         self.directories = tuple(Path(path).resolve() for path in directories)
-
-    @staticmethod
-    def _transfer(connection, account_id, transfers):
-        if not isinstance(transfers, dict) or len(transfers) > 100:
-            raise ValueError('Choose a valid workspace transfer.')
-        for workspace_id, target_id in transfers.items():
-            workspace = WorkspaceStore._membership(connection, account_id, workspace_id, owner=True)
-            if workspace['kind'] != 'team' or type(target_id) is not int or target_id == account_id:
-                raise ValueError('Transfer a team workspace to another existing member.')
-            WorkspaceStore._membership(connection, target_id, workspace_id)
-            connection.execute("UPDATE workspace_members SET role='member' WHERE workspace_id=? AND account_id=?", (workspace_id, account_id))
-            connection.execute("UPDATE workspace_members SET role='owner' WHERE workspace_id=? AND account_id=?", (workspace_id, target_id))
-            connection.execute('UPDATE workspaces SET owner_account_id=? WHERE workspace_id=?', (target_id, workspace_id))
-            connection.execute('''UPDATE external_connections SET account_id=? WHERE account_id=? AND connection_id IN
-                (SELECT d.connection_id FROM databases d JOIN workspace_databases wd USING(database_id) WHERE wd.workspace_id=?)''', (target_id, account_id, workspace_id))
-            connection.execute('UPDATE workspace_databases SET owner_account_id=? WHERE workspace_id=? AND owner_account_id=?', (target_id, workspace_id, account_id))
 
     @staticmethod
     def _prepare(connection, account_id):
@@ -83,6 +67,8 @@ class AccountDeletion:
                 logging.getLogger(__name__).warning('Account database file cleanup deferred.')
 
     def delete(self, account_id, payload, login_token, client):
+        if payload.get('transfers'):
+            raise ValueError('Ownership transfers are separate. Complete a transfer in Teams before deleting your account.')
         # Password verification has the same server-side attempt budget as login.
         with self.repository._connection() as connection:
             account = Accounts._account(connection, 'account_id', account_id)
@@ -105,7 +91,6 @@ class AccountDeletion:
                 login = connection.execute('SELECT 1 FROM browser_logins WHERE token_hash=? AND account_id=?', (token_hash(login_token), account_id)).fetchone()
                 if not current or not login or current['password_hash'] != account['password_hash']:
                     raise LoginRequired('Log in again before deleting your account.')
-                self._transfer(connection, account_id, payload.get('transfers', {}))
                 self._prepare(connection, account_id)
                 for row in connection.execute('SELECT path FROM delete_databases WHERE connection_id IS NULL'):
                     original = Path(row['path'])

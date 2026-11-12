@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 export function useWorkspaces(initialId) {
   const [workspaces, setWorkspaces] = useState([]),
     [invitations, setInvitations] = useState([]),
+    [ownershipTransfers, setOwnershipTransfers] = useState([]),
     [selected, setSelected] = useState(initialId || ''),
     [details, setDetails] = useState(null),
     [loading, setLoading] = useState(true),
@@ -25,6 +26,7 @@ export function useWorkspaces(initialId) {
         const available = data.workspaces || [];
         setWorkspaces(available);
         setInvitations(data.invitations || []);
+        setOwnershipTransfers(data.ownership_transfers || []);
         setSelected((current) =>
           available.some((item) => item.workspace_id === current)
             ? current
@@ -103,6 +105,7 @@ export function useWorkspaces(initialId) {
   return {
     workspaces,
     invitations,
+    ownershipTransfers,
     selected,
     details,
     loading,
