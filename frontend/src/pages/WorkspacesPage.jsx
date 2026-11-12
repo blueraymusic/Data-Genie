@@ -7,6 +7,7 @@ import { CreateWorkspaceDialog } from '../components/CreateWorkspaceDialog';
 import { WorkspaceMembers } from '../components/WorkspaceMembers';
 import { WorkspaceInvitations, WorkspaceInviteManager } from '../components/WorkspaceInvitations';
 import { useWorkspaces } from '../hooks/useWorkspaces';
+import { useEnterMotion } from '../hooks/useMotion';
 import { api } from '../lib/api';
 import { forgetWorkspaceInvitation } from '../lib/workspaceInvites';
 
@@ -19,7 +20,8 @@ const permissionLabels = {
 };
 
 export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId }) {
-  const sectionTabs = useRef(null);
+  const sectionTabs = useRef(null),
+    sectionContent = useRef(null);
   const teams = useWorkspaces(initialWorkspaceId || workbench.session?.access?.workspace_id),
     { details } = teams,
     workspace = details?.workspace,
@@ -28,7 +30,11 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
   const [deleteName, setDeleteName] = useState(''),
     [tab, setTab] = useState('databases'),
     [modal, setModal] = useState(null),
-    [invitationDraft, setInvitationDraft] = useState({ email: '', role: 'member', link: null }),
+    [invitationDraft, setInvitationDraft] = useState({
+      email: '',
+      role: 'member',
+      link: null,
+    }),
     [personalDatabases, setPersonalDatabases] = useState([]),
     [attachId, setAttachId] = useState(''),
     [opening, setOpening] = useState(null),
@@ -43,6 +49,11 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
     disabled = pending || teams.busy || opening !== null,
     base = '/api/workspaces/' + encodeURIComponent(teams.selected),
     personalId = teams.workspaces.find((item) => item.personal)?.workspace_id;
+  useEnterMotion(
+    sectionContent,
+    `${workspace?.workspace_id || ''}:${tab}`,
+    Boolean(workspace && !teams.detailsLoading),
+  );
   const databases = (details?.databases || []).filter(
     (database) => owner || database.permissions?.read === true,
   );
@@ -79,7 +90,9 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
       return;
     }
     const controller = new AbortController();
-    api('/api/workspaces/' + encodeURIComponent(personalId), { signal: controller.signal })
+    api('/api/workspaces/' + encodeURIComponent(personalId), {
+      signal: controller.signal,
+    })
       .then((data) => {
         if (!controller.signal.aborted) setPersonalDatabases(data.databases || []);
       })
@@ -344,7 +357,8 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                     aria-current={tab === 'people' ? 'page' : undefined}
                     onClick={() => selectTab('people')}
                   >
-                    People &amp; access<span>{(details.members || []).length}</span>
+                    People &amp; access
+                    <span>{(details.members || []).length}</span>
                     <small>
                       Invite teammates &amp; set permissions
                       {details.invitations?.length
@@ -361,7 +375,11 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                   busy={disabled}
                 />
               ) : tab === 'databases' ? (
-                <section className="workspace-section" aria-labelledby="workspaceDatabasesTitle">
+                <section
+                  ref={sectionContent}
+                  className="workspace-section"
+                  aria-labelledby="workspaceDatabasesTitle"
+                >
                   <header className="workspace-section-heading">
                     <div>
                       <h2 id="workspaceDatabasesTitle">Databases</h2>
@@ -541,7 +559,10 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
             <DatabaseForm
               busy={disabled}
               onOpen={async (payload) => {
-                const data = await workbench.open({ ...payload, workspace_id: teams.selected });
+                const data = await workbench.open({
+                  ...payload,
+                  workspace_id: teams.selected,
+                });
                 teams.refresh();
                 setModal(null);
                 onOpened?.(data);

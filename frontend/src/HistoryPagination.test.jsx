@@ -28,7 +28,9 @@ const records = Array.from({ length: 45 }, (_, index) => ({
       status: 'executed',
       result: {
         payload: {
-          rows: Array.from({ length: 500 }, (_, row) => ({ id: `row-${index + 1}-${row}` })),
+          rows: Array.from({ length: 500 }, (_, row) => ({
+            id: `row-${index + 1}-${row}`,
+          })),
         },
       },
     },
@@ -79,8 +81,10 @@ it('bounds each history page, keeps navigation at both ends, and mounts saved re
   const events = userEvent.setup();
   render(<HistoryPage workbench={workbench()} onReuse={vi.fn()} />);
   const top = screen.getByRole('navigation', { name: 'History pages top' });
-  const bottom = screen.getByRole('navigation', { name: 'History pages bottom' });
   await within(top).findByText('1–20 of 45 requests · Page 1 of 3');
+  const bottom = screen.getByRole('navigation', {
+    name: 'History pages bottom',
+  });
   expect(document.querySelectorAll('.history-entry')).toHaveLength(20);
   expect(screen.queryByRole('table')).toBeNull();
   expect(within(top).getByRole('button', { name: 'Previous' }).disabled).toBe(true);
@@ -177,7 +181,10 @@ it('keeps current pending confirmations visible and preserves full long requests
   );
   await events.click(screen.getByRole('button', { name: 'Don’t run' }));
   expect(decide).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({ command_id: 99, confirmation_token: 'test-token' }),
+    expect.objectContaining({
+      command_id: 99,
+      confirmation_token: 'test-token',
+    }),
     true,
   );
   expect(screen.getByRole('button', { name: 'Use request', exact: true }).disabled).toBe(true);
@@ -194,7 +201,11 @@ it('shows loading and ignores a stale page response after applying new filters',
             resolve({
               ok: true,
               status: 200,
-              json: async () => ({ requests: records.slice(20, 40), total: 45, has_more: true }),
+              json: async () => ({
+                requests: records.slice(20, 40),
+                total: 45,
+                has_more: true,
+              }),
             });
         })
       : original(path, options),
@@ -229,7 +240,11 @@ it('applies an operation immediately from page two without submitting an unfinis
     fetch.mock.calls.filter(([path]) => path.startsWith('/api/history?')).at(-1)[0],
     'http://localhost',
   ).searchParams;
-  expect(Object.fromEntries(query)).toMatchObject({ search: '', operation: 'UPDATE', offset: '0' });
+  expect(Object.fromEntries(query)).toMatchObject({
+    search: '',
+    operation: 'UPDATE',
+    offset: '0',
+  });
   expect(search.value).toBe('Record 4');
   await events.click(screen.getByRole('button', { name: 'Search', exact: true }));
   await within(top).findByText('1–4 of 4 requests · Page 1 of 1');
@@ -260,6 +275,7 @@ it('keeps the empty state compact and restores pagination when requests become a
   serve([]);
   const events = userEvent.setup();
   render(<HistoryPage workbench={workbench()} onReuse={vi.fn()} />);
+  expect(screen.queryByRole('button', { name: /^(Newest|Previous|Next)$/ })).toBeNull();
   await screen.findByText('No saved requests match these filters.');
   expect(screen.getByRole('status').textContent).toBe('0 requests');
   expect(screen.queryByRole('navigation', { name: 'History pages bottom' })).toBeNull();

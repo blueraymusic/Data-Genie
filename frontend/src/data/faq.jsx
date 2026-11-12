@@ -388,14 +388,54 @@ export const faqGroups = [
       {
         question: 'Is this an MCP connector?',
         search:
-          'The current version connects directly to PostgreSQL using its native database protocol. It does not include an MCP client or server. You do not need an MCP server to connect your PostgreSQL database to Data Genie.',
+          'PostgreSQL connects directly using its native database protocol. Agents can separately use the authenticated HTTP API or optional local stdio MCP bridge. Create an expiring workspace-scoped key in Account Agents & API. No public remote MCP URL or OAuth connector is included yet.',
         answer: (
           <>
             <p>
-              The current version connects directly to PostgreSQL using its native database
-              protocol. It does not include an MCP client or server.
+              PostgreSQL connects directly using its native database protocol. You do not need an
+              MCP server to connect a database.
             </p>
-            <p>You do not need an MCP server to connect your PostgreSQL database to Data Genie.</p>
+            <p>
+              To use Data Genie from an agent, create a workspace-scoped key in{' '}
+              <strong>Account → Agents &amp; API</strong>. Connect a desktop or IDE client through
+              the optional local stdio MCP bridge, or call the HTTP API directly. This release does
+              not include a public remote MCP URL or OAuth connector.
+            </p>
+            <p>
+              <a
+                href="https://github.com/blueraymusic/Data-Genie/blob/dev/docs/agents.md"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Read the agent setup guide
+              </a>
+              .
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'What can an agent do with my account?',
+        search:
+          'Agent key scopes permissions expire revoke read databases query prepare change manual confirmation create blank SQLite database private report draft AI report generate viewer shared reports only no publishing invitations permissions.',
+        answer: (
+          <>
+            <p>
+              You choose the actions and one workspace when creating a key. Agents can read
+              permitted data, prepare SQL changes, create blank SQLite databases if you are the
+              owner, and draft reports. Keys cannot override your current role or database
+              permissions.
+            </p>
+            <p>
+              SQL changes wait for your confirmation in the site. Reports stay private drafts until
+              an owner shares them. Agents cannot invite people, grant access, publish reports, or
+              confirm changes through the API. Viewers can read shared reports only.
+            </p>
+            <p>
+              Keys expire and can be revoked in Account. Changing your password revokes your agent
+              keys too. AI drafting sends only the notes explicitly supplied and uses your account’s
+              existing allowance.
+            </p>
           </>
         ),
       },

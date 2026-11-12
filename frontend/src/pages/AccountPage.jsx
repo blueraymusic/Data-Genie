@@ -5,6 +5,7 @@ import { Link, useRouter } from '../lib/router';
 import { api } from '../lib/api';
 import { MicrosoftMark, microsoftError, useMicrosoftSignIn } from '../components/MicrosoftSignIn';
 import { databaseAccess } from '../lib/access';
+import { AgentAccess } from '../components/AgentAccess';
 export default function AccountPage({ workbench, mode, setMode }) {
   const { user, changePassword, refresh } = useAuth(),
     { theme, toggle } = useTheme();
@@ -21,6 +22,7 @@ export default function AccountPage({ workbench, mode, setMode }) {
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState(''),
     [error, setError] = useState('');
+  const [agentsOpen, setAgentsOpen] = useState(false);
   async function submit(event) {
     event.preventDefault();
     const form = event.currentTarget,
@@ -253,6 +255,13 @@ export default function AccountPage({ workbench, mode, setMode }) {
           </p>
         </form>
       )}
+      <details
+        className="agent-settings"
+        onToggle={(event) => setAgentsOpen(event.currentTarget.open)}
+      >
+        <summary>Agents &amp; API</summary>
+        {agentsOpen && <AgentAccess passwordEnabled={passwordEnabled} />}
+      </details>
       <p className="small muted account-storage-note">
         Accounts and history are saved where Data Genie runs.
         {passwordEnabled && ' Changing your password signs out other browser logins.'}

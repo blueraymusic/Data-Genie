@@ -35,8 +35,8 @@
   color: var(--ink-soft);
   white-space: nowrap;
   transition:
-    color 160ms ease,
-    border-color 160ms ease;
+    color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out);
 }
 .workspace-page .workspace-section-tabs > button[aria-current='page'] {
   color: var(--lapis);

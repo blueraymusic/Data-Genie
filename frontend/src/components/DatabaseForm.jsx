@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { encodeDatabase } from '../lib/api';
 import { PostgresConnectionFields } from './PostgresConnectionFields';
+import { useEnterMotion } from '../hooks/useMotion';
 export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
-  const form = useRef(null);
+  const form = useRef(null),
+    details = useRef(null);
   const [mode, setMode] = useState(initialMode),
     [file, setFile] = useState(null),
     [name, setName] = useState('my_database.sqlite3'),
@@ -15,6 +17,7 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
       schema_name: 'public',
       allow_changes: false,
     });
+  useEnterMotion(details, mode);
   useEffect(() => {
     if (initialMode === 'postgresql') form.current?.querySelector('#postgresUrl')?.focus();
   }, [initialMode]);
@@ -27,7 +30,11 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
         mode === 'postgresql'
           ? { database_mode: mode, ...postgres }
           : mode === 'upload'
-            ? { database_mode: mode, name: file?.name, contents: await encodeDatabase(file) }
+            ? {
+                database_mode: mode,
+                name: file?.name,
+                contents: await encodeDatabase(file),
+              }
             : { database_mode: mode, database_name: name, starter },
       );
       if (mode === 'postgresql') setPostgres((previous) => ({ ...previous, connection_url: '' }));
@@ -83,7 +90,7 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
           ))}
         </div>
       </fieldset>
-      <div className="database-details">
+      <div ref={details} className="database-details">
         {mode === 'create' && (
           <div className="database-fields">
             <label htmlFor="databaseName">Database name</label>

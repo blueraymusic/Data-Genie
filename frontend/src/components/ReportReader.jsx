@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
+import { useEnterMotion } from '../hooks/useMotion';
 
 export function ReportReader({ report, disabled, activity, onEdit, onDelete, onDownload }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const keep = useRef(null),
+  const surface = useRef(null),
+    keep = useRef(null),
     remove = useRef(null),
     returning = useRef(false);
+  useEnterMotion(surface, `${report.report_id}:${report.version}`);
   useEffect(() => {
     setConfirmDelete(false);
   }, [report.report_id, report.version]);
@@ -19,7 +22,7 @@ export function ReportReader({ report, disabled, activity, onEdit, onDelete, onD
     }
   }, [confirmDelete, disabled]);
   return (
-    <article className="report-reader">
+    <article ref={surface} className="report-reader">
       <header>
         <div>
           <span className="report-status-badge">

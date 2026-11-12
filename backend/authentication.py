@@ -295,3 +295,4 @@ class Accounts:
         with self.repository._connection(write=True) as connection:
             connection.execute("UPDATE accounts SET password_hash=? WHERE account_id=?", (encoded, account_id))
             connection.execute("DELETE FROM browser_logins WHERE account_id=?", (account_id,))
+            connection.execute("UPDATE agent_tokens SET revoked_at=COALESCE(revoked_at,?) WHERE account_id=?", (int(time.time()), account_id))

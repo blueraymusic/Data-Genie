@@ -7,6 +7,14 @@ const preference = () =>
     ? window.matchMedia(query)
     : null;
 
+function duration(node, token, fallback) {
+  const value = getComputedStyle(node).getPropertyValue(token).trim();
+  const amount = Number.parseFloat(value);
+  return Number.isFinite(amount) && amount >= 0
+    ? amount * (value.endsWith('ms') ? 1 : 1000)
+    : fallback;
+}
+
 export function useReducedMotion() {
   const [reduced, setReduced] = useState(() => preference()?.matches ?? true);
   useEffect(() => {
@@ -24,17 +32,19 @@ export function useReducedMotion() {
   return reduced;
 }
 
-export function useEnterMotion(ref, key) {
+export function useEnterMotion(ref, key, ready = true) {
   const reduced = useReducedMotion();
   useEffect(() => {
     const node = ref.current;
-    if (reduced || !node || typeof node.animate !== 'function') return;
+    if (!ready || reduced || !node || typeof node.animate !== 'function') return;
     // Reading or editing a focused control takes precedence over decoration.
     if (node.contains(document.activeElement)) return;
+    const milliseconds = duration(node, '--motion-normal', 200);
+    if (!milliseconds) return;
     let animation;
     try {
-      animation = node.animate([{ opacity: 0.65 }, { opacity: 1 }], {
-        duration: 200,
+      animation = node.animate([{ opacity: 0.72 }, { opacity: 1 }], {
+        duration: milliseconds,
         easing,
       });
     } catch {
@@ -46,7 +56,71 @@ export function useEnterMotion(ref, key) {
       node.removeEventListener('focusin', cancel);
       cancel();
     };
-  }, [ref, key, reduced]);
+  }, [ref, key, reduced, ready]);
+}
+
+// Keep the actual dialog and focus trap mounted until its short exit completes.
+export function useDismissMotion(ref, onClose) {
+  const reduced = useReducedMotion();
+  const callback = useRef(onClose),
+    pending = useRef(null);
+  const [closing, setClosing] = useState(false);
+  callback.current = onClose;
+  function finish() {
+    const animation = pending.current;
+    if (!animation) return;
+    pending.current = null;
+    animation.onfinish = null;
+    animation.oncancel = null;
+    animation.cancel();
+    setClosing(false);
+    callback.current();
+  }
+  useEffect(() => {
+    if (reduced) finish();
+  }, [reduced]);
+  useEffect(
+    () => () => {
+      const animation = pending.current;
+      pending.current = null;
+      if (animation) {
+        animation.onfinish = null;
+        animation.oncancel = null;
+        animation.cancel();
+      }
+    },
+    [],
+  );
+  function dismiss() {
+    if (pending.current) return;
+    const node = ref.current;
+    if (reduced || document.hidden || !node || typeof node.animate !== 'function') {
+      callback.current();
+      return;
+    }
+    const milliseconds = duration(node, '--motion-exit', 120);
+    if (!milliseconds) {
+      callback.current();
+      return;
+    }
+    try {
+      const animation = node.animate(
+        [{ opacity: getComputedStyle(node).opacity }, { opacity: 0 }],
+        {
+          duration: milliseconds,
+          easing: 'ease-in',
+          fill: 'forwards',
+        },
+      );
+      pending.current = animation;
+      setClosing(true);
+      animation.onfinish = finish;
+      animation.oncancel = finish;
+    } catch {
+      callback.current();
+    }
+  }
+  return { dismiss, closing };
 }
 
 export function useScrollReveal(ref, selector) {

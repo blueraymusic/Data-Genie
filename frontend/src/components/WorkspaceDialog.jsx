@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
 import { Icon } from './Icon';
+import { useDismissMotion } from '../hooks/useMotion';
 
 function available(node) {
   if (
@@ -20,6 +21,7 @@ export function WorkspaceDialog({ title, description, busy, onClose, children, w
   const titleId = useId(),
     descriptionId = useId(),
     panel = useRef(null);
+  const { dismiss, closing } = useDismissMotion(panel, onClose);
   useEffect(() => {
     const previous = document.activeElement;
     const first =
@@ -32,13 +34,14 @@ export function WorkspaceDialog({ title, description, busy, onClose, children, w
   }, []);
   return (
     <div
-      className="workspace-dialog-backdrop"
+      className={'workspace-dialog-backdrop' + (closing ? ' is-closing' : '')}
       onClick={(event) => {
-        if (event.target === event.currentTarget && !busy) onClose();
+        if (event.target === event.currentTarget && !busy) dismiss();
       }}
     >
       <section
         ref={panel}
+        inert={closing || undefined}
         className={'workspace-dialog' + (wide ? ' workspace-dialog-wide' : '')}
         role="dialog"
         aria-modal="true"
@@ -48,7 +51,7 @@ export function WorkspaceDialog({ title, description, busy, onClose, children, w
         onKeyDown={(event) => {
           if (event.key === 'Escape' && !busy) {
             event.stopPropagation();
-            onClose();
+            dismiss();
           }
           if (event.key !== 'Tab') return;
           const focusable = [
@@ -87,7 +90,7 @@ export function WorkspaceDialog({ title, description, busy, onClose, children, w
             className="btn quiet workspace-close"
             aria-label="Close dialog"
             disabled={busy}
-            onClick={onClose}
+            onClick={dismiss}
           >
             <Icon name="x" />
           </button>

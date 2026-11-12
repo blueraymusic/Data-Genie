@@ -87,9 +87,15 @@ The hosted app includes the connector. For local setup, install the optional pac
 
 Choose **Databases → PostgreSQL**, paste your connection URL, and test it. **Connection options** holds the optional name and schema, which defaults to `public`. Connections start read-only. Enable **Allow changes after I confirm them** to review and confirm edits to the live database. Saved connection settings are encrypted.
 
-Confirmed edits are saved in PostgreSQL directly; no download or upload is needed. CSV downloads are copies of result rows. This is a direct PostgreSQL connector; an MCP client or server is not included yet.
+Confirmed edits are saved in PostgreSQL directly; no download or upload is needed. CSV downloads are copies of result rows. The database connector uses PostgreSQL's native protocol.
 
 See [database connections](docs/database-connections.md) for setup, a local sample database, and testing.
+
+## Connect an agent
+
+Open **Account → Agents & API** to create an expiring key for one workspace. Agents can read permitted data, prepare SQL changes for your review, create blank databases, and save private report drafts. Your current team permissions still apply.
+
+Use the optional MCP bridge with a desktop/IDE client, or call the HTTP API directly. See the [agent setup guide](docs/agents.md) for configuration, actions, and limits. Database edits still need confirmation in the site; agents cannot publish reports or grant access.
 
 ## Host on Azure
 

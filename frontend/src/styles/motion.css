@@ -90,6 +90,15 @@ body {
 .workspace-page .sql-tool-panel {
   animation: soft-content-enter var(--motion-normal) var(--ease-out) backwards;
 }
+.workspace-page
+  :is(
+    .report-ai-context,
+    .report-discard-prompt,
+    .report-delete-confirm,
+    .history-command[open] > .command
+  ) {
+  animation: soft-content-enter var(--motion-normal) var(--ease-out) backwards;
+}
 .home-page .demo-sql-loading i {
   animation: loading-breathe 700ms ease-in-out infinite alternate;
 }
@@ -121,11 +130,20 @@ body {
 /* Native accordion height animation where available; normal details is the fallback. */
 @supports (interpolate-size: allow-keywords) and (transition-behavior: allow-discrete) {
   .home-page .home-faq-list details,
-  .faq-page .faq-group details {
+  .faq-page .faq-group details,
+  .workspace-page
+    :is(.history-command, .history-full-request, .history-filter-options, .postgres-options) {
     interpolate-size: allow-keywords;
   }
   .home-page .home-faq-list details::details-content,
-  .faq-page .faq-group details::details-content {
+  .faq-page .faq-group details::details-content,
+  .workspace-page
+    :is(
+      .history-command,
+      .history-full-request,
+      .history-filter-options,
+      .postgres-options
+    )::details-content {
     block-size: 0;
     opacity: 0;
     overflow: clip;
@@ -135,9 +153,19 @@ body {
       content-visibility var(--motion-normal) allow-discrete;
   }
   .home-page .home-faq-list details[open]::details-content,
-  .faq-page .faq-group details[open]::details-content {
+  .faq-page .faq-group details[open]::details-content,
+  .workspace-page
+    :is(
+      .history-command,
+      .history-full-request,
+      .history-filter-options,
+      .postgres-options
+    )[open]::details-content {
     block-size: auto;
     opacity: 1;
+  }
+  details:has(:focus-visible)::details-content {
+    transition: none;
   }
 }
 

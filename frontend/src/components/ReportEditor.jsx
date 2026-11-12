@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Icon } from './Icon';
+import { useEnterMotion } from '../hooks/useMotion';
 
 const template = 'Summary\n\nKey findings\n• \n\nEvidence\n\nNext steps\n\nLimitations\n';
 
@@ -20,10 +21,12 @@ export function ReportEditor({
   save,
   onClose,
 }) {
-  const titleInput = useRef(null);
+  const titleInput = useRef(null),
+    sheet = useRef(null);
   const assistantId = useId();
   const [preview, setPreview] = useState(false);
   const words = draft.body.trim() ? draft.body.trim().split(/\s+/u).length : 0;
+  useEnterMotion(sheet, preview ? 'preview' : 'write');
   useEffect(() => {
     if (!preview) titleInput.current?.focus();
   }, [preview]);
@@ -126,7 +129,7 @@ export function ReportEditor({
               {words.toLocaleString()} {words === 1 ? 'word' : 'words'}
             </span>
           </div>
-          <div className="report-editor-sheet">
+          <div ref={sheet} className="report-editor-sheet">
             <div className="report-paper-kicker">
               <span className="report-status-badge">
                 {draft.published ? 'Ready to share' : 'Private draft'}
@@ -152,7 +155,10 @@ export function ReportEditor({
                     disabled={disabled}
                     placeholder="Give your report a title"
                     onChange={(event) =>
-                      setDraft((value) => ({ ...value, title: event.target.value }))
+                      setDraft((value) => ({
+                        ...value,
+                        title: event.target.value,
+                      }))
                     }
                   />
                 </label>
@@ -165,7 +171,10 @@ export function ReportEditor({
                     disabled={disabled}
                     placeholder="What did you find? Start writing here…"
                     onChange={(event) =>
-                      setDraft((value) => ({ ...value, body: event.target.value }))
+                      setDraft((value) => ({
+                        ...value,
+                        body: event.target.value,
+                      }))
                     }
                   />
                 </label>
@@ -182,7 +191,10 @@ export function ReportEditor({
               checked={draft.published}
               disabled={disabled}
               onChange={(event) =>
-                setDraft((value) => ({ ...value, published: event.target.checked }))
+                setDraft((value) => ({
+                  ...value,
+                  published: event.target.checked,
+                }))
               }
             />
             <span>

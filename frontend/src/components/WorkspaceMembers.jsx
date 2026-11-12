@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { permissionNames } from '../lib/access';
+import { useEnterMotion } from '../hooks/useMotion';
 
 const labels = {
   read: 'Read',
@@ -122,6 +123,8 @@ function DatabaseAccess({ database, grant, disabled, onSave }) {
 }
 
 function PersonAccess({ member, details, disabled, onAction }) {
+  const surface = useRef(null);
+  useEnterMotion(surface, member.account_id);
   const [role, setRole] = useState(member.role);
   const [databaseId, setDatabaseId] = useState('');
   useEffect(() => setRole(member.role), [member.role]);
@@ -135,6 +138,7 @@ function PersonAccess({ member, details, disabled, onAction }) {
   const owner = member.role === 'owner';
   return (
     <section
+      ref={surface}
       className={'workspace-person-detail' + (owner ? ' is-owner' : '')}
       aria-label={'Access for ' + member.email}
     >

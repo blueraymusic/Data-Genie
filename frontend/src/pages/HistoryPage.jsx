@@ -6,6 +6,8 @@ import { CommandOutput, operationOf } from '../components/CommandResult';
 import { Icon } from '../components/Icon';
 import '../styles/history.css';
 import { canConfirmCommand, databaseAccess } from '../lib/access';
+import { useEnterMotion } from '../hooks/useMotion';
+import { useRouter } from '../lib/router';
 
 const PAGE_SIZE = 20;
 
@@ -85,7 +87,15 @@ function HistoryEntry({ request, active, id, workbench, accessSession, onDecide,
       {request.commands.map((command, index) => (
         <HistoryCommand
           key={command.command_id}
-          {...{ command, request, index, active, workbench, accessSession, onDecide }}
+          {...{
+            command,
+            request,
+            index,
+            active,
+            workbench,
+            accessSession,
+            onDecide,
+          }}
           sessionId={id}
         />
       ))}
@@ -93,11 +103,11 @@ function HistoryEntry({ request, active, id, workbench, accessSession, onDecide,
   );
 }
 
-function HistoryNavigation({ page, offset, loading, disabled, onPage, placement }) {
+function HistoryNavigation({ page, offset, loading, disabled, onPage, placement, hasPages }) {
   const count = page?.requests.length || 0;
   const total = page?.total || 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const showButtons = loading || pages > 1;
+  const showButtons = hasPages;
   if (placement === 'bottom' && !showButtons) return null;
   return (
     <nav className="history-pagination" aria-label={`History pages ${placement}`}>
@@ -139,8 +149,11 @@ function HistoryNavigation({ page, offset, loading, disabled, onPage, placement 
 
 export default function HistoryPage({ workbench, onReuse }) {
   const id = workbench.session?.session_id;
+  const { route = '', navigate } = useRouter() || {};
+  const linkedSession =
+    new URLSearchParams((route.split('?')[1] || '').split('#')[0]).get('agent_session') || '';
   const [sessions, setSessions] = useState([]),
-    [target, setTarget] = useState(id || ''),
+    [target, setTarget] = useState(linkedSession || id || ''),
     [search, setSearch] = useState(''),
     [operation, setOperation] = useState(''),
     [filters, setFilters] = useState({ search: '', operation: '' }),
@@ -150,11 +163,17 @@ export default function HistoryPage({ workbench, onReuse }) {
     [sessionsError, setSessionsError] = useState(''),
     [revision, setRevision] = useState(0);
   const results = useRef(null),
-    controls = useRef(null);
+    controls = useRef(null),
+    lastTotal = useRef(0);
+  useEnterMotion(
+    results,
+    `${target}:${offset}:${filters.search}:${filters.operation}`,
+    page !== null,
+  );
   useEffect(() => {
-    setTarget(id || '');
+    setTarget(linkedSession || id || '');
     setOffset(0);
-  }, [id]);
+  }, [id, linkedSession]);
   useEffect(() => {
     const controller = new AbortController();
     setSessionsError('');
@@ -176,6 +195,7 @@ export default function HistoryPage({ workbench, onReuse }) {
   }, [id, revision]);
   useEffect(() => {
     if (!target) {
+      lastTotal.current = 0;
       setPage({ requests: [], total: 0, has_more: false });
       return;
     }
@@ -200,6 +220,7 @@ export default function HistoryPage({ workbench, onReuse }) {
         const requests = paginated
           ? data.requests
           : data.requests.slice(offset, offset + PAGE_SIZE);
+        lastTotal.current = total;
         setPage({
           requests: requests.map(normalizeRequest),
           total,
@@ -209,6 +230,7 @@ export default function HistoryPage({ workbench, onReuse }) {
       .catch((error) => {
         if (!controller.signal.aborted && error.name !== 'AbortError') {
           setError(error.message);
+          lastTotal.current = 0;
           setPage({ requests: [], total: 0, has_more: false });
         }
       });
@@ -217,6 +239,15 @@ export default function HistoryPage({ workbench, onReuse }) {
   async function decide(command, decline) {
     await workbench.decide(command, decline);
     setRevision((value) => value + 1);
+  }
+  async function reviewAgentSession() {
+    setError('');
+    try {
+      await workbench.open({}, target);
+      navigate('/app');
+    } catch (error) {
+      setError(error.message);
+    }
   }
   function changePage(next) {
     setOffset(next);
@@ -235,6 +266,7 @@ export default function HistoryPage({ workbench, onReuse }) {
     page,
     offset,
     loading: page === null,
+    hasPages: (page?.total ?? lastTotal.current) > PAGE_SIZE,
     disabled: Boolean(error || !target),
     onPage: changePage,
   };
@@ -363,6 +395,25 @@ export default function HistoryPage({ workbench, onReuse }) {
             ? `Saved session · Newest first. Reused requests will be prepared in ${workbench.session.database}.`
             : 'Saved results stay available without opening a database. Choose a database to reuse requests.'}
       </p>
+      {linkedSession &&
+        target === linkedSession &&
+        current &&
+        target !== id &&
+        !current.ended_at && (
+          <div className="history-agent-review">
+            <p className="small muted">
+              An agent prepared requests in {current.database}. Open this session to review the SQL
+              and confirm or decline changes.
+            </p>
+            <button
+              className="btn"
+              disabled={workbench.busy || workbench.pending}
+              onClick={reviewAgentSession}
+            >
+              Review in workspace
+            </button>
+          </div>
+        )}
       <div className="history-results" ref={results} aria-busy={page === null}>
         {(error || sessionsError) && (
           <div className="history-error" role="alert">

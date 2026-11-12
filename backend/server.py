@@ -21,6 +21,7 @@ from . import settings
 from . import authentication
 from . import microsoft_auth
 from . import workspace_api
+from . import agent_api
 from .access_control import session_access
 from .connections import ConnectionFailure
 
@@ -275,7 +276,11 @@ class Handler(BaseHTTPRequestHandler):
                     return self.json({"user": user, "csrf_token": authentication.csrf_token(self.login_token())})
                 except authentication.LoginRequired:
                     return self.json({"user": None})
+            if agent_api.handle(self, parsed.path):
+                return
             user = self.account()
+            if agent_api.browser_get(self, parsed.path, user):
+                return
             if workspace_api.get(self, parsed.path, user):
                 return
             if parsed.path == "/api/sessions":
@@ -367,6 +372,8 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("Sec-Fetch-Site") == "cross-site" or (origin and origin != expected):
             return self.json({"error": "Cross-origin requests are blocked."}, 403)
         try:
+            if agent_api.handle(self, parsed.path):
+                return
             if parsed.path == "/api/auth/microsoft/link":
                 if not self.microsoft_config():
                     return self.json({"error": "Microsoft sign-in is unavailable right now."}, 503)
@@ -402,6 +409,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json({"user": user, "csrf_token": authentication.csrf_token(token)}, 201 if parsed.path.endswith("register") else 200)
             user = self.account()
             self.require_csrf()
+            if agent_api.browser_post(self, parsed.path, user):
+                return
             if parsed.path == "/api/auth/logout":
                 self.accounts().logout(self.login_token())
                 self.set_login_cookie("")

@@ -158,6 +158,33 @@ CREATE TABLE IF NOT EXISTS workspace_reports (
     updated_at INTEGER NOT NULL,
     version INTEGER NOT NULL DEFAULT 1
 );
+CREATE TABLE IF NOT EXISTS agent_tokens (
+    token_id TEXT PRIMARY KEY,
+    token_hash TEXT NOT NULL UNIQUE,
+    account_id INTEGER NOT NULL REFERENCES accounts(account_id),
+    workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    scopes_json TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    last_used INTEGER,
+    revoked_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS agent_token_account ON agent_tokens(account_id);
+CREATE TABLE IF NOT EXISTS agent_sessions (
+    token_id TEXT NOT NULL REFERENCES agent_tokens(token_id) ON DELETE CASCADE,
+    database_id INTEGER NOT NULL REFERENCES databases(database_id),
+    session_id TEXT NOT NULL REFERENCES sessions(session_id),
+    PRIMARY KEY(token_id,database_id)
+);
+CREATE TABLE IF NOT EXISTS agent_action_results (
+    token_id TEXT NOT NULL REFERENCES agent_tokens(token_id) ON DELETE CASCADE,
+    request_key TEXT NOT NULL,
+    input_hash TEXT NOT NULL,
+    result_json TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY(token_id,request_key)
+);
 CREATE TABLE IF NOT EXISTS schema_tables (
     table_id INTEGER PRIMARY KEY,
     database_id INTEGER NOT NULL REFERENCES databases(database_id),

@@ -39,7 +39,13 @@
     .public-mobile-nav a,
     .saved-database,
     .user-menu-panel a,
-    .user-menu-panel button
+    .user-menu-panel button,
+    .report-tool,
+    .report-view-switch button,
+    .workspace-rail-item,
+    .workspace-person-button,
+    .report-library > button,
+    .workspace-section-tabs > button
   ) {
   transition:
     color var(--motion-fast) var(--ease-out),
@@ -61,9 +67,25 @@
     .composer,
     .saved-database-entry,
     .faq-group,
-    .search
+    .search,
+    .content,
+    .workspace-main,
+    .workspace-person-detail,
+    .workspace-access-card,
+    .workspace-dialog,
+    .workspace-database-list,
+    .report-overlay-header,
+    .report-overlay-content,
+    .report-editor-main,
+    .report-editor-sheet,
+    .report-writing-tools,
+    .report-actions,
+    .report-reader,
+    .history-controls,
+    .schema-toolbar
   ) {
   transition:
+    color var(--motion-normal) var(--ease-out),
     background-color var(--motion-normal) var(--ease-out),
     border-color var(--motion-fast) var(--ease-out),
     box-shadow var(--motion-normal) var(--ease-out);
@@ -119,19 +141,32 @@
 .workspace-page .user-menu-panel {
   box-shadow: var(--shadow-floating);
   transform-origin: top right;
-  animation: surface-enter var(--motion-normal) var(--ease-out) both;
+  animation: surface-enter var(--motion-normal) var(--ease-out) backwards;
 }
 .workspace-page dialog {
   border-radius: 16px;
   box-shadow: var(--shadow-floating);
 }
 .workspace-page dialog[open] {
-  animation: surface-enter var(--motion-normal) var(--ease-out) both;
+  animation: surface-enter var(--motion-normal) var(--ease-out) backwards;
 }
 .workspace-page dialog::backdrop {
   background: #0e142499;
   backdrop-filter: blur(4px);
-  animation: backdrop-enter var(--motion-fast) ease-out both;
+  animation: backdrop-enter var(--motion-fast) ease-out backwards;
+}
+.workspace-page dialog.report-overlay[open] {
+  animation: backdrop-enter var(--motion-normal) ease-out backwards;
+}
+.workspace-page .workspace-dialog-backdrop {
+  animation: backdrop-enter var(--motion-fast) ease-out backwards;
+}
+.workspace-page .workspace-dialog {
+  animation: surface-enter var(--motion-normal) var(--ease-out) backwards;
+}
+.workspace-page .workspace-dialog-backdrop.is-closing,
+.workspace-page dialog.is-closing::backdrop {
+  animation: backdrop-leave var(--motion-exit) ease-in forwards;
 }
 .workspace-page .sqlblock:focus-within .copy-sql {
   opacity: 1;
@@ -168,11 +203,11 @@
 @keyframes surface-enter {
   from {
     opacity: 0;
-    transform: translateY(5px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 @keyframes backdrop-enter {
@@ -183,10 +218,31 @@
     opacity: 1;
   }
 }
+@keyframes backdrop-leave {
+  to {
+    opacity: 0;
+  }
+}
+.workspace-page .workspace-section-heading > div > p {
+  min-height: 20px;
+}
+.workspace-page .report-loading::before {
+  content: '';
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin-right: 7px;
+  border: 1.5px solid var(--rule);
+  border-top-color: var(--lapis);
+  border-radius: 50%;
+  vertical-align: -1px;
+  animation: genie-loading 900ms linear infinite;
+}
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-fast: 0ms;
     --motion-normal: 0ms;
+    --motion-exit: 0ms;
     --motion-slow: 0ms;
   }
   :is(.home-page, .faq-page, .workspace-page) .btn {
@@ -195,7 +251,8 @@
 }
 @media (prefers-reduced-transparency: reduce) {
   :is(.home-page, .faq-page, .workspace-page) :is(.top, .composer),
-  .workspace-page dialog::backdrop {
+  .workspace-page dialog::backdrop,
+  .workspace-page .workspace-dialog-backdrop {
     backdrop-filter: none;
   }
   :is(.home-page, .faq-page, .workspace-page) :is(.top, .composer) {

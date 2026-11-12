@@ -4,6 +4,7 @@ import { ReportOverlay } from './ReportOverlay';
 import { ReportEditor } from './ReportEditor';
 import { ReportReader } from './ReportReader';
 import { Icon } from './Icon';
+import { useEnterMotion } from '../hooks/useMotion';
 
 const blank = { title: '', body: '', published: false };
 function excerpt(body) {
@@ -27,7 +28,9 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
     [revision, setRevision] = useState(0);
   const lock = useRef(false),
     baseline = useRef(blank),
-    newReportButton = useRef(null);
+    newReportButton = useRef(null),
+    surface = useRef(null);
+  useEnterMotion(surface, workspace.workspace_id, !loading);
   const owner = workspace.role === 'owner',
     viewer = workspace.role === 'viewer';
   const base = '/api/workspaces/' + encodeURIComponent(workspace.workspace_id) + '/reports';
@@ -75,7 +78,10 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
     setActivity('generate');
     setError('');
     try {
-      const result = await api(base + '/generate', { method: 'POST', body: { goal, source } });
+      const result = await api(base + '/generate', {
+        method: 'POST',
+        body: { goal, source },
+      });
       setDraft((current) => ({ ...current, body: result.body }));
       setAi(false);
       setMessage('AI draft ready. Check its facts and edit before saving.');
@@ -196,14 +202,19 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
     }
   }
   return (
-    <section className="workspace-reports" aria-label="Workspace reports">
+    <section ref={surface} className="workspace-reports" aria-label="Workspace reports">
       <header className="workspace-section-heading">
         <div>
           <h2>{viewer ? 'Shared reports' : 'Reports'}</h2>
-          <p className="small muted">
-            {viewer
-              ? 'Reports approved and shared by your workspace owner.'
-              : 'Your findings, the evidence, and what comes next.'}
+          <p
+            className={'small muted' + (loading ? ' report-loading' : '')}
+            role={loading ? 'status' : undefined}
+          >
+            {loading
+              ? 'Loading reports…'
+              : viewer
+                ? 'Reports approved and shared by your workspace owner.'
+                : 'Your findings, the evidence, and what comes next.'}
           </p>
         </div>
         {!viewer && (
@@ -228,12 +239,7 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
           {message}
         </p>
       )}
-      {loading && (
-        <p className="workspace-loading" role="status">
-          Loading reports…
-        </p>
-      )}
-      <nav className="report-library" aria-label="Saved reports">
+      <nav className="report-library" aria-label="Saved reports" aria-busy={loading}>
         {reports.map((item) => (
           <button
             key={item.report_id}

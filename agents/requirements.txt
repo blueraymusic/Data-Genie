@@ -1,0 +1,2 @@
+# Installed on the agent's machine, not on the Data Genie web server.
+mcp==2.3.0

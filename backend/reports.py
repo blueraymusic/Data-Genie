@@ -62,7 +62,7 @@ class ReportStore(WorkspaceStore):
             return {'deleted': True, 'report_id': report_id}
 
     @_serialized
-    def save_report(self, account_id, workspace_id, payload):
+    def save_report(self, account_id, workspace_id, payload, *, agent_draft=False):
         title, body = payload.get('title'), payload.get('body')
         if not isinstance(title, str) or not title.strip() or len(title) > 120:
             raise ValueError('Give the report a title, up to 120 characters.')
@@ -71,6 +71,8 @@ class ReportStore(WorkspaceStore):
         if type(payload.get('published', False)) is not bool:
             raise ValueError('Choose draft or shared.')
         published = payload.get('published', False)
+        if agent_draft and published:
+            raise PermissionError('Agents can save private drafts only.')
         report_id = payload.get('report_id')
         if report_id is not None and (not isinstance(report_id, str) or not report_id.strip() or len(report_id) > 100):
             raise ValueError('Choose a valid report.')
@@ -84,6 +86,8 @@ class ReportStore(WorkspaceStore):
                 if not isinstance(report_id, str) or len(report_id) > 100:
                     raise ValueError('Choose a valid report.')
                 row = connection.execute('SELECT * FROM workspace_reports WHERE report_id=? AND workspace_id=?', (report_id, workspace_id)).fetchone()
+                if agent_draft and (row is None or row['author_id'] != account_id or row['published']):
+                    raise PermissionError('Agents can update their account’s own unpublished drafts only.')
                 if row is None or (workspace['role'] != 'owner' and (row['author_id'] != account_id or row['published'])):
                     raise PermissionError('This report is not available for editing.')
                 if type(payload.get('version')) is not int or payload['version'] != row['version']:

@@ -53,3 +53,12 @@ Deployment bundles exclude desktop accounts, databases, keys, backups, and `.env
 ## Workspace reports
 
 The server checks current membership before listing, saving, or generating a report. Viewers receive only reports marked shared; members receive shared reports and their own drafts, and owners can review all drafts. Only the owner may publish. Report text is rendered as plain text. Version checks reject conflicting saves. Reports and their contents are included in the installation’s private application-state backup; deleting a workspace removes its reports. Revoking database access does not retract an already shared report snapshot; the owner must unshare it separately.
+## Agent access
+
+Agent API routes require workspace-scoped bearer keys; browser cookies are not accepted. Keys are randomly generated, stored only as SHA-256 hashes, shown once, and expire within 90 days. Creation requires a signed-in browser, CSRF protection, and password confirmation. Changing a password revokes all of that account's agent keys.
+
+Scopes never override live membership or database grants. Agent reads use the existing read-only SQL validation and execution path. Change preparation returns no confirmation secrets; approval remains in the signed-in site. Agents can save their own unpublished report drafts, but cannot publish, change grants, invite members, or create other credentials. Report generation uses the existing account budget.
+
+Database actions recheck the key's workspace after waiting for the database lock, and keep that check protected through execution. Agent draft updates check authorship and publication state inside the same transaction as the save, so a concurrent database move or report publication cannot widen agent access.
+
+Requests are limited per key and per client IP. Origin/Host checks remain in place; no cross-origin browser access is enabled. The optional stdio MCP bridge requires HTTPS except for loopback development, verifies certificates, rejects embedded URL credentials, and refuses redirects to prevent leaking bearer tokens. Store agent keys in private client settings, not chat messages, URLs, or Git. Revocation blocks subsequent requests; already-running work may finish.

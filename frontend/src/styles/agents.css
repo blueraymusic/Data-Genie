@@ -1,0 +1,105 @@
+.agent-settings {
+  margin-block: 12px 20px;
+  padding: 16px 0;
+  border-block: 1px solid var(--rule);
+}
+.agent-settings > summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+.agent-access {
+  padding-top: 14px;
+  min-width: 0;
+}
+.agent-intro,
+.agent-key-list li,
+.agent-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.agent-intro p {
+  margin: 0;
+}
+.agent-intro .btn,
+.agent-key-list .btn {
+  flex-shrink: 0;
+}
+.agent-key-list {
+  list-style: none;
+  padding: 0;
+  margin-block: 14px;
+  max-height: 260px;
+  overflow: auto;
+}
+.agent-key-list li {
+  border-top: 1px solid var(--rule);
+  padding: 12px 0;
+}
+.agent-key-list li > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.agent-key-form,
+.agent-key-created {
+  display: grid;
+  gap: 14px;
+}
+.agent-key-form label,
+.agent-key-created label {
+  display: grid;
+  gap: 5px;
+  font-size: 13px;
+}
+.agent-form-pair,
+.agent-scope-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+}
+.agent-key-form fieldset {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  margin: 0;
+}
+.agent-key-form legend {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.agent-scope-grid label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.agent-scope-grid input {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.agent-key-form p,
+.agent-key-created p {
+  margin: 0;
+}
+.agent-key-created input {
+  font-family: var(--mono);
+}
+.agent-key-created .btn {
+  justify-self: start;
+}
+.agent-dialog-actions {
+  justify-content: flex-end;
+}
+@media (max-width: 600px) {
+  .agent-intro {
+    align-items: start;
+    flex-direction: column;
+  }
+  .agent-form-pair,
+  .agent-scope-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

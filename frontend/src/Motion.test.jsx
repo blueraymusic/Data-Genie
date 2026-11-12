@@ -1,7 +1,12 @@
 import { useRef } from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useEnterMotion, useReducedMotion, useScrollReveal } from './hooks/useMotion';
+import {
+  useDismissMotion,
+  useEnterMotion,
+  useReducedMotion,
+  useScrollReveal,
+} from './hooks/useMotion';
 import { HeroDemo } from './components/HeroDemo';
 import { demos } from './data/home';
 import { Router } from './lib/router';
@@ -15,9 +20,9 @@ function changePreference(reduced) {
     [...listeners].forEach((changed) => changed({ matches: reduced }));
   });
 }
-function Entry({ motionKey = 'first' }) {
+function Entry({ motionKey = 'first', ready = true }) {
   const ref = useRef(null);
-  useEnterMotion(ref, motionKey);
+  useEnterMotion(ref, motionKey, ready);
   return (
     <main ref={ref}>
       <label>
@@ -25,6 +30,21 @@ function Entry({ motionKey = 'first' }) {
         <input defaultValue="Original draft" />
       </label>
     </main>
+  );
+}
+function Dismiss({ onClose }) {
+  const ref = useRef(null);
+  const { dismiss, closing } = useDismissMotion(ref, onClose);
+  return (
+    <section
+      ref={ref}
+      data-closing={closing}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') dismiss();
+      }}
+    >
+      <button onClick={dismiss}>Close panel</button>
+    </section>
   );
 }
 function Reveal() {
@@ -159,6 +179,18 @@ describe('motion preferences', () => {
 });
 
 describe('entry motion', () => {
+  it('waits for ready content without replacing inputs or replaying on unrelated renders', () => {
+    const view = render(<Entry ready={false} />);
+    const input = screen.getByLabelText('Draft');
+    fireEvent.change(input, { target: { value: 'Keep this draft' } });
+    expect(records).toHaveLength(0);
+    view.rerender(<Entry ready />);
+    expect(records).toHaveLength(1);
+    view.rerender(<Entry ready />);
+    expect(records).toHaveLength(1);
+    expect(screen.getByLabelText('Draft')).toBe(input);
+    expect(input.value).toBe('Keep this draft');
+  });
   it('keeps existing input DOM and draft state when a view key changes, then cancels for focus', () => {
     const view = render(<Entry />);
     const input = screen.getByLabelText('Draft');
@@ -186,6 +218,48 @@ describe('entry motion', () => {
     render(<Entry />);
     expect(records).toHaveLength(1);
     expect(screen.getByLabelText('Draft').value).toBe('Original draft');
+  });
+});
+
+describe('dialog dismissal', () => {
+  it('keeps the panel mounted during exit and calls its close action exactly once', () => {
+    const close = vi.fn();
+    render(<Dismiss onClose={close} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Close panel' }));
+    const panel = screen.getByRole('button').closest('section');
+    expect(panel.dataset.closing).toBe('true');
+    expect(close).not.toHaveBeenCalled();
+    fireEvent.keyDown(panel, { key: 'Escape' });
+    expect(records).toHaveLength(1);
+    const finish = records[0].animation.onfinish;
+    act(() => finish());
+    expect(close).toHaveBeenCalledOnce();
+    act(() => finish());
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('closes immediately if reduced motion is enabled during exit', () => {
+    const close = vi.fn();
+    render(<Dismiss onClose={close} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Close panel' }));
+    changePreference(true);
+    expect(close).toHaveBeenCalledOnce();
+    expect(records[0].animation.cancel).toHaveBeenCalledOnce();
+  });
+
+  it('cancels an abandoned exit without a late close callback and has a no-animation fallback', () => {
+    const close = vi.fn();
+    const view = render(<Dismiss onClose={close} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Close panel' }));
+    const finish = records[0].animation.onfinish;
+    view.unmount();
+    act(() => finish());
+    expect(close).not.toHaveBeenCalled();
+    expect(records[0].animation.cancel).toHaveBeenCalledOnce();
+    delete Element.prototype.animate;
+    render(<Dismiss onClose={close} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Close panel' }));
+    expect(close).toHaveBeenCalledOnce();
   });
 });
 

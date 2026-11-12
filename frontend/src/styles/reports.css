@@ -140,9 +140,6 @@
   background: transparent;
   color: var(--ink);
   text-align: left;
-  transition:
-    border-color 150ms ease,
-    background 150ms ease;
 }
 .workspace-page .report-tool > .ic {
   width: 18px;
@@ -544,9 +541,6 @@
   border-radius: 8px;
   background: var(--paper);
   color: var(--ink);
-  transition:
-    border-color 150ms ease,
-    box-shadow 150ms ease;
 }
 .workspace-page .report-library > button:hover {
   border-color: var(--lapis);

@@ -66,6 +66,7 @@ def application(environ, start_response):
         # OAuth exchanges can wait on Microsoft. Those handlers explicitly split
         # their own short durable operations so other users aren't locked out.
         manages_transaction = (request.command, urlsplit(request.path).path) in {
+            ("GET", "/api/v1/openapi.json"),
             ("GET", "/api/auth/providers"), ("GET", "/api/auth/microsoft/start"),
             ("GET", "/api/auth/microsoft/callback"), ("POST", "/api/auth/microsoft/link"),
         }

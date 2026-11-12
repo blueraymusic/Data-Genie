@@ -207,3 +207,25 @@
     padding-inline: 10px;
   }
 }
+.history-agent-review {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.history-agent-review p {
+  margin: 0;
+}
+.history-agent-review .btn {
+  flex-shrink: 0;
+}
+@media (max-width: 600px) {
+  .history-agent-review {
+    align-items: start;
+    flex-direction: column;
+  }
+}

@@ -218,7 +218,7 @@ class HostingTests(unittest.TestCase):
                 patch.object(cloud_state, "connect", side_effect=AssertionError("warm-up probes must not connect")), \
                 patch.object(wsgi.Request, "accounts", side_effect=AssertionError("warm-up probes must not access accounts")), \
                 patch.object(Path, "read_bytes", return_value=b"<!doctype html><html>Data Genie</html>"):
-            for path in ("/healthz", "/"):
+            for path in ("/healthz", "/", "/api/v1/openapi.json"):
                 with self.subTest(path=path):
                     response = self.request(path)
                     self.assertEqual(response["status"], "200 OK")

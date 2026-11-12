@@ -1,12 +1,15 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Modal } from './Modal';
 import { Icon } from './Icon';
+import { useDismissMotion } from '../hooks/useMotion';
 
 export function ReportOverlay({ title, workspaceName, busy, dirty, onClose, children }) {
   const titleId = useId();
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const keepEditing = useRef(null);
   const returnFocus = useRef(null);
+  const panel = useRef(null);
+  const { dismiss, closing } = useDismissMotion(panel, onClose);
   useEffect(() => {
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -28,14 +31,20 @@ export function ReportOverlay({ title, workspaceName, busy, dirty, onClose, chil
     else returnFocus.current?.focus();
   }, [confirmDiscard]);
   function requestClose() {
-    if (busy) return;
+    if (busy || closing) return;
     if (dirty) {
       if (!confirmDiscard) returnFocus.current = document.activeElement;
       setConfirmDiscard(true);
-    } else onClose();
+    } else dismiss();
   }
   return (
-    <Modal titleId={titleId} className="report-overlay" onClose={requestClose}>
+    <Modal
+      titleId={titleId}
+      className="report-overlay"
+      onClose={requestClose}
+      panelRef={panel}
+      closing={closing}
+    >
       <header className="report-overlay-header">
         <span className="report-heading-icon" aria-hidden="true">
           <Icon name="report" />
@@ -71,7 +80,7 @@ export function ReportOverlay({ title, workspaceName, busy, dirty, onClose, chil
           >
             Keep editing
           </button>
-          <button type="button" className="btn" disabled={busy} onClick={onClose}>
+          <button type="button" className="btn" disabled={busy} onClick={dismiss}>
             Discard changes
           </button>
         </section>
