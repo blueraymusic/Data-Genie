@@ -9,15 +9,31 @@ function announce() {
 
 export function AuthProvider({ children }) {
   const generation = useRef(0),
-    account = useRef(null);
+    account = useRef(null),
+    checks = useRef(new Set());
   const [user, setUser] = useState(null),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
     [connectionError, setConnectionError] = useState(false);
   const refresh = useCallback(async () => {
     const revision = ++generation.current;
+    const controller = new AbortController();
+    checks.current.add(controller);
+    let timer, cancelled;
     try {
-      const data = await api('/api/auth/session');
+      const stopped = new Promise((_, reject) => {
+        cancelled = () => reject(new DOMException('The login check was cancelled.', 'AbortError'));
+        controller.signal.addEventListener('abort', cancelled, { once: true });
+        timer = setTimeout(() => {
+          reject(new Error('Checking your login took too long. Please try again.'));
+          controller.abort();
+        }, 8000);
+      });
+      // Bound both the request and response body, even if a transport ignores cancellation.
+      const data = await Promise.race([
+        api('/api/auth/session', { signal: controller.signal }),
+        stopped,
+      ]);
       if (generation.current === revision) {
         if (account.current !== null && account.current !== data.user?.account_id)
           rememberSession(null);
@@ -30,11 +46,15 @@ export function AuthProvider({ children }) {
       }
       return data.user;
     } catch (error) {
-      if (generation.current === revision) {
+      if (generation.current === revision && error.name !== 'AbortError') {
         setError(error.message);
         setConnectionError(true);
       }
       throw error;
+    } finally {
+      clearTimeout(timer);
+      controller.signal.removeEventListener('abort', cancelled);
+      checks.current.delete(controller);
     }
   }, []);
   useEffect(() => {
@@ -66,6 +86,8 @@ export function AuthProvider({ children }) {
     } catch {}
     return () => {
       live = false;
+      generation.current++;
+      for (const controller of checks.current) controller.abort();
       window.removeEventListener('genie-auth-expired', expired);
       window.removeEventListener('storage', changed);
     };

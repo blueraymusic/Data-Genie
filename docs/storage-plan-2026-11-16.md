@@ -4,11 +4,13 @@ Status: proposal only. No storage resource, billing setting, access grant or pro
 
 ## Current release and blocker
 
-Application commit `49f8a844c503ab48a7a49de35b1163bc9e5ec842` was pushed to GitHub `dev` and published by [Azure run 36](https://dev.azure.com/as4dc/blueray/_build/results?buildId=36). The public origin serves its new JavaScript/CSS, `/healthz` responds successfully, and the sign-in-provider endpoint works. This does **not** establish that accounts and workspaces are healthy: the cloud-backed session check times out.
+Application commit `0680a03` was pushed to GitHub `dev` and published by [Azure run 37](https://dev.azure.com/as4dc/blueray/_build/results?buildId=37). Its remaining readiness retries were canceled after publication with the user's approval. The public origin serves its exact JavaScript/CSS, `/healthz` responds successfully, and the sign-in-provider endpoint works. This does **not** establish that accounts and workspaces are healthy: the cloud-backed session check times out.
 
 Azure SQL reports `Paused`. Its historical metrics reached 100,000 consumed vCore-seconds and zero remaining allowance on 15 November, before this release. The application logs record SQL error 42119. This is the monthly free-offer pause described by [Microsoft's free-tier FAQ](https://learn.microsoft.com/en-us/azure/azure-sql/database/free-tier-faq). Keep `useFreeLimit=true` and `AutoPause`; do not silently enable SQL overage billing.
 
 ## Recommended direction
+
+Keep all proposed resources in the existing **Azure for Students subscription**, funded by its remaining student credit. Do not create a separate paid subscription, upgrade the offer or remove its spending protection. [Student credit](https://azure.microsoft.com/en-us/pricing/offers/ms-azr-0170p/) and the SQL monthly free allowance are separate limits: the current SQL `AutoPause` setting stops the database at its free allowance even when subscription credit remains. This proposal does not authorize enabling `BillOverUsage` to spend that credit on SQL overages. Confirm remaining credit and projected total subscription usage before any infrastructure apply; the approximately $15/month target is not a guarantee of available annual credit.
 
 Keep the existing single Linux B1 App Service instance, domain and managed identity. Replace Azure SQL's role as the application's **snapshot store** with a private Standard GPv2 Azure Blob Storage account, Hot tier, LRS, in France Central. SQLite continues to run on `/tmp` inside the app. Blob Storage holds durable application state; it does not replace users' external PostgreSQL servers or change their SQL dialect.
 

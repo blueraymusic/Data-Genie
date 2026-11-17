@@ -1,4 +1,4 @@
-import { Component, useEffect, useLayoutEffect } from 'react';
+import { Component, lazy, Suspense, useEffect, useLayoutEffect } from 'react';
 import { Router, useRouter } from './lib/router';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -8,10 +8,11 @@ import FaqPage from './pages/FaqPage';
 import ContactPage from './pages/ContactPage';
 import AuthPage from './pages/AuthPage';
 import PasswordRecoveryPage from './pages/PasswordRecoveryPage';
-import WorkspaceApp from './pages/WorkspaceApp';
 import AgentConsentPage from './pages/AgentConsentPage';
 import { captureAgentAuthorization, pendingAgentAuthorization } from './lib/agentAuthorization';
 import { captureWorkspaceInvitation, readWorkspaceInvitation } from './lib/workspaceInvites';
+
+const WorkspaceApp = lazy(() => import('./pages/WorkspaceApp'));
 
 function ProtectedPages() {
   const { user, loading } = useAuth(),
@@ -38,7 +39,15 @@ function ProtectedPages() {
     pathname === '/connect-agent' ? (
       <AgentConsentPage />
     ) : (
-      <WorkspaceApp key={user.account_id} />
+      <Suspense
+        fallback={
+          <AuthShell title="A moment, please." lead="Opening your workspace.">
+            <p role="status">Loading…</p>
+          </AuthShell>
+        }
+      >
+        <WorkspaceApp key={user.account_id} />
+      </Suspense>
     )
   ) : (
     <AuthPage />

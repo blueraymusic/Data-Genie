@@ -115,6 +115,57 @@ class CloudStateTests(unittest.TestCase):
         self.assertIn("sql_codes=40613", logged.output[0])
         self.assertNotIn("private", logged.output[0])
 
+    def test_monthly_allowance_failure_explains_pause_and_preserves_cached_state(self):
+        class FixtureSqlError(Exception):
+            msg_no = 42119
+        sql_error = FixtureSqlError("private database name and connection details")
+        # python-tds wraps the last failed connection attempt in TimeoutError.
+        timeout = TimeoutError()
+        timeout.__cause__ = sql_error
+        cloud_state.scratch_root(self.root)
+        cached = self.root / "account.sqlite3"
+        cached.write_bytes(b"previous cached workspace")
+        with patch.object(cloud_state, "connect", side_effect=timeout), \
+                self.assertLogs("backend.cloud_state", level="ERROR") as logged, \
+                self.assertRaises(cloud_state.StateUnavailable) as failure:
+            with cloud_state.transaction():
+                self.fail("A quota-paused database must not run user work.")
+        self.assertTrue(failure.exception.retry_safe)
+        self.assertIn("monthly allowance", str(failure.exception))
+        self.assertIn("site owner", str(failure.exception))
+        self.assertNotIn("Try again in a moment", str(failure.exception))
+        self.assertNotIn("private", str(failure.exception))
+        self.assertIn("sql_codes=42119", logged.output[0])
+        self.assertNotIn("private", logged.output[0])
+        self.assertEqual(cached.read_bytes(), b"previous cached workspace")
+
+    def test_untrusted_error_text_does_not_claim_the_allowance_is_exhausted(self):
+        class FixtureSqlError(Exception):
+            number = "42119"
+        with patch.object(cloud_state, "connect", side_effect=FixtureSqlError("42119 monthly allowance")), \
+                self.assertLogs("backend.cloud_state", level="ERROR"), \
+                self.assertRaises(cloud_state.StateUnavailable) as failure:
+            with cloud_state.transaction():
+                self.fail("A failed connection must not run user work.")
+        self.assertIn("temporarily unavailable", str(failure.exception))
+        self.assertNotIn("monthly allowance", str(failure.exception))
+
+    def test_allowance_failure_after_work_preserves_uncertainty_and_rolls_back(self):
+        class FixtureSqlError(Exception):
+            number = 42119
+        with cloud_state.transaction():
+            (self.root / "account.sqlite3").write_bytes(b"before")
+        with patch.object(self.store, "commit", side_effect=FixtureSqlError("private database")), \
+                self.assertLogs("backend.cloud_state", level="ERROR"), \
+                self.assertRaises(cloud_state.StateUnavailable) as failure:
+            with cloud_state.transaction():
+                (self.root / "account.sqlite3").write_bytes(b"unconfirmed")
+        self.assertFalse(failure.exception.retry_safe)
+        self.assertIn("Check History", str(failure.exception))
+        self.assertNotIn("No request was run", str(failure.exception))
+        self.assertNotIn("monthly allowance", str(failure.exception))
+        self.assertEqual((self.root / "account.sqlite3").read_bytes(), b"before")
+
     def test_request_failure_is_not_replayed_and_remains_uncertain(self):
         attempts = []
         with self.assertLogs("backend.cloud_state", level="ERROR") as logged, \

@@ -30,6 +30,7 @@ export async function api(
     failure.recovery = 'restart_server';
     throw failure;
   }
+  if (signal?.aborted) throw new DOMException('The request was cancelled.', 'AbortError');
   let data;
   try {
     data = response.ok && responseType === 'blob' ? await response.blob() : await response.json();
@@ -39,6 +40,7 @@ export async function api(
       'The server returned an unreadable response. Check History before retrying a change.',
     );
   }
+  if (signal?.aborted) throw new DOMException('The request was cancelled.', 'AbortError');
   if (!response.ok) {
     if (
       data.auth_required &&
