@@ -35,6 +35,7 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
     viewer = workspace?.role === 'viewer' || Boolean(workspace?.archived_at);
   const [deleteName, setDeleteName] = useState(''),
     [draggingDatabase, setDraggingDatabase] = useState(null),
+    [draggingReport, setDraggingReport] = useState(null),
     [dropWorkspace, setDropWorkspace] = useState(null),
     [peoplePanel, setPeoplePanel] = useState('access'),
     [tab, setTab] = useState('databases'),
@@ -309,7 +310,7 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                       className={
                         'workspace-rail-item' +
                         (dropWorkspace === item.workspace_id ? ' is-drop-target' : '') +
-                        (draggingDatabase &&
+                        ((draggingDatabase || draggingReport) &&
                         moveDestinations.some((target) => target.workspace_id === item.workspace_id)
                           ? ' is-drop-available'
                           : '')
@@ -323,7 +324,9 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                             (target) => target.workspace_id === item.workspace_id,
                           ) &&
                           !disabled &&
-                          event.dataTransfer.types.includes('application/x-data-genie-database')
+                          (event.dataTransfer.types.includes('application/x-data-genie-database') ||
+                            (draggingReport &&
+                              event.dataTransfer.types.includes('application/x-data-genie-report')))
                         ) {
                           event.preventDefault();
                           event.dataTransfer.dropEffect = 'move';
@@ -335,6 +338,23 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                           setDropWorkspace(null);
                       }}
                       onDrop={async (event) => {
+                        if (
+                          draggingReport &&
+                          event.dataTransfer.getData('application/x-data-genie-report') ===
+                            draggingReport.id
+                        ) {
+                          event.preventDefault();
+                          setDropWorkspace(null);
+                          if (
+                            item.role === 'owner' &&
+                            !item.archived_at &&
+                            item.workspace_id !== workspace?.workspace_id &&
+                            !disabled
+                          )
+                            await draggingReport.move(item.workspace_id);
+                          setDraggingReport(null);
+                          return;
+                        }
                         const raw = event.dataTransfer.getData('application/x-data-genie-database');
                         if (!raw || item.role !== 'owner' || disabled) return;
                         event.preventDefault();
@@ -465,6 +485,7 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                   workspace={workspace}
                   workspaces={teams.workspaces}
                   busy={disabled}
+                  onReportDragChange={setDraggingReport}
                 />
               ) : tab === 'databases' ? (
                 <section

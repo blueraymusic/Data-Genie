@@ -75,6 +75,10 @@ export function VerifySignup({ initial, onVerified, onRestart }) {
       <p>
         Enter the code sent to <strong>{challenge.email}</strong>.
       </p>
+      <p className="small muted">
+        If you already have an account, verifying this email will take you to login or password
+        reset. It will not create another account.
+      </p>
       <label>
         Verification code
         <input

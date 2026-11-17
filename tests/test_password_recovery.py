@@ -130,3 +130,13 @@ class RegistrationEmailPolicyTests(HttpHarness, unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'approved organization'):
                 registration_email('person@gmail.com')
         self.assertEqual(registration_email('person@gmail.com'), 'person@gmail.com')
+
+    def test_invalid_mailbox_spellings_are_rejected_and_normal_aliases_still_work(self):
+        from backend.email_policy import registration_email
+        for email in ('a@gmail.com.', 'a@-company.com', 'a@company..com', '.a@gmail.com', 'a..b@gmail.com', 'a@company.com/path'):
+            with self.subTest(email=email), self.assertRaises(ValueError):
+                registration_email(email)
+        self.assertEqual(registration_email('Person+team@Gmail.com'), 'person+team@gmail.com')
+        self.assertEqual(registration_email('reader@bücher.example'), 'reader@bücher.example')
+        with self.assertRaisesRegex(ValueError, 'Temporary email'):
+            registration_email('reader@sub.aiqseo.com')

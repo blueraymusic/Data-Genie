@@ -68,7 +68,7 @@ function fixture(role = 'owner', invitations = [], configuration = {}) {
     invitations: role === 'owner' ? configuration.pendingInvitations || [invitation] : [],
   };
   fetch.mockImplementation((path, options = {}) => {
-    if (path.endsWith('/reports')) return response({ reports: [] });
+    if (path.endsWith('/reports')) return response({ reports: configuration.reports || [] });
     if (options.method === 'POST') {
       const body = JSON.parse(options.body);
       if (path.endsWith('/delete')) {
@@ -760,4 +760,45 @@ it('pages pending invitations and keeps composing separate from the list', async
   expect(screen.queryByRole('button', { name: 'Revoke invitation' })).toBeNull();
   expect(screen.getByRole('textbox', { name: 'Email', exact: true })).toBeTruthy();
   expect(screen.getAllByRole('dialog')).toHaveLength(1);
+});
+
+it('moves reports through the same bordered sidebar destinations without inserting a drop panel', async () => {
+  const events = userEvent.setup();
+  const workbench = fixture('owner', [], {
+    reports: [
+      { report_id: 'r1', title: 'Team findings', body: 'Evidence', version: 3, can_move: true },
+    ],
+  });
+  render(<WorkspacesPage workbench={workbench} />);
+  const sections = await screen.findByRole('navigation', { name: 'Workspace sections' });
+  await events.click(within(sections).getByRole('button', { name: /^Reports/ }));
+  const report = await screen.findByRole('button', { name: 'Open report: Team findings' });
+  const data = new Map();
+  const dataTransfer = {
+    types: ['application/x-data-genie-report'],
+    setData: (key, value) => data.set(key, value),
+    getData: (key) => data.get(key) || '',
+  };
+  fireEvent.dragStart(report, { dataTransfer });
+  const navigation = screen.getByRole('navigation', { name: 'Workspaces' });
+  const target = within(navigation).getByRole('button', { name: /^Personal/ });
+  expect(target.classList.contains('is-drop-available')).toBe(true);
+  expect(screen.queryByRole('region', { name: 'Move report to a workspace' })).toBeNull();
+  fireEvent.dragOver(target, { dataTransfer });
+  expect(target.classList.contains('is-drop-target')).toBe(true);
+  fireEvent.drop(target, { dataTransfer });
+  await waitFor(() =>
+    expect(
+      fetch.mock.calls.some(
+        ([path, options]) =>
+          path === '/api/workspaces/team/reports/r1/move' &&
+          JSON.parse(options.body).workspace_id === 'personal',
+      ),
+    ).toBe(true),
+  );
+  expect(
+    JSON.parse(fetch.mock.calls.find(([path]) => path.endsWith('/r1/move'))[1].body).version,
+  ).toBe(3);
+  fireEvent.dragEnd(report);
+  await waitFor(() => expect(target.classList.contains('is-drop-available')).toBe(false));
 });

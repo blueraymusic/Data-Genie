@@ -222,7 +222,7 @@ it('does not crash on a malformed URL fragment', async () => {
   render(<App />);
   expect(
     await screen.findByRole('heading', {
-      name: 'Ask your database in plain English.',
+      name: 'Your data. Your agents. Your approval.',
       exact: true,
     }),
   ).toBeTruthy();

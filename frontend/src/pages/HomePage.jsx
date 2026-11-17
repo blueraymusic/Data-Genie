@@ -56,7 +56,7 @@ export default function HomePage() {
   const page = useRef(null);
   useScrollReveal(page, '.section-heading, .home-steps > li, .home-closing .wrap');
   useEffect(() => {
-    document.title = 'Data Genie: ask your database in plain English';
+    document.title = 'Data Genie: reviewed database access for teams and agents';
   }, []);
   return (
     <div className="home-page" ref={page} data-authenticated={user ? 'true' : undefined}>
@@ -70,11 +70,11 @@ export default function HomePage() {
             <div className="hero-copy">
               <p className="eyebrow">For people, teams &amp; agents</p>
               <h1 id="h1">
-                Ask your database in <em>plain English.</em>
+                Your data. Your agents. <em>Your approval.</em>
               </h1>
               <p className="hero-lede">
-                Explore your data with your team or an AI agent. See every SQL statement, choose who
-                has access, and approve changes before they run.
+                Give teammates and MCP agents scoped database access. Ask in plain English, inspect
+                the SQL and results, and approve changes before they run. Keep a record in History.
               </p>
               <div className="cta-row">
                 <Link href={user ? '/databases' : '/signup'} className="btn btn-primary">

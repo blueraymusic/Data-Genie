@@ -15,7 +15,12 @@ function excerpt(body) {
   return text.length > 180 ? text.slice(0, 177) + '…' : text || 'Open to read this report.';
 }
 
-export function WorkspaceReports({ workspace, workspaces = [], busy: parentBusy }) {
+export function WorkspaceReports({
+  workspace,
+  workspaces = [],
+  busy: parentBusy,
+  onReportDragChange,
+}) {
   const [reports, setReports] = useState([]),
     [selected, setSelected] = useState(null),
     [overlayOpen, setOverlayOpen] = useState(false),
@@ -31,6 +36,7 @@ export function WorkspaceReports({ workspace, workspaces = [], busy: parentBusy 
     [dragging, setDragging] = useState(null),
     [dropTarget, setDropTarget] = useState(null),
     [revision, setRevision] = useState(0);
+  useEffect(() => () => onReportDragChange?.(null), [onReportDragChange]);
   const lock = useRef(false),
     loadRequest = useRef(null),
     loadedBase = useRef(null),
@@ -337,6 +343,12 @@ export function WorkspaceReports({ workspace, workspaces = [], busy: parentBusy 
           {message}
         </p>
       )}
+      {onReportDragChange && owner && destinations.length > 0 && reports.length > 0 && (
+        <p className="small muted">
+          Drag a report to a bordered workspace in the sidebar, or open it and choose Move. Moved
+          reports become private drafts.
+        </p>
+      )}
       <nav className="report-library" aria-label="Saved reports" aria-busy={loading}>
         {reports.map((item) => (
           <button
@@ -348,8 +360,13 @@ export function WorkspaceReports({ workspace, workspaces = [], busy: parentBusy 
               event.dataTransfer.effectAllowed = 'move';
               setDragPreview(event);
               setDragging(item.report_id);
+              onReportDragChange?.({
+                id: item.report_id,
+                move: (destination) => moveReport(item, destination),
+              });
             }}
             onDragEnd={() => {
+              onReportDragChange?.(null);
               setDragging(null);
               setDropTarget(null);
             }}
@@ -384,7 +401,7 @@ export function WorkspaceReports({ workspace, workspaces = [], busy: parentBusy 
           </button>
         ))}
       </nav>
-      {dragging && destinations.length > 0 && (
+      {dragging && !onReportDragChange && destinations.length > 0 && (
         <section className="report-move-targets" aria-label="Move report to a workspace">
           <p>Drop the report into a workspace you own. It will become a private draft.</p>
           <div>
