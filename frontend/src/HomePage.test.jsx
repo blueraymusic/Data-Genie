@@ -245,7 +245,7 @@ describe('interactive homepage', () => {
     render(<App />);
     expect(
       screen
-        .getAllByRole('link', { name: 'Try Data Genie' })
+        .getAllByRole('link', { name: 'Ask a question' })
         .every((link) => link.getAttribute('href') === '/signup'),
     ).toBe(true);
     await events.click(screen.getByRole('button', { name: 'Open navigation' }));
@@ -276,7 +276,7 @@ describe('interactive homepage', () => {
     expect(screen.getByRole('link', { name: 'Open my database' }).getAttribute('href')).toBe(
       '/databases',
     );
-    expect(header.queryByRole('link', { name: 'Try Data Genie' })).toBeNull();
+    expect(header.queryByRole('link', { name: 'Ask a question' })).toBeNull();
   });
 
   it('keeps the theme toggle and inline FAQ operable', async () => {
@@ -297,7 +297,7 @@ describe('interactive homepage', () => {
     render(<App />);
     const header = within(screen.getByRole('banner'));
     expect(header.getByRole('link', { name: 'Log in' }).getAttribute('href')).toBe('/signin');
-    expect(header.getByRole('link', { name: 'Try Data Genie' }).getAttribute('href')).toBe(
+    expect(header.getByRole('link', { name: 'Ask a question' }).getAttribute('href')).toBe(
       '/signup',
     );
     expect(screen.getByRole('link', { name: 'Open my database' }).getAttribute('href')).toBe(
