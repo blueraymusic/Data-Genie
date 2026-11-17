@@ -1,4 +1,11 @@
 mock_provider "azurerm" {
+  mock_data "azurerm_client_config" {
+    defaults = {
+      tenant_id       = "00000000-0000-0000-0000-000000000001"
+      object_id       = "00000000-0000-0000-0000-000000000002"
+      subscription_id = "00000000-0000-0000-0000-000000000003"
+    }
+  }
   mock_data "azurerm_resource_group" {
     defaults = {
       name     = "data_genie"
@@ -129,4 +136,36 @@ run "invalid_microsoft_callback" {
   command = plan
   variables { microsoft_redirect_uri = "http://data-genie.space/api/auth/microsoft/callback" }
   expect_failures = [var.microsoft_redirect_uri]
+}
+
+
+run "approved_fixed_basic_sql" {
+  command = plan
+  variables {
+    app_service_sku = "B1"
+    sql_state_tier = "basic"
+  }
+  override_resource {
+    target = azapi_resource.free_state
+    values = {
+      output = {
+        sku = { name = "Basic", tier = "Basic", capacity = 5 }
+        properties = { useFreeLimit = false, maxSizeBytes = 2147483648 }
+      }
+    }
+  }
+  assert {
+    condition = azapi_resource.free_state.body.sku.name == "Basic" && azapi_resource.free_state.body.sku.capacity == 5 && azapi_resource.free_state.body.properties.maxSizeBytes == 2147483648 && azapi_resource.free_state.body.properties.useFreeLimit == false
+    error_message = "Basic must remain fixed at 5 DTUs and 2 GiB with no free-offer billing."
+  }
+  assert {
+    condition = !can(azapi_resource.free_state.body.properties.minCapacity) && !can(azapi_resource.free_state.body.properties.autoPauseDelay)
+    error_message = "Basic must not retain incompatible serverless compute settings."
+  }
+}
+
+run "unapproved_sql_tier" {
+  command = plan
+  variables { sql_state_tier = "standard" }
+  expect_failures = [var.sql_state_tier]
 }

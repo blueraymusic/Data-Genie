@@ -49,8 +49,8 @@ resource "azurerm_mssql_server" "state" {
   tags                          = local.tags
 }
 
-# The AzureRM database resource does not expose the free-offer safeguards.
-# Use the ARM API explicitly; omitting useFreeLimit would create a paid DB.
+# Declare the selected billing model explicitly. Keep this historical resource
+# address and prevent_destroy so opting into Basic updates the existing DB.
 resource "azapi_resource" "free_state" {
   type      = "Microsoft.Sql/servers/databases@2023-08-01"
   name      = "data-genie-state"
@@ -59,23 +59,30 @@ resource "azapi_resource" "free_state" {
   tags      = local.tags
   body = {
     # Match ARM's canonical SKU name; the maximum vCore count is capacity.
-    sku = { name = "GP_S_Gen5", tier = "GeneralPurpose", family = "Gen5", capacity = 2 }
-    properties = {
-      useFreeLimit                     = true
-      freeLimitExhaustionBehavior      = "AutoPause"
-      autoPauseDelay                   = 60
-      minCapacity                      = 0.5
-      maxSizeBytes                     = 34359738368
+    sku = merge({
+      name     = var.sql_state_tier == "basic" ? "Basic" : "GP_S_Gen5"
+      tier     = var.sql_state_tier == "basic" ? "Basic" : "GeneralPurpose"
+      capacity = var.sql_state_tier == "basic" ? 5 : 2
+    }, var.sql_state_tier == "free" ? { family = "Gen5" } : {})
+    properties = merge({
+      useFreeLimit                     = var.sql_state_tier == "free"
+      maxSizeBytes                     = var.sql_state_tier == "basic" ? 2147483648 : 34359738368
       requestedBackupStorageRedundancy = "Local"
       zoneRedundant                    = false
-    }
+      }, var.sql_state_tier == "free" ? { freeLimitExhaustionBehavior = "AutoPause" } : {},
+    var.sql_state_tier == "free" ? { autoPauseDelay = 60, minCapacity = 0.5 } : {})
   }
-  response_export_values = ["properties.useFreeLimit", "properties.freeLimitExhaustionBehavior"]
+  response_export_values = ["sku", "properties.maxSizeBytes", "properties.useFreeLimit", "properties.freeLimitExhaustionBehavior"]
   lifecycle {
     prevent_destroy = true
     postcondition {
-      condition     = self.output.properties.useFreeLimit == true && self.output.properties.freeLimitExhaustionBehavior == "AutoPause"
-      error_message = "Azure must confirm the free offer and AutoPause. No paid fallback is allowed."
+      condition = var.sql_state_tier == "basic" ? (
+        try(self.output.sku.name, "") == "Basic" && try(self.output.sku.capacity, 0) == 5 &&
+        try(self.output.properties.maxSizeBytes, 0) == 2147483648
+        ) : (
+        try(self.output.properties.useFreeLimit, false) == true && try(self.output.properties.freeLimitExhaustionBehavior, "") == "AutoPause"
+      )
+      error_message = "Azure must confirm the selected free AutoPause or fixed Basic plan. No serverless overage fallback is allowed."
     }
   }
 }

@@ -6,6 +6,8 @@ The live site is [data-genie.space](https://data-genie.space/). It uses the exis
 
 The current hosting plan is funded through student credit. It is not a free Azure tier. Existing usage allowances, AI quotas, and spending limits still apply.
 
+The approved fixed SQL option is **Basic, 5 DTUs, 2 GiB**, bringing Linux B1 plus SQL to approximately $20/month in France Central before tax and small extras. Set Terraform variable `sql_state_tier=basic` in the existing HCP workspace before its next plan; leave auto apply disabled. This permanently removes this database's SQL free offer. Do not enable General Purpose serverless overages as a substitute. The default `free` value remains available for new free-offer installations. The code deployment check accepts free AutoPause or bounded Basic and does not change SQL billing or network permissions.
+
 - `main.tf` and related Terraform files describe infrastructure.
 - `azure-pipelines.yml` tests, packages, deploys, and checks the application.
 - `requirements.txt` pins the hosted Python runtime, including MCP and OAuth support.

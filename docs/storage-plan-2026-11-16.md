@@ -1,5 +1,7 @@
 # Storage plan within approximately US$15/month
 
+**Later decision, 17 November:** the user approved an approximately $20/month total budget funded by existing student credit, including permanently leaving the SQL free offer for fixed Basic SQL (5 DTUs / 2 GiB). The Blob design below remains an alternative proposal, not an implemented migration. The reviewed SQL configuration is now available through `sql_state_tier=basic`; set that variable before the next HCP Terraform plan. A serverless `BillOverUsage` opt-in cannot be switched back to monthly-limit AutoPause and must not be treated as a reversible recovery toggle.
+
 Status: proposal only. No storage resource, billing setting, access grant or production data has been changed by this plan. Prices checked on 16 November 2026 for France Central, in USD, before taxes.
 
 ## Current release and blocker

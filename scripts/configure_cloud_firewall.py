@@ -61,8 +61,17 @@ def main(check_only=False):
     server = configured_sql_server(group, name)
     database = json.loads(azure("sql", "db", "show", "--resource-group", group,
                                 "--server", server, "--name", "data-genie-state"))
-    if arm_value(database, "useFreeLimit") is not True or arm_value(database, "freeLimitExhaustionBehavior") != "AutoPause":
-        raise SystemExit("The database must confirm useFreeLimit=true and AutoPause before deployment.")
+    free_sql = (arm_value(database, 'useFreeLimit') is True
+                and arm_value(database, 'freeLimitExhaustionBehavior') == 'AutoPause')
+    sql_sku = database.get('sku', {})
+    size = arm_value(database, 'maxSizeBytes')
+    free_limit = arm_value(database, 'useFreeLimit')
+    basic_sql = (isinstance(sql_sku, dict) and sql_sku.get('name') == 'Basic'
+                 and sql_sku.get('tier') == 'Basic' and type(sql_sku.get('capacity')) is int
+                 and sql_sku['capacity'] == 5 and type(size) is int and 0 < size <= 2147483648
+                 and (free_limit is None or free_limit is False))
+    if not (free_sql or basic_sql):
+        raise SystemExit('SQL must use free AutoPause or the approved Basic 5-DTU / 2-GiB plan. Paid serverless overages are not approved.')
     outbound = arm_value(app, 'outboundIpAddresses')
     if not isinstance(outbound, str):
         raise SystemExit('Azure did not return usable web-app egress addresses.')
@@ -79,13 +88,13 @@ def main(check_only=False):
         allowed = {rule["startIpAddress"] for rule in rules}
         if set(addresses) - allowed:
             raise SystemExit("The app's current egress addresses need reviewed SQL firewall rules before deployment.")
-        print("Hosting budget, SQL free-offer safeguards and current egress rules verified.")
+        print("Hosting budget, approved SQL plan and current egress rules verified.")
         return
     for address in addresses:
         azure("sql", "server", "firewall-rule", "create", "--resource-group", group,
               "--server", server, "--name", "genie-web-" + address.replace(".", "-"),
               "--start-ip-address", address, "--end-ip-address", address)
-    print("Hosting budget and SQL free-offer safeguards verified; web-app egress rules configured.")
+    print("Hosting budget and approved SQL plan verified; web-app egress rules configured.")
 
 
 if __name__ == "__main__":

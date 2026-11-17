@@ -40,6 +40,16 @@ variable "sql_server_name" {
   }
 }
 
+variable "sql_state_tier" {
+  type        = string
+  default     = "free"
+  description = "Use basic only after approving the permanent free-offer removal: fixed 5 DTUs / 2 GiB, approximately $6.23 per 31-day month in France Central."
+  validation {
+    condition     = contains(["free", "basic"], var.sql_state_tier)
+    error_message = "Only free AutoPause or the explicitly approved fixed Basic plan is supported."
+  }
+}
+
 variable "gemini_api_key" {
   type        = string
   default     = ""

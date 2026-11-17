@@ -498,3 +498,28 @@ class DeploymentFirewallTests(unittest.TestCase):
                     patch("scripts.configure_cloud_firewall.azure", side_effect=replies), \
                     self.assertRaises(SystemExit):
                 configure_firewall(check_only=True)
+
+
+class FixedSqlDeploymentTests(unittest.TestCase):
+    def test_only_fixed_basic_within_approved_capacity_and_size_is_accepted(self):
+        basic = {'sku': {'name': 'Basic', 'tier': 'Basic', 'capacity': 5},
+                 'properties': {'useFreeLimit': False, 'maxSizeBytes': 2147483648}}
+        variants = [basic,
+                    {**basic, 'sku': {'name': 'S0', 'tier': 'Standard', 'capacity': 10}},
+                    {**basic, 'sku': {'name': 'Basic', 'tier': 'Basic', 'capacity': True}},
+                    {**basic, 'properties': {'maxSizeBytes': 2147483649}},
+                    {**basic, 'properties': {'maxSizeBytes': '2147483648'}},
+                    {**basic, 'properties': {'maxSizeBytes': 2147483648, 'useFreeLimit': 0}},
+                    {'useFreeLimit': True, 'freeLimitExhaustionBehavior': 'BillOverUsage'}]
+        for index, database in enumerate(variants):
+            replies = [json.dumps({'serverFarmId': '/plans/test', 'outboundIpAddresses': '192.0.2.5'}),
+                       json.dumps({'sku': {'name': 'B1', 'capacity': 1}, 'reserved': True}),
+                       json.dumps('genie-custom-sql.database.windows.net'), json.dumps(database),
+                       json.dumps([{'startIpAddress': '192.0.2.5', 'endIpAddress': '192.0.2.5'}])]
+            with self.subTest(index=index), patch.dict('os.environ', {'GENIE_RESOURCE_GROUP': 'fixture', 'GENIE_APP_NAME': 'genie', 'GENIE_APP_SERVICE_SKU': 'B1'}), patch('scripts.configure_cloud_firewall.azure', side_effect=replies) as command:
+                if index:
+                    with self.assertRaises(SystemExit):
+                        configure_firewall(check_only=True)
+                else:
+                    configure_firewall(check_only=True)
+                self.assertFalse(any('create' in call.args or 'delete' in call.args for call in command.call_args_list))
