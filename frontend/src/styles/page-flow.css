@@ -944,7 +944,11 @@
   position: sticky;
   bottom: 0;
   flex: none;
+  margin-top: auto;
   border-radius: 0;
+}
+.workspace-page #app.query-workspace #v-ask:not(.has-requests) #feed {
+  flex: 1 0 auto;
 }
 .workspace-page .query-workspace :is(.sql-editor .sqlbox, .ask textarea) {
   max-height: min(24dvh, 180px);
