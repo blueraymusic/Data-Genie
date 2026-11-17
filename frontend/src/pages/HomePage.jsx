@@ -73,20 +73,20 @@ export default function HomePage() {
                 Your data. Your agents. <em>Your approval.</em>
               </h1>
               <p className="hero-lede">
-                Give teammates and MCP agents scoped database access. Ask in plain English, inspect
-                the SQL and results, and approve changes before they run. Keep a record in History.
+                Ask in plain English, inspect the SQL, and approve changes before they run. 
+                Scoped access for teammates and MCP agents, logged in History.
               </p>
               <div className="cta-row">
                 <Link href={user ? '/databases' : '/signup'} className="btn btn-primary">
-                  {user ? 'Go to my workspace' : 'Try Data Genie'} <Icon name="arrow" />
+                  {user ? 'Go to my workspace' : 'Ask a question'} <Icon name="arrow" />
                 </Link>
                 <Link href={user ? '/databases' : '/signin'} className="btn btn-dark">
-                  Open my database
+                  Add a database
                 </Link>
               </div>
               <p className="hero-hint">
-                <Link href="/#demo">Explore the sample demo</Link> · No account needed.
-                <br /> SQLite files and PostgreSQL connections.
+                Create an account to get started.
+                <br /> Works with SQLite files and PostgreSQL connections.
               </p>
             </div>
             <div className="hero-preview">
