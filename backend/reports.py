@@ -18,6 +18,9 @@ class ReportStore(WorkspaceStore):
     def _permissions(workspace, row, account_id):
         archived = bool(workspace['archived_at'] or row['author_deleted'])
         return {**dict(row), 'published': bool(row['published']), 'archived': archived,
+                'can_share': not archived and workspace['role'] == 'owner',
+                'can_move': not archived and workspace['role'] == 'owner',
+                'live_editing': not archived and (workspace['role'] == 'owner' or (workspace['role'] == 'member' and row['author_id'] == account_id and not row['published'])),
                 'can_edit': not archived and (workspace['role'] == 'owner' or (workspace['role'] == 'member' and row['author_id'] == account_id and not row['published'])),
                 'can_delete': archived or (workspace['role'] != 'viewer' and row['author_id'] == account_id)}
 
@@ -66,6 +69,31 @@ class ReportStore(WorkspaceStore):
             return {'deleted': True, 'report_id': report_id}
 
     @_serialized
+    def move_report(self, account_id, workspace_id, report_id, destination_id, version):
+        """Only an owner of both spaces can relocate a reviewed snapshot.
+
+        A move always resets publication: sharing in one team does not approve
+        sharing with a different set of people.
+        """
+        with self.repository._connection(write=True) as connection:
+            workspace = self._membership(connection, account_id, workspace_id, owner=True)
+            destination = self._membership(connection, account_id, destination_id, owner=True)
+            if destination['workspace_id'] == workspace_id:
+                raise ValueError('Choose a different workspace for this report.')
+            row = self._visible_report(connection, workspace, account_id, report_id)
+            if row['author_deleted']:
+                raise PermissionError('Archived reports cannot be moved.')
+            if type(version) is not int or version != row['version']:
+                raise ValueError('This report changed in another session. Reopen it before moving.')
+            connection.execute('''UPDATE workspace_reports SET workspace_id=?,published=0,
+                updated_at=?,version=version+1 WHERE report_id=? AND workspace_id=? AND version=?''',
+                (destination_id, int(time.time()), report_id, workspace_id, version))
+            connection.execute('DELETE FROM report_live_editors WHERE report_id=?', (report_id,))
+            connection.execute('UPDATE report_collaboration SET base_version=? WHERE report_id=?', (row['version'] + 1, report_id))
+            return {'moved': True, 'report_id': report_id, 'workspace_id': destination_id,
+                    'published': False}
+
+    @_serialized
     def save_report(self, account_id, workspace_id, payload, *, agent_draft=False):
         title, body = payload.get('title'), payload.get('body')
         if not isinstance(title, str) or not title.strip() or len(title) > 120:
@@ -98,6 +126,8 @@ class ReportStore(WorkspaceStore):
                     raise PermissionError('This report is not available for editing.')
                 if type(payload.get('version')) is not int or payload['version'] != row['version']:
                     raise ValueError('This report changed in another session. Reopen it before saving.')
+                from .report_collaboration import save_snapshot
+                save_snapshot(connection, row, payload)
                 connection.execute('''UPDATE workspace_reports SET title=?,body=?,published=?,updated_at=?,version=version+1 WHERE report_id=?''',
                                    (title.strip(), body.strip(), int(published), now, report_id))
             else:

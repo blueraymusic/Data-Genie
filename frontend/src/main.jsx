@@ -24,4 +24,6 @@ import './styles/motion.css';
 import './styles/workspace-refinements.css';
 import './styles/workspace-edges.css';
 import './styles/reports.css';
+import './styles/polish.css';
+import './styles/page-flow.css';
 createRoot(document.getElementById('root')).render(<App />);

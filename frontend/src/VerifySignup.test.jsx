@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { VerifySignup } from './components/VerifySignup';
+import { Router } from './lib/router';
 const authenticate = vi.hoisted(() => vi.fn());
 vi.mock('./context/AuthContext', () => ({ useAuth: () => ({ authenticate }) }));
 const initial = {
@@ -46,4 +47,23 @@ it('disables verification after expiry and lets the person restart', async () =>
   await userEvent.setup().click(screen.getByRole('button', { name: 'Use different details' }));
   expect(restart).toHaveBeenCalledOnce();
   expect(authenticate).not.toHaveBeenCalled();
+});
+it('offers login and password recovery after proving an already registered mailbox', async () => {
+  authenticate.mockResolvedValue({
+    sign_in_required: true,
+    message: 'This email is already verified. Log in or reset your password.',
+  });
+  const complete = vi.fn(),
+    events = userEvent.setup();
+  render(
+    <Router>
+      <VerifySignup initial={initial} onVerified={complete} onRestart={vi.fn()} />
+    </Router>,
+  );
+  await events.type(screen.getByLabelText('Verification code'), '012345');
+  await events.click(screen.getByRole('button', { name: 'Verify and create account' }));
+  expect(await screen.findByRole('link', { name: 'Reset password' })).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Log in' })).toBeTruthy();
+  expect(complete).not.toHaveBeenCalled();
+  expect(screen.queryByRole('alert')).toBeNull();
 });

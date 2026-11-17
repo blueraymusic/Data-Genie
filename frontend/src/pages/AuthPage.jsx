@@ -154,6 +154,11 @@ export default function AuthPage() {
               ? 'Use 15 to 128 characters. A long, unique passphrase works well.'
               : 'Use the account you created on this site.'}
           </p>
+          {!signup && (
+            <p className="identity-note">
+              <Link href="/forgot-password">Forgot password?</Link>
+            </p>
+          )}
           <button className="btn pri start-button" disabled={busy || retrying}>
             {busy
               ? signup

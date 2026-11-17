@@ -4,6 +4,44 @@ export const faqGroups = [
     title: 'Getting started',
     items: [
       {
+        question: 'Do I need to refresh to see changes?',
+        search:
+          'Live automatic updates workspaces databases reports permissions invitations structure sample rows history without refreshing the page.',
+        answer: (
+          <p>
+            Open screens update automatically while this tab is visible, and check again when you
+            return. Database changes, access changes, report sharing, and invitations appear without
+            reloading. Saved query answers remain dated snapshots; run the query again for a fresh
+            answer.
+          </p>
+        ),
+      },
+      {
+        question: 'Can I see my partner editing a report live?',
+        search:
+          'Collaborate coedit live reports typing partner simultaneous changes author owner unpublished draft one second sync reviewed published snapshot.',
+        answer: (
+          <p>
+            Yes. Save a new report once, then its author and workspace owner can open the
+            unpublished draft together. Their typing syncs in about one second, including
+            simultaneous edits. Live working text is separate from the reviewed snapshot: published
+            readers see new text after the owner saves. Existing edit permissions still apply.
+          </p>
+        ),
+      },
+      {
+        question: 'Can Data Genie return a chart?',
+        search:
+          'AI charts monthly sales trends line bar structured chart specification real database results table exact values.',
+        answer: (
+          <p>
+            Yes. Ask for a monthly sales trend or a comparison by category. Data Genie can return a
+            line or bar chart from your actual query results. Switch between Chart and Table to
+            inspect exact values. Invalid or unsafe numeric values stay in a table.
+          </p>
+        ),
+      },
+      {
         question: 'What can I do with Data Genie?',
         search:
           'Ask questions about SQLite or PostgreSQL, find and count records, add or update data, and create or change tables. Data Genie translates your request into SQL and shows the result alongside it. Reads run immediately. Changes wait for your confirmation, and your requests stay in History.',
@@ -338,17 +376,18 @@ export const faqGroups = [
       {
         question: 'Can I download my PostgreSQL database?',
         search:
-          'PostgreSQL data stays on its server and confirmed changes are saved there directly. Download CSV exports the rows currently loaded in a result, not a full database backup. Full PostgreSQL backups are handled outside Data Genie. Download SQLite file is only available for SQLite databases.',
+          'PostgreSQL confirmed changes are saved on its server. Download from each database card exports all tables as a CSV folder ZIP with schema metadata. Download CSV on query results exports loaded rows. Native PostgreSQL backups require PostgreSQL backup tools. SQLite download and SQLite SQL dump are only for SQLite.',
         answer: (
           <>
             <p>
               PostgreSQL data stays on its server, and confirmed changes are saved there directly.
-              There is no database file to download from Data Genie for this connection.
+              On its database card, choose <strong>Download → CSV folder</strong> to export its
+              tables with schema metadata.
             </p>
             <p>
               <strong>Download CSV</strong> exports the rows currently loaded in a result. Full
-              PostgreSQL backups are handled outside Data Genie.{' '}
-              <strong>Download SQLite file</strong> is only available for SQLite databases.
+              PostgreSQL backups use PostgreSQL backup tools. <strong>Download SQLite file</strong>{' '}
+              is only available for SQLite databases.
             </p>
           </>
         ),
@@ -532,7 +571,7 @@ export const faqGroups = [
       {
         question: 'Can I preview rows while browsing Structure?',
         search:
-          'Choose Sample rows on a table in Structure. Hide sample rows closes the preview, and reopening it reuses the loaded rows. Refresh sample rows fetches current data while the preview is open. Changing sessions or refreshing the schema clears cached samples. Copy results and Download CSV follow your database download permission in sample previews too.',
+          'Choose Sample rows in Structure. Open previews refresh automatically while visible. Hide sample rows closes preview. Refresh sample rows fetches current data immediately. Copy and CSV follow download permission.',
         answer: (
           <>
             <p>
@@ -542,8 +581,8 @@ export const faqGroups = [
               preview is open.
             </p>
             <p>
-              Changing sessions or refreshing the schema clears the samples. Copy and CSV controls
-              follow your database’s download permission here too.
+              Open previews update automatically. Changing sessions clears the samples. Copy and CSV
+              controls follow your database’s download permission here too.
             </p>
           </>
         ),
@@ -807,14 +846,15 @@ export const faqGroups = [
       {
         question: 'Can I transfer ownership without deleting my account?',
         search:
-          'Transfer workspace ownership Teams Workspace settings recipient existing account email accepts declines cancel request seven days separate from account deletion databases PostgreSQL saved connections transferred current password Microsoft fresh sign in.',
+          'Only the owner can transfer a team workspace. Personal workspace ownership cannot transfer. Teams Workspace settings recipient accepts declines cancel seven days separate from account deletion.',
         answer: (
           <>
             <p>
-              Yes. In <strong>Teams → Workspace settings → Transfer ownership</strong>, enter an
-              existing Data Genie account’s email, type the workspace name, and confirm your
-              password. They do not need to join first. Your account stays active and you remain the
-              owner while the request is pending.
+              Yes, for a team workspace you own. Personal workspaces cannot be transferred. In{' '}
+              <strong>Teams → Workspace settings → Transfer ownership</strong>, enter an existing
+              Data Genie account’s email, type the workspace name, and confirm your password. They
+              do not need to join first. Your account stays active and you remain the owner while
+              the request is pending.
             </p>
             <p>
               The recipient sees the request in <strong>Teams → Ownership requests</strong>. They
@@ -888,9 +928,23 @@ export const faqGroups = [
         ),
       },
       {
+        question: 'What if I forgot my password?',
+        search:
+          'Forgot password recovery email generic response account presence private fifteen minute single use reset link three login attempts.',
+        answer: (
+          <p>
+            Choose <a href="/forgot-password">Forgot password?</a> on Log in and enter your email.
+            You see the same response for every address. If a password account exists and email
+            delivery is configured, it receives a single-use link valid for 15 minutes. Resetting
+            signs out other logins and revokes agent connections. Microsoft-only accounts recover
+            through Microsoft.
+          </p>
+        ),
+      },
+      {
         question: 'How are my account and password stored?',
         search:
-          'Your name, email, password hash, and login records are stored in this Data Genie installation, separate from the databases you query. Passwords are salted and hashed; the app does not store the original password. Log in to access your own databases and history. You can change your password in Account & preferences. Other browser logins are signed out when you do. Login expires after 30 minutes of inactivity or 12 hours in total. There is no email-based password recovery in this version. History from before accounts were introduced stays on disk and is not automatically assigned by matching an email.',
+          'Accounts names email salted password hashes login records stored separately from queried databases. Three password attempts then temporary fifteen minute lockout. Change password in Account or email recovery. Login expires after thirty minutes idle or twelve hours total.',
         answer: (
           <>
             <p>
@@ -904,9 +958,10 @@ export const faqGroups = [
               you do.
             </p>
             <p>
-              Login expires after 30 minutes of inactivity or 12 hours in total. There is no
-              email-based password recovery in this version. History from before accounts were
-              introduced stays on disk and is not automatically assigned by matching an email.
+              Login expires after 30 minutes of inactivity or 12 hours in total. Three failed
+              password attempts temporarily lock password login for 15 minutes. Use email recovery
+              if needed. History from before accounts were introduced stays on disk and is not
+              automatically assigned by matching an email.
             </p>
           </>
         ),

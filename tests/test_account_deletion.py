@@ -116,6 +116,38 @@ class AccountDeletionTests(AccountWorkspaceFixture, HttpHarness, unittest.TestCa
         self.reports.delete_report(self.member, other_team, report, retained['version'])
         self.check_integrity()
 
+    def test_removes_unreviewed_live_drafts_from_archived_reports_while_preserving_snapshots(self):
+        from backend.report_collaboration import ReportCollaboration
+        owned_team = self.team()
+        owned_report = self.report(owned_team)
+        member_report = self.report(owned_team, self.member, published=False)
+        other_team = self.team(owner=self.member)
+        authored_elsewhere = self.report(other_team, published=False)
+        unaffected = self.report(other_team, self.member, published=False)
+        collaboration = ReportCollaboration(self.repository)
+        for report_id, team, account_id in (
+                (owned_report, owned_team, self.owner),
+                (member_report, owned_team, self.owner),
+                (authored_elsewhere, other_team, self.owner),
+                (unaffected, other_team, self.member)):
+            client_id = 'fixture-' + report_id
+            live = collaboration.live(account_id, team, report_id, 0, client_id)
+            collaboration.edit(account_id, team, report_id, {
+                'client_id': client_id, 'operation_id': 'edit-' + report_id,
+                'base_revision': live['document']['revision'], 'field': 'body',
+                'operation': [len(live['document']['body']), ' Unreviewed live writing.'],
+            })
+        self.assertEqual(self.remove()[0], 200)
+        for report_id, team in ((owned_report, owned_team), (member_report, owned_team), (authored_elsewhere, other_team)):
+            retained = self.reports.get_report(self.member, team, report_id)
+            self.assertEqual(retained['body'], 'Reviewed fixture snapshot.')
+            self.assertTrue(retained['archived'])
+        with self.repository._connection() as connection:
+            for table in ('report_collaboration', 'report_edit_operations', 'report_live_editors'):
+                self.assertEqual({row[0] for row in connection.execute(f'SELECT report_id FROM {table}')}, {unaffected}, table)
+            self.assertIn('Unreviewed live writing.', connection.execute('SELECT body FROM report_collaboration WHERE report_id=?', (unaffected,)).fetchone()[0])
+        self.check_integrity()
+
     def test_metadata_failure_restores_staged_files_and_rolls_back_deletion(self):
         team = self.team()
         with self.repository._connection(write=True) as connection:

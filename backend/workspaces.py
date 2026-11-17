@@ -192,7 +192,7 @@ class WorkspaceStore:
         with self.repository._connection(write=True) as connection:
             self._ensure_personal(connection, account_id)
             workspace = self._membership(connection, account_id, workspace_id)
-            members = connection.execute("""SELECT m.account_id,m.role,m.joined_at,a.first_name,a.last_name,a.email
+            members = connection.execute("""SELECT m.account_id,m.role,m.joined_at,a.first_name,a.last_name,a.email,a.profile_photo
                 FROM workspace_members m JOIN accounts a USING(account_id) WHERE m.workspace_id=?
                 ORDER BY CASE m.role WHEN 'owner' THEN 0 ELSE 1 END,m.joined_at,m.account_id""", (workspace_id,)).fetchall()
             databases = []
@@ -254,13 +254,23 @@ class WorkspaceStore:
                     (SELECT database_id FROM workspace_databases WHERE workspace_id=?)""",
                 (_now(), account_id, workspace_id))
             connection.execute("DELETE FROM workspace_grants WHERE workspace_id=?", (workspace_id,))
+            names = {row[0].strip().casefold() for row in connection.execute('''SELECT d.database_name FROM databases d
+                JOIN workspace_databases wd USING(database_id) WHERE wd.workspace_id=?''', (personal['workspace_id'],))}
+            renamed = []
+            for row in connection.execute('''SELECT d.database_id,d.database_name FROM databases d
+                    JOIN workspace_databases wd USING(database_id) WHERE wd.workspace_id=? ORDER BY d.database_id''', (workspace_id,)).fetchall():
+                name = self._available_database_name(names, row['database_name'])
+                names.add(name.strip().casefold())
+                if name != row['database_name']:
+                    connection.execute('UPDATE databases SET database_name=? WHERE database_id=?', (name, row['database_id']))
+                    renamed.append({'database_id': row['database_id'], 'database': name})
             connection.execute("""UPDATE workspace_databases SET workspace_id=?,attached_at=?
                 WHERE workspace_id=?""", (personal["workspace_id"], int(time.time()), workspace_id))
             # Memberships and invitation secrets cascade with the team. No
             # database, connection, session, request or result rows are deleted.
             connection.execute("DELETE FROM workspaces WHERE workspace_id=?", (workspace_id,))
             return {"deleted": True, "workspace_id": workspace_id,
-                    "personal_workspace_id": personal["workspace_id"]}
+                    "personal_workspace_id": personal["workspace_id"], **({'renamed_databases': renamed} if renamed else {})}
 
     @_serialized
     def invite(self, account_id, workspace_id, email, role="member"):
@@ -396,6 +406,45 @@ class WorkspaceStore:
             return {"account_id": target_id, "database_id": database_id, "permissions": permissions}
 
     @_serialized
+    def assert_database_name(self, account_id, workspace_id, name, database_id=None):
+        """Names identify a database within its workspace, regardless of case."""
+        with self.repository._connection(write=True) as connection:
+            self._ensure_personal(connection, account_id)
+            self._membership(connection, account_id, workspace_id, owner=True)
+            self._unique_database_name(connection, workspace_id, name, database_id)
+
+    @staticmethod
+    def _available_database_name(names, name):
+        if name.strip().casefold() not in names:
+            return name
+        match = re.search(r'\.(?:db|sqlite|sqlite3)$', name, re.I)
+        stem, extension = (name[:match.start()], match[0]) if match else (name, '')
+        index = 2
+        while True:
+            suffix = f' ({index})' + extension
+            candidate = stem[:150 - len(suffix)] + suffix
+            if candidate.strip().casefold() not in names:
+                return candidate
+            index += 1
+
+    @_serialized
+    def available_database_name(self, account_id, workspace_id, name):
+        with self.repository._connection(write=True) as connection:
+            self._ensure_personal(connection, account_id)
+            self._membership(connection, account_id, workspace_id, owner=True)
+            names = {row[0].strip().casefold() for row in connection.execute('''SELECT d.database_name FROM databases d
+                JOIN workspace_databases wd USING(database_id) WHERE wd.workspace_id=?''', (workspace_id,))}
+            return self._available_database_name(names, name)
+
+    @staticmethod
+    def _unique_database_name(connection, workspace_id, name, database_id=None):
+        normalized = str(name or '').strip().casefold()
+        for row in connection.execute('''SELECT d.database_id,d.database_name FROM databases d
+                JOIN workspace_databases wd USING(database_id) WHERE wd.workspace_id=?''', (workspace_id,)):
+            if row['database_id'] != database_id and row['database_name'].strip().casefold() == normalized:
+                raise ValueError('A database with that name already exists in this workspace. Choose a different name.')
+
+    @_serialized
     def attach_database(self, account_id, workspace_id, database_id):
         _integer(database_id)
         with self.repository._connection(write=True) as connection:
@@ -405,7 +454,13 @@ class WorkspaceStore:
             if current is None or current["owner_account_id"] != account_id:
                 raise PermissionError(_UNAVAILABLE)
             self._membership(connection, account_id, current["workspace_id"], owner=True)
+            name = connection.execute('SELECT database_name FROM databases WHERE database_id=?', (database_id,)).fetchone()[0]
+            self._unique_database_name(connection, workspace_id, name, database_id)
             if current["workspace_id"] != workspace_id:
+                # Old member confirmations must never revive after a later move.
+                for row in connection.execute('SELECT account_id FROM workspace_members WHERE workspace_id=? AND account_id<>?',
+                                              (current['workspace_id'], account_id)).fetchall():
+                    self._end_shared_sessions(connection, current['workspace_id'], row[0], database_id)
                 connection.execute("DELETE FROM workspace_grants WHERE database_id=?", (database_id,))
                 connection.execute("UPDATE workspace_databases SET workspace_id=?,attached_at=? WHERE database_id=?",
                                    (workspace_id, int(time.time()), database_id))

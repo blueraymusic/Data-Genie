@@ -19,13 +19,17 @@ def required():
 
 
 def send_code(email, code):
+    send_email(email, 'Your Data Genie verification code',
+               f'Your Data Genie code is {code}. It expires in 5 minutes. You have 3 attempts. If you did not request this, ignore this email.')
+
+
+def send_email(email, subject, message):
     key = settings.value('BREVO_API_KEY').strip()
     sender = settings.value('BREVO_SENDER_EMAIL', 'no-reply@data-genie.space').strip()
     if not key or key.startswith('@Microsoft.KeyVault('):
-        raise ValueError('Email verification is temporarily unavailable. Please try again later.')
+        raise ValueError('Account email is temporarily unavailable. Please try again later.')
     payload = {'sender': {'name': 'Blueray Inc.', 'email': sender},
-               'to': [{'email': email}], 'subject': 'Your Data Genie verification code',
-               'textContent': f'Your Data Genie code is {code}. It expires in 5 minutes. You have 3 attempts. If you did not request this, ignore this email.'}
+               'to': [{'email': email}], 'subject': subject, 'textContent': message}
     request = Request('https://api.brevo.com/v3/smtp/email', data=json.dumps(payload).encode(),
                       headers={'api-key': key, 'Content-Type': 'application/json'}, method='POST')
     try:
@@ -38,7 +42,7 @@ def send_code(email, code):
             if response.status != 201:
                 raise ValueError('Unexpected email provider response.')
     except Exception:
-        raise ValueError('Email verification is temporarily unavailable. Please try again later.') from None
+        raise ValueError('Account email is temporarily unavailable. Please try again later.') from None
 
 
 def digest(challenge, code):
@@ -53,11 +57,10 @@ class SignupVerification:
     def start(self, payload, client):
         self.accounts._reserve_attempt(client, 'register')
         names = [str(payload.get(key) or '').strip() for key in ('first_name', 'last_name')]
-        email = str(payload.get('email') or '').strip().lower()
+        from .email_policy import registration_email
+        email = registration_email(payload.get('email'))
         if any(not name or len(name) > 100 for name in names):
             raise ValueError('Provide your first and last name, up to 100 characters each.')
-        if len(email) > 254 or not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email):
-            raise ValueError('Provide a valid email address.')
         self.accounts._reserve_attempt('signup-email:' + token_hash(email), 'register')
         encoded = password_hash(payload.get('password'))
         return self._issue(names, email, encoded)
@@ -97,7 +100,7 @@ class SignupVerification:
         self.accounts._reserve_attempt(client, 'login')
         challenge = str(payload.get('challenge') or '')[:128]
         code = str(payload.get('code') or '')[:20]
-        user, error = None, 'This code is invalid or expired. Request a new code.'
+        user, existing, error = None, False, 'This code is invalid or expired. Request a new code.'
         with self.repository._connection(write=True) as connection:
             connection.execute('DELETE FROM signup_verifications WHERE expires_at<=?', (int(time.time()),))
             row = connection.execute('SELECT * FROM signup_verifications WHERE challenge_hash=?', (token_hash(challenge),)).fetchone()
@@ -108,12 +111,17 @@ class SignupVerification:
                             (row['first_name'], row['last_name'], row['email'], row['password_hash'], int(time.time())))
                         user = public_user(self.accounts._account(connection, 'account_id', cursor.lastrowid))
                     else:
-                        error = 'Unable to create an account with these details. Try logging in.'
+                        # Only the person who proved mailbox access receives
+                        # this guidance. Never replace an existing password or
+                        # turn a signup code into a login for an existing account.
+                        existing = True
                     connection.execute('DELETE FROM signup_verifications WHERE challenge_hash=?', (token_hash(challenge),))
                 else:
                     connection.execute('UPDATE signup_verifications SET attempts=attempts+1 WHERE challenge_hash=?', (token_hash(challenge),))
                     remaining = MAX_ATTEMPTS - row['attempts'] - 1
                     error = f'Incorrect code. {remaining} attempts remaining.' if remaining else 'Three incorrect attempts. Request a new code.'
+        if existing:
+            return {'sign_in_required': True, 'message': 'This email is already verified. Log in to your account, or reset your password to continue.'}
         if not user:
             raise ValueError(error)
         return user

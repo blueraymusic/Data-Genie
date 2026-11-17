@@ -2,8 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { useEnterMotion } from '../hooks/useMotion';
 
-export function ReportReader({ report, disabled, activity, onEdit, onDelete, onDownload }) {
-  const [confirmDelete, setConfirmDelete] = useState(false);
+export function ReportReader({
+  report,
+  disabled,
+  activity,
+  onEdit,
+  onDelete,
+  onDownload,
+  onShare,
+  onMove,
+  destinations = [],
+}) {
+  const [confirmDelete, setConfirmDelete] = useState(false),
+    [moving, setMoving] = useState(false),
+    [destination, setDestination] = useState('');
   const surface = useRef(null),
     keep = useRef(null),
     remove = useRef(null),
@@ -11,6 +23,8 @@ export function ReportReader({ report, disabled, activity, onEdit, onDelete, onD
   useEnterMotion(surface, `${report.report_id}:${report.version}`);
   useEffect(() => {
     setConfirmDelete(false);
+    setMoving(false);
+    setDestination('');
   }, [report.report_id, report.version]);
   useEffect(() => {
     if (confirmDelete) {
@@ -51,6 +65,29 @@ export function ReportReader({ report, disabled, activity, onEdit, onDelete, onD
               Edit report
             </button>
           )}
+          {report.can_share && (
+            <button
+              className="btn"
+              disabled={disabled || confirmDelete}
+              onClick={() => onShare(report)}
+            >
+              {activity === 'share'
+                ? 'Updating sharing…'
+                : report.published
+                  ? 'Make private'
+                  : 'Share with workspace'}
+            </button>
+          )}
+          {report.can_move && destinations.length > 0 && (
+            <button
+              className="btn"
+              disabled={disabled || confirmDelete}
+              aria-expanded={moving}
+              onClick={() => setMoving((value) => !value)}
+            >
+              Move report
+            </button>
+          )}
           {report.can_delete && (
             <button
               ref={remove}
@@ -64,6 +101,36 @@ export function ReportReader({ report, disabled, activity, onEdit, onDelete, onD
           )}
         </div>
       </header>
+      {moving && !confirmDelete && (
+        <section className="report-move-panel" aria-label="Move this report">
+          <label>
+            Destination workspace
+            <select
+              value={destination}
+              disabled={disabled}
+              onChange={(event) => setDestination(event.target.value)}
+            >
+              <option value="">Choose a workspace you own</option>
+              {destinations.map((item) => (
+                <option key={item.workspace_id} value={item.workspace_id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="small muted">
+            The report leaves this workspace and becomes a private draft in its destination. The
+            destination owner can share it after review.
+          </p>
+          <button
+            className="btn pri"
+            disabled={disabled || !destination}
+            onClick={() => onMove(report, destination)}
+          >
+            {activity === 'move' ? 'Moving…' : 'Move as private draft'}
+          </button>
+        </section>
+      )}
       {confirmDelete && (
         <section className="report-delete-confirm" role="alert" aria-label="Delete this report?">
           <div>

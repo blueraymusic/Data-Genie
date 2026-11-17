@@ -42,6 +42,8 @@ STATIC_FILES = {
     "/dashboard.html": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/signin": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/signup": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/forgot-password": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/reset-password": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/databases": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/history": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/account": ("frontend/dist/index.html", "text/html; charset=utf-8"),
@@ -446,6 +448,20 @@ class Handler(BaseHTTPRequestHandler):
                         login_hash=authentication.token_hash(self.login_token()))
                 self.set_microsoft_cookie(browser)
                 return self.json({"url": "/api/auth/microsoft/start?intent=link"})
+            if parsed.path in {"/api/auth/forgot-password", "/api/auth/reset-password"}:
+                accounts = self.accounts()
+                try:
+                    if not self.headers.get("Content-Type", "").startswith("application/json"):
+                        raise ValueError("Send account requests as JSON.")
+                    payload = self.read_json(16 * 1024)
+                except (ValueError, TypeError):
+                    accounts._reserve_attempt(self.client_address[0], "register" if parsed.path.endswith("forgot-password") else "login")
+                    raise
+                from .password_recovery import PasswordRecovery
+                recovery = PasswordRecovery(workbench.get_repository())
+                if parsed.path.endswith("forgot-password"):
+                    return self.json(recovery.start(payload, self.client_address[0], expected), 202)
+                return self.json(recovery.finish(payload, self.client_address[0]))
             if parsed.path in {"/api/auth/register", "/api/auth/login", "/api/auth/verify-email", "/api/auth/verification/resend"}:
                 accounts = self.accounts()
                 try:
@@ -462,6 +478,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self.json(verification.resend(payload, self.client_address[0]), 202)
                 if parsed.path.endswith("verify-email"):
                     user = verification.verify(payload, self.client_address[0])
+                    if user.get("sign_in_required"):
+                        return self.json(user)
                 elif parsed.path.endswith("register"):
                     if verification_required():
                         return self.json(verification.start(payload, self.client_address[0]), 202)
@@ -481,7 +499,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json({"signed_out": True})
             if parsed.path == "/api/auth/password":
                 payload = self.read_json()
-                self.accounts().change_password(user["account_id"], payload.get("current_password"), payload.get("new_password"))
+                self.accounts().change_password(user["account_id"], payload.get("current_password"), payload.get("new_password"), self.client_address[0])
                 token = self.accounts().issue_login(user["account_id"])
                 self.set_login_cookie(token)
                 return self.json({"user": user, "csrf_token": authentication.csrf_token(token), "message": "Password updated. Other logins have been signed out."})
@@ -513,25 +531,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json(workbench.test_postgres_connection(payload))
             if parsed.path == "/api/sessions":
                 payload = self.read_json()
-                # Browser clients choose a file through upload, never an arbitrary server path.
-                identity = (user["first_name"], user["last_name"], user["email"])
-                mode = payload.get("database_mode")
-                workspace_id = workspace_api.owned_workspace(user["account_id"], payload.get("workspace_id"))
+                # A workspace name is reserved under the same lock as creation.
                 previous = self.owned_session(self.headers["X-Session-ID"], user, check_access=False) if self.headers.get("X-Session-ID") else None
-                if mode is None and payload.get("use_demo") is True:
-                    mode = "demo"
-                if mode == "postgresql":
-                    result = workbench.start_postgres_session(user["account_id"], payload)
-                elif mode in {"demo", "sample"}:
-                    result = workbench.start_sample_session(*identity, account_id=user["account_id"])
-                elif mode == "create":
-                    result = workbench.create_database_session(*identity, name=payload.get("database_name"), starter=payload.get("starter", False) is True, account_id=user["account_id"])
-                elif mode == "upload":
-                    contents = base64.b64decode(payload.get("contents", ""), validate=True)
-                    result = workbench.start_uploaded_session(*identity, payload.get("name", "connected.sqlite3"), contents, account_id=user["account_id"])
-                else:
-                    raise ValueError("Choose a database: create a new one, attach a SQLite file, or explicitly use the demo.")
-                result = workspace_api.attach_session(user["account_id"], workspace_id, result)
+                result = workspace_api.create_database(user, payload)
                 if previous and previous["session_id"] != result["session_id"]:
                     workbench.end_session(previous["session_id"])
                 return self.json(result, 201)
@@ -546,8 +548,11 @@ class Handler(BaseHTTPRequestHandler):
                     payload = self.read_json()
                     contents = base64.b64decode(payload.get("contents", ""), validate=True)
                     name = str(payload.get("name", "connected.sqlite3"))
-                result = workbench.connect_upload(session_id, name, contents)
-                return self.json(workspace_api.attach_session(user["account_id"], workspace_id, result))
+                name = workbench.database_filename(name)
+                with workbench._lock(self.owned_session(session_id, user)['path']), workspace_api.AUTHORIZATION_LOCK:
+                    workspace_api.store().assert_database_name(user["account_id"], workspace_id, name)
+                    result = workbench.connect_upload(session_id, name, contents)
+                    return self.json(workspace_api.attach_session(user["account_id"], workspace_id, result))
             payload = self.read_json()
             if parsed.path == "/api/sessions/end":
                 return self.json(workbench.end_session(session_id))
@@ -556,13 +561,17 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == "/api/reset":
                 access = session_access(workbench.get_repository(), self.owned_session(session_id, user))
                 workspace_id = workspace_api.owned_workspace(user["account_id"], access["workspace_id"])
-                result = workbench.reset_session(session_id, sample=payload.get("sample") is True)
-                return self.json(workspace_api.attach_session(user["account_id"], workspace_id, result))
+                with workbench._lock(self.owned_session(session_id, user)['path']), workspace_api.AUTHORIZATION_LOCK:
+                    result = workbench.reset_session(session_id, sample=payload.get("sample") is True)
+                    return self.json(workspace_api.attach_session(user["account_id"], workspace_id, result))
             if parsed.path == "/api/databases":
                 access = session_access(workbench.get_repository(), self.owned_session(session_id, user))
                 workspace_id = workspace_api.owned_workspace(user["account_id"], access["workspace_id"])
-                result = workbench.create_for_session(session_id, payload.get("name"), starter=payload.get("starter", False) is True)
-                return self.json(workspace_api.attach_session(user["account_id"], workspace_id, result), 201)
+                name = workbench.database_filename(payload.get("name"))
+                with workbench._lock(self.owned_session(session_id, user)['path']), workspace_api.AUTHORIZATION_LOCK:
+                    workspace_api.store().assert_database_name(user["account_id"], workspace_id, name)
+                    result = workbench.create_for_session(session_id, name, starter=payload.get("starter", False) is True)
+                    return self.json(workspace_api.attach_session(user["account_id"], workspace_id, result), 201)
             if parsed.path == "/api/ask":
                 return self.json(workbench.submit_request(
                     session_id, payload.get("question", ""), interpreter=payload.get("interpreter", "keywords"),

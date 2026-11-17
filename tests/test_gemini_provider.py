@@ -57,6 +57,26 @@ class GeminiPlannerTests(unittest.TestCase):
         self.assertEqual(outgoing.call_count, 2)
         wait.assert_called_once()
 
+    def test_second_transient_failure_recovers_without_resubmitting(self):
+        faults = [HTTPError('https://example.test', 503, 'busy', {}, io.BytesIO()) for _ in range(2)]
+        success = io.BytesIO(json.dumps({'candidates': []}).encode())
+        with patch.object(gemini_provider.request, 'urlopen', side_effect=[*faults, success]) as outgoing, patch.object(gemini_provider.time, 'sleep'):
+            self.assertEqual(gemini_provider._request_json('https://example.test', 'test-key', {}), {'candidates': []})
+        self.assertEqual(outgoing.call_count, 3)
+
+    def test_chart_spec_preserves_real_field_names_and_discards_code(self):
+        command = {'sql': 'SELECT month, SUM(amount) AS total_sales FROM sales GROUP BY month',
+                   'summary': 'Monthly sales.', 'visualization': 'line',
+                   'chart': {'type': 'line', 'x': 'month', 'y': 'total_sales', 'title': 'Monthly sales', 'code': '<script/>'}}
+        with patch.object(gemini_provider, '_request_json', return_value=model_response({'status':'ready','clarification':'','commands':[command]})):
+            plan = gemini_provider.generate_plans('chart monthly sales', [], 'test-key', 'test-model')[0]
+        self.assertEqual(plan['chart'], {'type':'line','x':'month','y':'total_sales','title':'Monthly sales'})
+
+    def test_response_can_have_thought_or_multiple_text_parts(self):
+        self.assertEqual(gemini_provider._text({'candidates':[{'content':{'parts':[
+            {'text':'private reasoning', 'thought': True}, {'text':'{"status":'}, {'text':'"ready"}'},
+        ]}}]}), '{"status":"ready"}')
+
     def test_configuration_errors_are_not_retried_or_exposed(self):
         for status in (400,401,403,404):
             fault = HTTPError('https://example.test/private-test-key', status, 'private provider details', {}, io.BytesIO(b'private-test-key'))
@@ -74,8 +94,8 @@ class GeminiPlannerTests(unittest.TestCase):
                 gemini_provider._request_json('https://example.test', 'private-test-key', {})
         self.assertTrue(caught.exception.retryable)
         self.assertNotIn('private', str(caught.exception))
-        self.assertEqual(outgoing.call_count, 2)
-        wait.assert_called_once()
+        self.assertEqual(outgoing.call_count, 3)
+        self.assertEqual(wait.call_count, 2)
 
     def test_chat_includes_assistant_reply_and_schema_outcome_without_record_payloads(self):
         plans = [{'sql':'ALTER TABLE employees ADD COLUMN salary NUMERIC', 'summary':'Add salary to employees.', 'visualization':'table'}]

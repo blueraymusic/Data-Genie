@@ -157,7 +157,7 @@ Finish Terraform applies and app-setting or logging changes before starting a co
 
 ## Authentication limits and proxy verification
 
-Auth limits are saved in the same durable repository as accounts: five signup submissions per IP, 30 login submissions per IP across emails, and five failed logins per IP/email pair, each over 15 minutes. Counters are reserved atomically before password work; successful login never clears the IP budget. HTTP 429 includes the remaining window in `Retry-After`.
+Auth limits are saved in the same durable repository as accounts: five signup submissions per IP, 30 login submissions per IP across emails, and three failed password checks per account email across client addresses, each over 15 minutes. Counters are reserved atomically before password work; successful login never clears the IP budget. Password recovery shares registration's IP limit and uses a separate per-address request budget. HTTP 429 includes the remaining window in `Retry-After`. See [account lifecycle and recovery configuration](account-lifecycle.md).
 
 The WSGI adapter takes the rate-limit identity from Azure's overwritten `Client-IP` header when `GENIE_CLOUD_STATE=azure_sql` and the platform's `WEBSITE_HOSTNAME` identifies App Service. It never uses arbitrary XFF entries. Gunicorn's `REMOTE_ADDR` is the proxy peer; its forwarded-header trust setting does not rewrite that value. Keep direct App Service ingress for this trust boundary. See [Azure's maintained header documentation](https://github.com/Azure/app-service-linux-docs/blob/master/Things_You_Should_Know/headers.md).
 

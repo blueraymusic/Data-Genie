@@ -1,0 +1,974 @@
+/* Page layout policy: content sets height; the document owns vertical scrolling.
+   Dialogs and horizontal data views are deliberate, bounded exceptions. */
+.workspace-page {
+  height: auto;
+  min-height: 100dvh;
+}
+.workspace-page #app {
+  height: auto;
+  min-height: 100dvh;
+}
+.workspace-page .dashboard-body {
+  flex: 1 0 auto;
+  align-items: start;
+  min-height: auto;
+}
+.workspace-page .main {
+  height: auto;
+  min-height: auto;
+}
+.workspace-page .content,
+.workspace-page .personal-content,
+.workspace-page .personal-content:has(.workspaces-page) {
+  display: block;
+  height: auto;
+  min-height: auto;
+  overflow: visible;
+  flex: 1 0 auto;
+  width: 100%;
+  max-width: none;
+  padding: 24px clamp(16px, 3vw, 40px) 40px;
+}
+.workspace-page .side {
+  overflow: visible;
+  height: auto;
+  min-height: 0;
+}
+.workspace-page .workspaces-page {
+  display: block;
+  height: auto;
+  min-height: auto;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0;
+}
+.workspace-page .workspace-layout {
+  display: grid;
+  align-items: start;
+  flex: none;
+  height: auto;
+  min-height: auto;
+}
+.workspace-page .workspace-main,
+.workspace-page .workspace-main:has(.workspace-people-tab),
+.workspace-page .workspace-main:has(.workspace-reports) {
+  display: block;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  padding: 0 0 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.workspace-page .workspace-rail > nav,
+.workspace-page .workspace-person-detail,
+.workspace-page .workspace-person-list,
+.workspace-page .workspace-invitations-list,
+.workspace-page .workspace-pending-invitations,
+.workspace-page .database-entry-layout .saved-database-list,
+.workspace-page .saved-database-list,
+.workspace-page .agents-list,
+.workspace-page .ownership-impact,
+.workspace-page .account-signin-methods,
+.workspace-page .context-files {
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+.workspace-page .workspace-people-tab,
+.workspace-page .workspace-people-tab > .workspace-section:last-child,
+.workspace-page .workspace-reports,
+.workspace-page .reports-layout,
+.workspace-page .report-library {
+  height: auto;
+  min-height: 0;
+  flex: none;
+}
+.workspace-page .workspace-selected-heading {
+  min-height: 0;
+  padding: 0 0 16px;
+  margin: 0;
+}
+.workspace-page .workspace-header-actions {
+  min-height: 0;
+}
+.workspace-page .workspace-section {
+  padding: 20px 0;
+}
+.workspace-page .workspace-section-heading {
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.workspace-page .workspace-section-heading h2 {
+  margin: 0 0 4px;
+}
+.workspace-page .workspace-page-heading {
+  margin-bottom: 24px;
+}
+.workspace-page .workspace-person-heading {
+  display: none;
+}
+.workspace-page .workspace-person-detail {
+  padding: 20px;
+}
+.workspace-page .workspace-person-picker {
+  max-width: 760px;
+}
+.workspace-page .workspace-member-role {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(140px, 240px) auto;
+  align-items: center;
+  padding: 14px 16px;
+  gap: 16px;
+}
+.workspace-page .workspace-member-role .workspace-access-step {
+  grid-column: auto;
+  margin: 0;
+  align-self: center;
+}
+.workspace-page .workspace-member-role > label {
+  margin: 0;
+}
+.workspace-page .workspace-member-role select {
+  min-height: 44px;
+}
+.workspace-page .workspace-role-hint {
+  margin: 12px 0 20px;
+  max-width: 80ch;
+}
+.workspace-page .workspace-member-databases {
+  margin-top: 18px;
+  padding-top: 18px;
+}
+.workspace-page .workspace-access-card {
+  padding: 0;
+}
+.workspace-page .workspace-permission-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+}
+.workspace-page .workspace-access-preset select {
+  font-size: 13px;
+}
+.workspace-page .workspace-remove-member {
+  margin-top: 20px;
+}
+/* Expanded actions occupy their own row instead of squeezing next to Open. */
+.workspace-page .workspace-database-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 16px;
+  gap: 12px 16px;
+}
+.workspace-page .workspace-database-row > .database-actions {
+  grid-column: 1 / -1;
+  padding: 0;
+  width: 100%;
+}
+.workspace-page .workspace-database-row > .database-actions:has(details:not([open])) {
+  padding-left: 58px;
+}
+.workspace-page .workspace-database-row h3 {
+  margin: 0 0 4px;
+  font: 600 15px/1.5 var(--sans);
+}
+.workspace-page .workspace-database-row p {
+  margin: 0;
+}
+.workspace-page .database-actions > details[open] {
+  padding-top: 4px;
+  border-top: 1px solid var(--rule);
+}
+.workspace-page .database-action-options {
+  gap: 18px;
+  padding: 12px 0 4px;
+}
+.workspace-page .database-move-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px 12px;
+  max-width: 640px;
+}
+.workspace-page .database-move-form > label {
+  grid-column: 1 / -1;
+}
+.workspace-page .database-move-form select {
+  width: 100%;
+  min-height: 44px;
+}
+.workspace-page .database-drop-destinations {
+  margin-top: 20px;
+  padding: 14px;
+}
+.workspace-page .database-drop-destinations > p {
+  margin-bottom: 10px;
+}
+.workspace-page .drop-destination {
+  min-height: 60px;
+  padding: 10px 12px;
+}
+.workspace-page .database-entry-layout .saved-database-list {
+  padding: 0;
+  margin: 0;
+}
+.workspace-page .saved-database-entry {
+  min-width: 0;
+  height: auto;
+  overflow: visible;
+}
+.workspace-page .saved-database-entry > .database-actions {
+  padding: 0 14px 14px;
+}
+.workspace-page .btn {
+  white-space: normal;
+  text-align: center;
+}
+.workspace-page .database-download-options {
+  align-items: center;
+}
+.workspace-page .database-download-options .btn {
+  min-height: 44px;
+}
+/* SQL help and composers remain in the reading order, never cover results. */
+.workspace-page .composer,
+.workspace-page .sql-composer,
+.workspace-page .sql-page:not(.has-requests),
+.workspace-page #v-ask:not(.has-requests) {
+  position: static;
+  flex: none;
+  min-height: 0;
+  height: auto;
+}
+.workspace-page .sql-feed,
+.workspace-page .sql-page:not(.has-requests) .sql-feed,
+.workspace-page #v-ask:not(.has-requests) #feed {
+  flex: none;
+  min-height: 0;
+}
+.workspace-page .sql-tool-panel {
+  position: static;
+  max-height: none;
+  overflow: visible;
+  box-shadow: none;
+  margin-bottom: 16px;
+}
+.workspace-page .sql-editor .sqlbox,
+.workspace-page .ask textarea {
+  max-height: none;
+  overflow-y: hidden;
+  resize: none;
+}
+.workspace-page .composer {
+  box-shadow: none;
+  border-radius: 10px;
+}
+.workspace-page .history-page .history-controls,
+.workspace-page .structure-toolbar {
+  position: static;
+}
+.workspace-page .history-full-request pre {
+  max-height: none;
+  overflow: visible;
+  white-space: pre-wrap;
+}
+.workspace-page .tw {
+  max-height: none;
+  overflow-x: auto;
+}
+/* A report dialog has one scroll owner; its tools and paper grow together. */
+.workspace-page .report-overlay .report-editor,
+.workspace-page .report-editor-layout {
+  overflow: visible;
+  flex: none;
+  height: auto;
+  min-height: 0;
+}
+.workspace-page .report-writing-tools,
+.workspace-page .report-editor-main,
+.workspace-page .report-document {
+  overflow: visible;
+  max-height: none;
+  height: auto;
+}
+.workspace-page .report-editor-layout {
+  align-items: start;
+}
+.workspace-page .report-overlay .report-body-label textarea {
+  max-height: none;
+  overflow-y: hidden;
+  resize: none;
+  flex: none;
+}
+.workspace-page .report-editor-sheet {
+  flex: none;
+  min-height: 0;
+  height: auto;
+}
+.workspace-page .report-overlay .report-actions {
+  flex-wrap: wrap;
+}
+.workspace-page .report-view-switch button {
+  min-height: 44px;
+}
+.workspace-page .report-editor .report-writing-note {
+  margin-top: 20px;
+}
+.workspace-page .report-overlay-header {
+  min-height: 64px;
+}
+.workspace-page .report-reading,
+.workspace-page .report-reader {
+  max-height: none;
+  overflow: visible;
+}
+/* Picker results stay in flow too; searching keeps a large team easy to scan. */
+.workspace-page .person-picker-options {
+  max-height: none;
+  overflow: visible;
+  scrollbar-gutter: auto;
+}
+@media (max-width: 950px) {
+  .workspace-page .workspace-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-page .workspace-mobile-switcher {
+    margin-bottom: 20px;
+  }
+  .workspace-page .workspace-page-heading {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+  .workspace-page .workspace-main {
+    padding: 0;
+  }
+  .workspace-page .workspace-section-tabs {
+    flex-wrap: wrap;
+    overflow: visible;
+    gap: 4px 16px;
+  }
+  .workspace-page .workspace-section-tabs > button {
+    flex: 0 1 auto;
+    white-space: normal;
+  }
+}
+@media (max-width: 850px) {
+  .workspace-page .side.open {
+    position: static;
+    inset: auto;
+    width: 100%;
+    height: auto;
+    box-shadow: none;
+    border: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+}
+@media (max-width: 680px) {
+  .workspace-page .content,
+  .workspace-page .personal-content,
+  .workspace-page .personal-content:has(.workspaces-page) {
+    padding: 20px 16px calc(96px + env(safe-area-inset-bottom));
+  }
+  .workspace-page .workspace-member-role {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 14px;
+    gap: 12px;
+  }
+  .workspace-page .workspace-member-role .workspace-access-step {
+    grid-column: 1 / -1;
+  }
+  .workspace-page .workspace-permission-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-page .workspace-person-detail {
+    padding: 16px;
+  }
+  .workspace-page .workspace-database-row {
+    grid-template-columns: 36px minmax(0, 1fr);
+    padding: 14px;
+    gap: 10px;
+  }
+  .workspace-page .workspace-database-row > button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .workspace-page .workspace-database-row > .database-actions:has(details:not([open])) {
+    padding-left: 0;
+  }
+  .workspace-page .database-move-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-page .database-move-form > label {
+    grid-column: auto;
+  }
+  .workspace-page .database-download-options > .btn {
+    flex: 1 1 140px;
+  }
+  .workspace-page .sql-editor {
+    flex-wrap: wrap;
+  }
+  .workspace-page .sql-editor .sqlbox {
+    width: 100%;
+    flex-basis: 100%;
+    font-size: 16px;
+  }
+  .workspace-page .sql-editor > .btn {
+    width: 100%;
+  }
+  .workspace-page .report-editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-page .report-writing-tools {
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+    gap: 14px;
+    padding: 16px;
+  }
+  .workspace-page .report-tools-heading {
+    display: none;
+  }
+  .workspace-page .report-tools {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .workspace-page .report-tool {
+    padding: 12px;
+  }
+  .workspace-page .report-editor-main {
+    padding: 16px;
+  }
+  .workspace-page .report-editor-sheet {
+    padding: 20px 16px;
+  }
+  .workspace-page .report-save-actions {
+    width: 100%;
+  }
+  .workspace-page .report-save-actions > button {
+    flex: 1;
+  }
+  .workspace-page input:not([type='radio']):not([type='checkbox']),
+  .workspace-page select {
+    font-size: 16px;
+  }
+}
+/* Visible file targets use inset borders; feedback never obscures adjacent controls. */
+.workspace-page .database-form {
+  border: 1px dashed var(--rule);
+  border-radius: 12px;
+  padding: 18px;
+}
+.workspace-page .context-upload {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--rule);
+  border-radius: 8px;
+}
+.workspace-page .account-photo-editor {
+  padding: 14px;
+  border: 1px dashed var(--rule);
+  border-radius: 10px;
+}
+.workspace-page :is(.database-form, .composer, .account-photo-editor).is-file-drop-target {
+  border-color: var(--lapis);
+  background: var(--lapis-wash);
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--lapis);
+}
+.workspace-page .schema-toolbar {
+  position: static;
+  box-shadow: none;
+}
+.workspace-page .rail-close {
+  display: none;
+}
+@media (max-width: 850px) {
+  .workspace-page .side.open .rail-close {
+    display: inline-flex;
+    align-self: flex-end;
+    margin-bottom: 12px;
+  }
+}
+.workspace-page .report-ai-context textarea {
+  overflow-y: hidden;
+  max-height: none;
+  resize: none;
+}
+/* Collections stay compact at twenty databases and beyond; details expand per row. */
+.workspace-page .database-list-controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 14px;
+}
+.workspace-page .database-list-controls > label {
+  grid-column: 1 / -1;
+  font-size: 12px;
+}
+.workspace-page .database-list-search {
+  position: relative;
+  min-width: 0;
+}
+.workspace-page .database-list-search .ic {
+  position: absolute;
+  left: 12px;
+  top: 14px;
+  pointer-events: none;
+}
+.workspace-page .database-list-search input {
+  padding-left: 38px;
+}
+.workspace-page .database-list-controls > span {
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.workspace-page .database-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 16px 0;
+}
+.workspace-page .database-pagination > span {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-right: auto;
+}
+.workspace-page .workspace-database-row {
+  grid-template-columns: 32px minmax(0, 1fr) auto auto;
+  min-height: 72px;
+  padding: 12px 14px;
+  gap: 8px 14px;
+}
+.workspace-page .workspace-database-icon {
+  width: 32px;
+  height: 36px;
+  border-radius: 7px;
+}
+.workspace-page .workspace-database-row > .database-actions:has(details:not([open])) {
+  grid-column: 4;
+  grid-row: 1;
+  padding-left: 0;
+  width: auto;
+}
+.workspace-page .workspace-database-row > .database-actions:has(details[open]) {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.workspace-page .database-actions > details > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  font-size: 12px;
+  list-style: none;
+  border-radius: 6px;
+}
+.workspace-page .database-actions > details > summary::before {
+  content: '›';
+  font-size: 17px;
+  line-height: 1;
+}
+.workspace-page .database-actions > details[open] > summary::before {
+  transform: rotate(90deg);
+}
+.workspace-page .database-actions > details > summary:hover {
+  background: var(--lapis-wash);
+}
+.workspace-page .saved-database-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 8px 0;
+}
+.workspace-page .saved-database-entry > .saved-database {
+  min-width: 0;
+  padding: 10px 12px;
+}
+.workspace-page .saved-database-entry > .database-actions {
+  padding: 0;
+}
+.workspace-page .saved-database-entry > .database-actions:has(details[open]),
+.workspace-page .saved-database-entry > .saved-database-error {
+  grid-column: 1 / -1;
+  padding: 0 12px 12px;
+}
+.workspace-page .saved-database-entry:has(details[open]) > .saved-database {
+  grid-column: 1 / -1;
+}
+@media (max-width: 680px) {
+  .workspace-page .workspace-database-row {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    gap: 8px 10px;
+  }
+  .workspace-page .workspace-database-row > button {
+    grid-column: 2;
+    grid-row: 2;
+    width: auto;
+    justify-self: start;
+  }
+  .workspace-page .workspace-database-row > .database-actions:has(details:not([open])) {
+    grid-column: 3;
+    grid-row: 1 / 3;
+  }
+  .workspace-page .workspace-database-row > .database-actions:has(details[open]) {
+    grid-row: 3;
+  }
+  .workspace-page .database-list-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-page .database-list-controls > label {
+    grid-column: auto;
+  }
+  .workspace-page .database-pagination .btn {
+    font-size: 12px;
+    padding-inline: 10px;
+  }
+}
+.workspace-page .database-list-search input[type='search'] {
+  padding-left: 38px;
+}
+.workspace-page .workspace-database-row > .database-actions {
+  grid-column: 4;
+  grid-row: 1;
+  padding: 0;
+  width: auto;
+}
+.workspace-page .database-manage-trigger {
+  min-height: 44px;
+  padding: 8px 10px;
+}
+.workspace-page .workspace-dialog .database-move-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.workspace-page .workspace-dialog .database-move-form > label {
+  grid-column: 1 / -1;
+}
+@media (max-width: 680px) {
+  .workspace-page .workspace-database-row > .database-actions {
+    grid-column: 3;
+    grid-row: 1 / 3;
+  }
+  .workspace-page .workspace-dialog .database-move-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.workspace-page .workspace-dialog-heading > div {
+  min-width: 0;
+  flex: 1;
+}
+.workspace-page .workspace-dialog-heading > .workspace-close {
+  flex: none;
+}
+/* Access management uses the same single popup surface as database management. */
+.workspace-page .people-access-content .workspace-section {
+  padding-block: 12px;
+}
+.workspace-page .people-access-content .workspace-section-heading {
+  margin-bottom: 12px;
+}
+.workspace-page
+  .people-access-content
+  .workspace-section[aria-labelledby='workspaceMembersTitle']
+  > header {
+  display: none;
+}
+.workspace-page .people-access-content .workspace-person-detail {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.workspace-page .people-access-content .workspace-person-picker {
+  padding: 0;
+}
+.workspace-page .people-access-content .workspace-member-role {
+  margin-top: 12px;
+}
+.workspace-page .people-access-content .workspace-role-hint {
+  margin-bottom: 12px;
+}
+.workspace-page .people-access-content .workspace-member-databases {
+  margin-top: 12px;
+  padding-top: 12px;
+}
+.workspace-page .people-access-content .workspace-permission-choice {
+  padding-block: 9px;
+}
+.workspace-page .people-access-content .workspace-remove-member {
+  margin-top: 14px;
+  padding-top: 14px;
+}
+.workspace-page .inline-invitations {
+  padding: 12px 0;
+  border-top: 1px solid var(--rule);
+}
+.workspace-page .inline-invitations > .text-button {
+  margin-bottom: 12px;
+}
+.workspace-page .inline-invitations .workspace-pending-invitations {
+  max-height: none;
+  overflow: visible;
+}
+/* Native selects have the same comfortable geometry as adjacent buttons. */
+:is(.workspace-page, .contact-page, .home-page) select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 44px;
+  border: 1px solid var(--control-border, var(--rule));
+  border-radius: 8px;
+  padding: 10px 40px 10px 14px;
+  line-height: 22px;
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%237684a1' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 7 5 5 5-5'/%3E%3C/svg%3E");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 18px 18px;
+}
+.workspace-page
+  :is(
+    .workspace-dialog,
+    .workspace-access-preset,
+    .workspace-member-role,
+    .database-move-form,
+    .workspace-database-selector,
+    .table-selector,
+    .history-filter-fields
+  )
+  select {
+  min-height: 44px;
+  padding: 10px 40px 10px 14px;
+  border-radius: 8px;
+  line-height: 22px;
+}
+.workspace-page select:focus-visible {
+  border-color: var(--lapis);
+  outline: 2px solid var(--lapis);
+  outline-offset: 2px;
+}
+.workspace-page select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.workspace-page .people-settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--rule);
+}
+.workspace-page .people-settings-tabs .btn {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.workspace-page .people-settings-tabs [aria-pressed='true'] {
+  border-color: var(--lapis);
+  background: var(--lapis-wash);
+  color: var(--lapis);
+}
+.workspace-page .people-pending-count {
+  font-size: 10px;
+  color: var(--ink-soft);
+}
+.workspace-page .people-access-content .workspace-member-databases {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+.workspace-page .people-access-content .workspace-access-step {
+  margin: 0 0 8px;
+}
+.workspace-page .people-access-content .workspace-database-selector {
+  margin-block: 8px 12px;
+}
+.workspace-page .workspace-access-card.is-compact header > div {
+  display: none;
+}
+.workspace-page .workspace-access-card.is-compact .workspace-access-preset {
+  width: 100%;
+  margin: 0;
+}
+.workspace-page .workspace-access-card.is-compact > header {
+  margin-bottom: 8px;
+}
+.workspace-page .workspace-access-card.is-compact .workspace-permission-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+.workspace-page .workspace-access-card.is-compact .workspace-permission-choice {
+  min-height: 40px;
+  padding-block: 8px;
+  gap: 8px !important;
+}
+.workspace-page .workspace-access-card.is-compact footer {
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.workspace-page .workspace-access-card.is-compact footer > span {
+  margin-right: auto;
+}
+.workspace-page .people-access-content .workspace-person-picker {
+  margin-bottom: 0;
+}
+.workspace-page .people-access-content .workspace-person-detail {
+  margin-top: 0;
+}
+.workspace-page .people-access-content .person-picker-trigger {
+  padding: 10px 12px;
+}
+.workspace-page .people-access-content .person-picker .profile-avatar {
+  width: 36px;
+  height: 36px;
+}
+.workspace-page .people-access-content .person-picker-label {
+  margin-bottom: 6px;
+}
+.workspace-page .person-picker-pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+}
+.workspace-page .person-picker-pagination > span {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-right: auto;
+}
+.workspace-page .person-picker-pagination .btn {
+  padding-inline: 8px;
+  font-size: 11px;
+}
+@media (max-width: 680px) {
+  .workspace-page .people-settings-tabs .btn {
+    flex-basis: 85px;
+  }
+  .workspace-page .people-access-content .workspace-permission-choice strong {
+    font-size: 12px;
+  }
+}
+.workspace-page .workspace-dialog:has(.people-access-content) {
+  padding: 24px;
+}
+.workspace-page .workspace-dialog:has(.people-access-content) > header {
+  margin-bottom: 12px;
+}
+.workspace-page .people-access-content .workspace-section {
+  padding-bottom: 0;
+}
+.workspace-page .people-access-content .workspace-member-role {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.workspace-page .workspace-access-card.is-compact footer {
+  padding-top: 8px;
+  margin-top: 8px;
+}
+.workspace-page .person-picker-identity :is(strong, small) {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.workspace-page .person-picker-options {
+  max-height: none;
+  overflow: visible;
+  scrollbar-gutter: auto;
+}
+.workspace-page .people-pending-count {
+  white-space: nowrap;
+}
+@media (max-width: 680px) {
+  .workspace-page .people-settings-tabs .btn {
+    flex-direction: column;
+    gap: 2px;
+    line-height: 16px;
+  }
+  .workspace-page .people-access-content .person-picker-trigger {
+    gap: 8px;
+    padding: 10px;
+  }
+}
+@media (max-width: 680px) {
+  .workspace-page .person-picker-trigger,
+  .workspace-page .person-picker-options > button {
+    flex-wrap: nowrap;
+  }
+  .workspace-page .person-picker-role,
+  .workspace-page .person-picker-chevron,
+  .workspace-page .person-picker-check {
+    margin-left: 0;
+  }
+}
+/* SQL and Genie keep their typing areas at the bottom of the workspace. */
+.workspace-page #app.query-workspace {
+  height: 100dvh;
+  min-height: 0;
+}
+.workspace-page .query-workspace .dashboard-body {
+  flex: 1 1 0;
+  min-height: 0;
+  align-items: stretch;
+}
+.workspace-page .query-workspace .main {
+  height: 100%;
+  min-height: 0;
+}
+.workspace-page .query-workspace .content.ask-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding-block: 0;
+}
+.workspace-page .query-workspace :is(#v-ask, .sql-page) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  min-height: 0;
+}
+.workspace-page .query-workspace :is(#feed, .sql-feed) {
+  flex: 1 0 auto;
+}
+.workspace-page .query-workspace .composer {
+  position: sticky;
+  bottom: 0;
+  flex: none;
+  border-radius: 0;
+}
+.workspace-page .query-workspace :is(.sql-editor .sqlbox, .ask textarea) {
+  max-height: min(24dvh, 180px);
+  overflow-y: auto;
+}
+.workspace-page .query-workspace .side {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+@media (max-width: 850px) {
+  .workspace-page .query-workspace .dashboard-body {
+    display: flex;
+    flex-direction: column;
+  }
+  .workspace-page .query-workspace .main {
+    flex: 1;
+  }
+  .workspace-page .query-workspace .side.open {
+    flex: none;
+    height: auto;
+  }
+  .workspace-page #app.query-workspace:has(.side.open) {
+    height: auto;
+    min-height: 100dvh;
+  }
+}

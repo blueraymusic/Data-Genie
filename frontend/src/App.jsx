@@ -7,6 +7,7 @@ import HomePage from './pages/HomePage';
 import FaqPage from './pages/FaqPage';
 import ContactPage from './pages/ContactPage';
 import AuthPage from './pages/AuthPage';
+import PasswordRecoveryPage from './pages/PasswordRecoveryPage';
 import WorkspaceApp from './pages/WorkspaceApp';
 import AgentConsentPage from './pages/AgentConsentPage';
 import { captureAgentAuthorization, pendingAgentAuthorization } from './lib/agentAuthorization';
@@ -48,6 +49,8 @@ function Pages() {
   if (['/', '/index.html'].includes(pathname)) return <HomePage />;
   if (['/faq', '/faq.html'].includes(pathname)) return <FaqPage />;
   if (['/contact', '/contact.html'].includes(pathname)) return <ContactPage />;
+  if (['/forgot-password', '/reset-password'].includes(pathname))
+    return <PasswordRecoveryPage key={pathname} />;
   return <ProtectedPages />;
 }
 class ErrorBoundary extends Component {

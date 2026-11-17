@@ -73,10 +73,23 @@ export default function WorkspaceApp() {
       return 'gemini';
     }
   });
+  const railTrigger = useRef(null),
+    wasRailOpen = useRef(false);
   const content = useRef(null),
     view = viewFromRoute(route),
     session = workbench.session;
   const inWorkspace = ['ask', 'schema', 'sql'].includes(view);
+  useEffect(() => {
+    if (railOpen) {
+      const rail = document.getElementById('tableRail');
+      rail?.scrollIntoView({ block: 'start', behavior: 'auto' });
+      rail?.querySelector('input')?.focus({ preventScroll: true });
+    } else if (wasRailOpen.current) {
+      railTrigger.current?.focus({ preventScroll: true });
+      railTrigger.current?.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+    }
+    wasRailOpen.current = railOpen;
+  }, [railOpen]);
   const access = databaseAccess(session);
   useEnterMotion(content, `${view}:${session?.session_id || ''}:${workbench.loading}`);
   const mode = session && !session.ai?.enabled ? 'sql' : savedMode;
@@ -232,7 +245,7 @@ export default function WorkspaceApp() {
       <a className="skip-link" href="#workspaceContent">
         Skip to main content
       </a>
-      <div id="app">
+      <div id="app" className={['ask', 'sql'].includes(view) ? 'query-workspace' : undefined}>
         <WorkspaceHeader
           identity={user}
           session={session}
@@ -249,6 +262,7 @@ export default function WorkspaceApp() {
             key={session.session_id}
             {...{ session, selected, setSelected }}
             open={railOpen}
+            onClose={() => setRailOpen(false)}
             onNewTable={newTable}
             onNavigate={go}
             disabled={disabled || !access.permissions.structure}
@@ -281,6 +295,7 @@ export default function WorkspaceApp() {
                 </nav>
                 <button
                   className="text-button rail-toggle"
+                  ref={railTrigger}
                   aria-expanded={railOpen}
                   aria-controls="tableRail"
                   onClick={() => setRailOpen(!railOpen)}

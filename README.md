@@ -1,6 +1,6 @@
 # Data Genie
 
-Ask your database questions in plain English, inspect the SQL, and follow up. Use SQLite or connect PostgreSQL. Reads run immediately; changes wait for your confirmation.
+Give people and agents scoped access to your databases, with human review before changes run. Ask in plain English, inspect SQL and charts, and follow up. Use SQLite or connect PostgreSQL.
 
 [Open Data Genie](https://data-genie.space/) · [Log in](https://data-genie.space/signin) · [Sign up](https://data-genie.space/signup) · [FAQ](https://data-genie.space/faq)
 
@@ -10,10 +10,12 @@ Ask your database questions in plain English, inspect the SQL, and follow up. Us
 
 - Ask questions or run SQL directly.
 - Manage tables and columns with a preview before changes.
-- Work with a team, grant database access, and transfer ownership with recipient approval.
+- Work with a team, grant database access, and transfer a team workspace you own with recipient approval. Personal workspaces cannot be transferred.
 - Verify new hosted accounts with a five-minute email code (three attempts).
-- Write reports, share approved findings, and download PDFs.
+- Coedit report drafts live, share reviewed findings, and download PDFs.
 - Connect an agent through MCP or the HTTP API.
+- See workspace, database, access, and report updates without refreshing.
+- Export each database's current state, move it between workspaces you own, or remove it.
 
 ## Start locally
 
@@ -36,6 +38,7 @@ Open the address printed by the server and create an account. Hosted and local a
 | Part | Guide |
 | --- | --- |
 | Using the app, teams, and reports | [User documentation](docs/README.md) |
+| Account creation and password recovery | [Account walkthrough](docs/account-lifecycle.md) |
 | React UI and local development | [Frontend](frontend/README.md) |
 | Python services and HTTP API | [Backend](backend/README.md) |
 | Hosted MCP, OAuth, and the local bridge | [Agent connections](agents/README.md) |

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { SqlBlock } from './SqlBlock';
 import { ResultTable, Cell } from './ResultTable';
 import { formatTime } from '../lib/api';
@@ -12,7 +12,8 @@ export const operationOf = (command) =>
   (command.kind === 'SELECT' ? 'SELECT' : command.sql?.trim().split(/\s/)[0]) ||
   'SQL';
 
-function Chart({ rows, type }) {
+function Chart({ rows, type, title }) {
+  const fillId = useId();
   if (type === 'bar') {
     const values = rows.map((row) => chartNumber(row.value)),
       min = Math.min(...values, 0),
@@ -20,7 +21,7 @@ function Chart({ rows, type }) {
       range = max - min || 1,
       zero = (-min / range) * 100;
     return (
-      <div className="bars" role="img" aria-label="Values by category">
+      <div className="bars" role="img" aria-label={title || 'Values by category'}>
         {rows.map((row, index) => (
           <div className="bar" key={index}>
             <span title={String(row.label)}>{String(row.label ?? 'NULL')}</span>
@@ -45,20 +46,61 @@ function Chart({ rows, type }) {
   const values = rows.map((row) => chartNumber(row.total)),
     max = Math.max(...values, 0),
     min = Math.min(...values, 0),
-    x = (index) => 32 + (index * 576) / Math.max(values.length - 1, 1),
+    x = (index) => 72 + (index * 536) / Math.max(values.length - 1, 1),
     y = (value) => 188 - ((value - min) / (max - min || 1)) * 156;
   return (
-    <svg viewBox="0 0 640 220" className="line-chart" role="img" aria-label="Trend over time">
-      <line x1="32" x2="608" y1={y(0)} y2={y(0)} stroke="var(--rule)" />
+    <svg
+      viewBox="0 0 640 220"
+      className="line-chart"
+      role="img"
+      aria-label={title || 'Trend over time'}
+    >
+      <defs>
+        <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--lapis)" stopOpacity="0.24" />
+          <stop offset="100%" stopColor="var(--lapis)" stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      {[
+        ...new Set([
+          min,
+          min + (max - min) / 4,
+          min + (max - min) / 2,
+          min + (3 * (max - min)) / 4,
+          max,
+        ]),
+      ].map((value, index) => (
+        <g key={index}>
+          <line x1="72" x2="608" y1={y(value)} y2={y(value)} stroke="var(--rule)" />
+          <text x="64" y={y(value) + 4} fontSize="10" textAnchor="end" fill="var(--ink-soft)">
+            {value.toLocaleString(undefined, { maximumFractionDigits: 2, notation: 'compact' })}
+          </text>
+        </g>
+      ))}
+      <polygon
+        fill={`url(#${fillId})`}
+        points={`${x(0)},${y(0)} ${values.map((value, index) => x(index) + ',' + y(value)).join(' ')} ${x(values.length - 1)},${y(0)}`}
+      />
       <polyline
         fill="none"
         stroke="var(--lapis)"
-        strokeWidth="2.5"
+        strokeWidth="3"
+        strokeLinejoin="round"
+        strokeLinecap="round"
         points={values.map((value, index) => x(index) + ',' + y(value)).join(' ')}
       />
       {values.map((value, index) => (
         <g key={index}>
-          <circle cx={x(index)} cy={y(value)} r="4" fill="var(--lapis)">
+          <circle
+            tabIndex="0"
+            aria-label={`${rows[index].period}: ${rows[index].total}`}
+            cx={x(index)}
+            cy={y(value)}
+            r="4.5"
+            fill="var(--lapis)"
+            stroke="var(--paper)"
+            strokeWidth="2"
+          >
             <title>
               {rows[index].period}: {rows[index].total}
             </title>
@@ -77,7 +119,16 @@ function Chart({ rows, type }) {
 export function ResultOutput({ command, sessionId, onUseSuggestion, canExport = true }) {
   const data = command.result?.payload || command,
     initialRows = data.rows || [],
+    spec =
+      data.chart &&
+      ['bar', 'line'].includes(data.chart.type) &&
+      ['x', 'y', 'title'].every(
+        (key) => typeof data.chart[key] === 'string' && data.chart[key].length > 0,
+      )
+        ? data.chart
+        : null,
     type =
+      spec?.type ||
       data.visualization ||
       (command.sql?.includes(' AS period')
         ? 'line'
@@ -121,7 +172,11 @@ export function ResultOutput({ command, sessionId, onUseSuggestion, canExport = 
     (data.result_type === 'summary' || command.has_aggregation) &&
     rows.length === 1 &&
     Object.values(rows[0]).some(isNumeric);
-  const chartKeys = type === 'bar' ? ['label', 'value'] : ['period', 'total'];
+  const chartKeys = spec
+    ? [spec.x, spec.y]
+    : type === 'bar'
+      ? ['label', 'value']
+      : ['period', 'total'];
   const canChart =
     ['bar', 'line'].includes(type) &&
     rows.length > 0 &&
@@ -132,7 +187,7 @@ export function ResultOutput({ command, sessionId, onUseSuggestion, canExport = 
     <>
       {!summary && (rows.length > 0 || operationOf(command) === 'SELECT' || data.inventory) && (
         <div className="result-heading">
-          <h3>{resultHeadline(command, rows, hasMore)}</h3>
+          <h3>{spec?.title || resultHeadline(command, rows, hasMore)}</h3>
           {data.query_context?.filters?.length > 0 && (
             <p className="result-scope">{data.query_context.filters.join(' · ')}</p>
           )}
@@ -173,7 +228,20 @@ export function ResultOutput({ command, sessionId, onUseSuggestion, canExport = 
           </div>
           {view === 'chart' ? (
             <>
-              <Chart rows={rows} type={type} />
+              <Chart
+                rows={rows.map((row) =>
+                  type === 'bar'
+                    ? { label: row[chartKeys[0]], value: row[chartKeys[1]] }
+                    : { period: row[chartKeys[0]], total: row[chartKeys[1]] },
+                )}
+                type={type}
+                title={spec?.title}
+              />
+              {hasMore && (
+                <p className="result-meta">
+                  Chart shows the loaded rows. Load more in the data table to include them.
+                </p>
+              )}
               <details className="chart-data">
                 <summary>View chart data</summary>
                 <ResultTable {...tableProps} />
@@ -365,6 +433,12 @@ function SavedResultDetails({ children }) {
 }
 
 export function Translation({ request, workbench, onUseSuggestion, compactResult = false }) {
+  // Stored command outcomes are authoritative if a stale request summary disagrees.
+  const completed =
+    request.commands.length > 0 &&
+    request.commands.every((command) => command.status === 'executed' && !command.error);
+  const status = completed ? 'executed' : request.status;
+  const error = completed ? null : request.error;
   const hasSql = request.commands.some((command) => command.sql);
   const stripTerminator = (text) => text?.trim().replace(/;\s*$/, '');
   const rawSql = Boolean(
@@ -373,16 +447,18 @@ export function Translation({ request, workbench, onUseSuggestion, compactResult
       request.commands[0].sql &&
       stripTerminator(request.text) === stripTerminator(request.commands[0].sql)),
   );
-  const hasOutput = !request.sending && (request.commands.length > 0 || request.error);
+  const hasOutput = !request.sending && (request.commands.length > 0 || error);
   const waiting = request.commands.some(
     (command) => command.requires_confirmation && command.status === 'pending',
   );
-  const errorWithoutSql = request.error && !hasSql;
-  const output =
-    request.error && !request.commands.some((command) => command.error) ? (
-      <p className="err">{request.error}</p>
-    ) : (
-      request.commands.map((command, index) => (
+  const errorWithoutSql =
+    error && !hasSql && !request.commands.some((command) => command.status === 'executed');
+  const output = (
+    <>
+      {error && !request.commands.some((command) => command.error) && (
+        <p className="err">{error}</p>
+      )}
+      {request.commands.map((command, index) => (
         <div className="command-result" key={command.command_id || index}>
           <CommandOutput
             command={command}
@@ -395,12 +471,13 @@ export function Translation({ request, workbench, onUseSuggestion, compactResult
             permitted={canConfirmCommand(workbench.session, command)}
           />
         </div>
-      ))
-    );
+      ))}
+    </>
+  );
   return (
     <article
       className={'exchange' + (request.sending ? '' : ' ready')}
-      data-status={request.needs_clarification ? 'clarification' : request.status}
+      data-status={request.needs_clarification ? 'clarification' : status}
     >
       <div className="exchange-margin">
         <time>
@@ -412,11 +489,15 @@ export function Translation({ request, workbench, onUseSuggestion, compactResult
         <span className="exchange-status">
           {request.needs_clarification
             ? 'needs details'
-            : request.status === 'rejected'
-              ? hasSql
-                ? 'failed'
-                : 'not run'
-              : request.status}
+            : request.outcome_unknown
+              ? 'check outcome'
+              : status === 'rejected'
+                ? request.commands.some((command) => command.status === 'executed')
+                  ? 'partly executed'
+                  : hasSql
+                    ? 'failed'
+                    : 'not run'
+                : status}
         </span>
       </div>
       <div className="exchange-content">
@@ -470,9 +551,11 @@ export function Translation({ request, workbench, onUseSuggestion, compactResult
                 <p className="clarification-title">
                   {request.needs_clarification
                     ? 'A little more detail, please.'
-                    : 'This request wasn’t run.'}
+                    : request.outcome_unknown
+                      ? 'Check the saved outcome.'
+                      : 'This request wasn’t run.'}
                 </p>
-                <p>{request.error}</p>
+                <p>{error}</p>
                 {(request.choices?.length > 0 || request.suggestions?.length > 0) &&
                   onUseSuggestion && (
                     <div className="clarification-suggestions">
@@ -494,7 +577,11 @@ export function Translation({ request, workbench, onUseSuggestion, compactResult
                       ))}
                     </div>
                   )}
-                <small>No SQL run. No changes made.</small>
+                <small>
+                  {request.outcome_unknown
+                    ? 'The outcome could not be verified. Check History before retrying a change.'
+                    : 'No SQL run. No changes made.'}
+                </small>
               </div>
             ) : (
               request.commands.map((command, index) => (
@@ -520,7 +607,7 @@ export function Translation({ request, workbench, onUseSuggestion, compactResult
             <h2 className="exchange-label">
               {waiting ? 'Review change' : 'Result'} {waiting && <span>Confirmation required</span>}
             </h2>
-            {compactResult && !waiting && request.status !== 'rejected' ? (
+            {compactResult && !waiting && status !== 'rejected' ? (
               <SavedResultDetails>{output}</SavedResultDetails>
             ) : (
               output

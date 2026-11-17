@@ -11,7 +11,7 @@ PASSWORD_ITERATIONS = 600_000
 LOGIN_LIFETIME = 12 * 60 * 60
 IDLE_LIFETIME = 30 * 60
 ATTEMPT_WINDOW = 15 * 60
-MAX_ATTEMPTS = 5
+MAX_ATTEMPTS = 3
 MAX_LOGIN_IP_ATTEMPTS = 30
 MAX_REGISTER_IP_ATTEMPTS = 5
 COOKIE_NAME = "data_genie_login"
@@ -37,6 +37,7 @@ class MicrosoftAccountError(ValueError):
         "account_exists": "Log in with your current password, then connect Microsoft in Account settings.",
         "identity_in_use": "This Microsoft account is already connected to another Data Genie account.",
         "already_linked": "A different Microsoft account is already connected to this Data Genie account.",
+        "email_not_allowed": "Use a personal, work, or school email approved for this installation.",
     }
 
     def __init__(self, code):
@@ -140,7 +141,9 @@ class Accounts:
         limit = MAX_REGISTER_IP_ATTEMPTS if action == "register" else MAX_LOGIN_IP_ATTEMPTS
         retry_after = 0
         with self.repository._connection(write=True) as connection:
-            connection.execute("DELETE FROM auth_rate_limits WHERE started_at<=?", (now - ATTEMPT_WINDOW,))
+            # Agent/email delivery budgets can span a full day; authentication
+            # housekeeping must not erase them at the 15-minute boundary.
+            connection.execute("DELETE FROM auth_rate_limits WHERE started_at<=? AND bucket_key NOT LIKE 'agent:%'", (now - ATTEMPT_WINDOW,))
             connection.execute("DELETE FROM login_attempts WHERE started_at<=?", (now - ATTEMPT_WINDOW,))
             row = connection.execute("SELECT * FROM auth_rate_limits WHERE bucket_key=?", (ip_key,)).fetchone()
             if row and row["attempts"] >= limit:
@@ -150,13 +153,15 @@ class Accounts:
                     ON CONFLICT(bucket_key) DO UPDATE SET attempts=attempts+1""", (ip_key, now))
                 if action == "login" and email is not None:
                     # Keep the existing hash so already-persisted lockouts remain effective.
-                    pair_key = token_hash(client + ":" + email)
-                    pair = connection.execute("SELECT * FROM login_attempts WHERE attempt_key=?", (pair_key,)).fetchone()
-                    if pair and pair["failures"] >= MAX_ATTEMPTS:
-                        retry_after = pair["started_at"] + ATTEMPT_WINDOW - now
-                    else:
-                        connection.execute("""INSERT INTO login_attempts(attempt_key,started_at,failures) VALUES(?,?,1)
-                            ON CONFLICT(attempt_key) DO UPDATE SET failures=failures+1""", (pair_key, now))
+                    keys = (token_hash(client + ":" + email), token_hash("account:" + email))
+                    for key in keys:
+                        attempt = connection.execute("SELECT * FROM login_attempts WHERE attempt_key=?", (key,)).fetchone()
+                        if attempt and attempt["failures"] >= MAX_ATTEMPTS:
+                            retry_after = max(retry_after, attempt["started_at"] + ATTEMPT_WINDOW - now)
+                    if not retry_after:
+                        for key in keys:
+                            connection.execute("""INSERT INTO login_attempts(attempt_key,started_at,failures) VALUES(?,?,1)
+                                ON CONFLICT(attempt_key) DO UPDATE SET failures=failures+1""", (key, now))
         # Raise after committing: pair-denied requests still consume their IP budget.
         if retry_after:
             raise TooManyAttempts(retry_after)
@@ -164,11 +169,10 @@ class Accounts:
     def register(self, first_name, last_name, email, password, client="local"):
         self._reserve_attempt(client, "register")
         names = [str(value or "").strip() for value in (first_name, last_name)]
-        email = str(email or "").strip().lower()
+        from .email_policy import registration_email
+        email = registration_email(email)
         if any(not name or len(name) > 100 for name in names):
             raise ValueError("Provide your first and last name, up to 100 characters each.")
-        if len(email) > 254 or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
-            raise ValueError("Provide a valid email address.")
         encoded = password_hash(password)
         with self.repository._connection(write=True) as connection:
             if connection.execute("SELECT 1 FROM accounts WHERE email=?", (email,)).fetchone():
@@ -187,7 +191,7 @@ class Accounts:
         valid = password_matches(password, account["password_hash"] if account else None)
         if valid:
             with self.repository._connection(write=True) as connection:
-                connection.execute("DELETE FROM login_attempts WHERE attempt_key=?", (attempt_key,))
+                connection.execute("DELETE FROM login_attempts WHERE attempt_key IN (?,?)", (attempt_key, token_hash("account:" + email)))
         if not valid:
             raise LoginRequired("Email or password is incorrect.")
         return public_user(account)
@@ -209,6 +213,11 @@ class Accounts:
             if known:
                 return public_user(self._account(connection, "account_id", known["account_id"]))
             first_name, last_name, email = _microsoft_profile(identity)
+            from .email_policy import registration_email
+            try:
+                registration_email(email)
+            except ValueError:
+                raise MicrosoftAccountError("email_not_allowed") from None
             if self._account(connection, "email", email):
                 raise MicrosoftAccountError("account_exists")
             cursor = connection.execute("""INSERT INTO accounts
@@ -248,7 +257,7 @@ class Accounts:
         if not password_matches(password, account["password_hash"] if account else None):
             raise ValueError("Your current password is incorrect.")
         with self.repository._connection(write=True) as connection:
-            connection.execute("DELETE FROM login_attempts WHERE attempt_key=?", (token_hash(client + ":" + email),))
+            connection.execute("DELETE FROM login_attempts WHERE attempt_key IN (?,?)", (token_hash(client + ":" + email), token_hash("account:" + email)))
         return public_user(account)
 
     def issue_login(self, account_id, previous_token=None):
@@ -287,16 +296,14 @@ class Accounts:
             with self.repository._connection(write=True) as connection:
                 connection.execute("DELETE FROM browser_logins WHERE token_hash=?", (token_hash(token),))
 
-    def change_password(self, account_id, current_password, new_password):
-        with self.repository._connection() as connection:
-            row = connection.execute("SELECT password_hash FROM accounts WHERE account_id=?", (account_id,)).fetchone()
-        if not row or not password_matches(current_password, row[0]):
-            raise ValueError("Your current password is incorrect.")
+    def change_password(self, account_id, current_password, new_password, client="local"):
+        self.verify_password(account_id, current_password, client)
         encoded = password_hash(new_password)
         with self.repository._connection(write=True) as connection:
             connection.execute("UPDATE accounts SET password_hash=? WHERE account_id=?", (encoded, account_id))
             connection.execute("DELETE FROM browser_logins WHERE account_id=?", (account_id,))
             connection.execute("UPDATE agent_tokens SET revoked_at=COALESCE(revoked_at,?) WHERE account_id=?", (int(time.time()), account_id))
+            connection.execute("DELETE FROM password_resets WHERE account_id=?", (account_id,))
 
     def update_profile(self, account_id, payload):
         from .profile import profile_photo

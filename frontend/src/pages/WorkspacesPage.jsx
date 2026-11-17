@@ -12,6 +12,10 @@ import { api } from '../lib/api';
 import { forgetWorkspaceInvitation } from '../lib/workspaceInvites';
 import { WorkspaceOwnership } from '../components/WorkspaceOwnership';
 import { OwnershipRequests } from '../components/OwnershipRequests';
+import { DatabaseActions } from '../components/DatabaseActions';
+import { setDragPreview } from '../lib/dragPreview';
+import { useDatabaseCollection } from '../hooks/useDatabaseCollection';
+import { DatabaseListControls, DatabasePagination } from '../components/DatabaseListControls';
 
 const permissionLabels = {
   read: 'Read',
@@ -30,6 +34,9 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
     owner = workspace?.role === 'owner',
     viewer = workspace?.role === 'viewer' || Boolean(workspace?.archived_at);
   const [deleteName, setDeleteName] = useState(''),
+    [draggingDatabase, setDraggingDatabase] = useState(null),
+    [dropWorkspace, setDropWorkspace] = useState(null),
+    [peoplePanel, setPeoplePanel] = useState('access'),
     [tab, setTab] = useState('databases'),
     [modal, setModal] = useState(null),
     [invitationDraft, setInvitationDraft] = useState({
@@ -59,6 +66,7 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
   const databases = (details?.databases || []).filter(
     (database) => owner || database.permissions?.read === true,
   );
+  const databaseCollection = useDatabaseCollection(databases, teams.selected);
   const focusSection = useRef(false);
   useEffect(() => {
     if (!focusSection.current) return;
@@ -66,6 +74,12 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
     sectionTabs.current?.querySelector('[aria-current="page"]')?.focus({ preventScroll: true });
   }, [tab]);
   function selectTab(next) {
+    if (next === 'people') {
+      teams.setError('');
+      setPeoplePanel('access');
+      setModal('people');
+      return;
+    }
     focusSection.current = true;
     setTab(next);
     if (!window.matchMedia?.('(max-width: 780px)')?.matches) return;
@@ -147,6 +161,30 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
       setOpening(null);
     }
   }
+  const moveDestinations = teams.workspaces.filter(
+    (item) => item.role === 'owner' && !item.archived_at && item.workspace_id !== teams.selected,
+  );
+  async function moveDatabase(destinationId, databaseId) {
+    if (
+      disabled ||
+      !Number.isSafeInteger(databaseId) ||
+      databaseId < 1 ||
+      !moveDestinations.some((item) => item.workspace_id === destinationId)
+    )
+      return;
+    setDropWorkspace(null);
+    setDraggingDatabase(null);
+    const destination = moveDestinations.find((item) => item.workspace_id === destinationId);
+    const result = await teams.act(
+      '/api/workspaces/' + encodeURIComponent(destinationId) + '/attach',
+      { database_id: databaseId },
+      'Database moved to ' + destination.name + '. Previous sharing permissions were removed.',
+    );
+    if (result) {
+      window.dispatchEvent(new Event('dg-databases-changed'));
+      await workbench.refresh?.();
+    }
+  }
   const selectedItem = teams.workspaces.find((item) => item.workspace_id === teams.selected);
   const currentName = workspace?.name || selectedItem?.name;
   return (
@@ -179,7 +217,7 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
           {teams.error}
         </p>
       )}
-      {teams.message && (
+      {teams.message && modal !== 'people' && (
         <p className="workspace-feedback" role="status">
           <Icon name="check" />
           {teams.message}
@@ -268,10 +306,40 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                   .map((item) => (
                     <button
                       key={item.workspace_id}
-                      className="workspace-rail-item"
+                      className={
+                        'workspace-rail-item' +
+                        (dropWorkspace === item.workspace_id ? ' is-drop-target' : '') +
+                        (draggingDatabase &&
+                        moveDestinations.some((target) => target.workspace_id === item.workspace_id)
+                          ? ' is-drop-available'
+                          : '')
+                      }
                       aria-current={teams.selected === item.workspace_id ? 'page' : undefined}
                       disabled={disabled || teams.loading}
                       onClick={() => teams.select(item.workspace_id)}
+                      onDragOver={(event) => {
+                        if (
+                          moveDestinations.some(
+                            (target) => target.workspace_id === item.workspace_id,
+                          ) &&
+                          !disabled &&
+                          event.dataTransfer.types.includes('application/x-data-genie-database')
+                        ) {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = 'move';
+                          setDropWorkspace(item.workspace_id);
+                        }
+                      }}
+                      onDragLeave={(event) => {
+                        if (!event.currentTarget.contains(event.relatedTarget))
+                          setDropWorkspace(null);
+                      }}
+                      onDrop={async (event) => {
+                        const raw = event.dataTransfer.getData('application/x-data-genie-database');
+                        if (!raw || item.role !== 'owner' || disabled) return;
+                        event.preventDefault();
+                        await moveDatabase(item.workspace_id, Number(raw));
+                      }}
                     >
                       <span className="workspace-rail-icon">
                         <Icon name={personal ? 'account' : 'layers'} />
@@ -279,13 +347,15 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                       <span>
                         <strong>{item.name}</strong>
                         <small>
-                          {personal
-                            ? 'Only you'
-                            : item.role === 'owner'
-                              ? 'You manage this team'
-                              : item.role === 'viewer'
-                                ? 'Viewer'
-                                : 'Member'}
+                          {dropWorkspace === item.workspace_id
+                            ? 'Release to move here'
+                            : personal
+                              ? 'Only you'
+                              : item.role === 'owner'
+                                ? 'You manage this team'
+                                : item.role === 'viewer'
+                                  ? 'Viewer'
+                                  : 'Member'}
                         </small>
                       </span>
                     </button>
@@ -374,6 +444,8 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                 {owner && !workspace.personal && (
                   <button
                     aria-current={tab === 'people' ? 'page' : undefined}
+                    aria-haspopup="dialog"
+                    aria-expanded={modal === 'people'}
                     onClick={() => selectTab('people')}
                   >
                     People &amp; access
@@ -391,6 +463,7 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                 <WorkspaceReports
                   key={workspace.workspace_id}
                   workspace={workspace}
+                  workspaces={teams.workspaces}
                   busy={disabled}
                 />
               ) : tab === 'databases' ? (
@@ -422,6 +495,10 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                       </button>
                     )}
                   </header>
+                  <DatabaseListControls collection={databaseCollection} />
+                  {databases.length > 0 && !databaseCollection.items.length && (
+                    <p className="muted">No databases match your search.</p>
+                  )}
                   {!databases.length ? (
                     <div className="workspace-empty-state">
                       <span className="workspace-empty-icon">
@@ -436,13 +513,33 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                     </div>
                   ) : (
                     <div className="workspace-database-list">
-                      {databases.map((database) => {
+                      {databaseCollection.items.map((database) => {
                         const current =
                           workbench.session?.database_id != null &&
                           String(workbench.session.database_id) === String(database.database_id) &&
                           workbench.session.access?.workspace_id === teams.selected;
                         return (
-                          <article className="workspace-database-row" key={database.database_id}>
+                          <article
+                            className={
+                              'workspace-database-row' +
+                              (draggingDatabase === database.database_id ? ' is-dragging' : '')
+                            }
+                            key={database.database_id}
+                            draggable={owner && !disabled}
+                            onDragStart={(event) => {
+                              event.dataTransfer.setData(
+                                'application/x-data-genie-database',
+                                String(database.database_id),
+                              );
+                              event.dataTransfer.effectAllowed = 'move';
+                              setDragPreview(event);
+                              setDraggingDatabase(database.database_id);
+                            }}
+                            onDragEnd={() => {
+                              setDraggingDatabase(null);
+                              setDropWorkspace(null);
+                            }}
+                          >
                             <span className="workspace-database-icon">
                               <Icon name="database" />
                             </span>
@@ -477,10 +574,29 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                                   : 'Open database'}
                               <Icon name="arrow" />
                             </button>
+                            <DatabaseActions
+                              database={database}
+                              workspaceId={workspace.workspace_id}
+                              owner={owner}
+                              canExport={database.permissions?.export === true}
+                              disabled={disabled}
+                              workbench={workbench}
+                              onChanged={(notice) => {
+                                teams.setMessage(notice || 'Database updated.');
+                                teams.refresh();
+                              }}
+                            />
                           </article>
                         );
                       })}
                     </div>
+                  )}
+                  <DatabasePagination collection={databaseCollection} />
+                  {owner && databases.length > 0 && (
+                    <p className="workspace-section-note small muted">
+                      Drag a database to a workspace you own in the sidebar, or use Manage to move,
+                      download, or remove it. Confirmed changes are saved automatically.
+                    </p>
                   )}
                   {owner && !workspace.personal && (
                     <p className="workspace-section-note small muted">
@@ -492,20 +608,7 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
                     </p>
                   )}
                 </section>
-              ) : (
-                <div className="workspace-people-tab">
-                  <WorkspaceInviteManager
-                    error={teams.error}
-                    draft={invitationDraft}
-                    setDraft={setInvitationDraft}
-                    invitations={details.invitations || []}
-                    disabled={disabled}
-                    onAction={action}
-                    onError={teams.setError}
-                  />
-                  <WorkspaceMembers details={details} disabled={disabled} onAction={action} />
-                </div>
-              )}
+              ) : null}
               {owner && !workspace.personal && (
                 <footer className="workspace-settings">
                   <p className="small muted">Workspace settings</p>
@@ -540,6 +643,71 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
           )}
         </div>
       </div>
+      {modal === 'people' && workspace && owner && !workspace.personal && (
+        <WorkspaceDialog
+          title="People & access"
+          initialFocusSelector='[role="combobox"][aria-label="Select a person"]'
+          description={workspace.name}
+          wide
+          busy={teams.busy}
+          onClose={() => setModal(null)}
+        >
+          <div className="people-access-content">
+            {teams.error && (
+              <p role="alert" className="err">
+                {teams.error}
+              </p>
+            )}
+            {teams.message && (
+              <p role="status" className="small">
+                {teams.message}
+              </p>
+            )}
+            <div className="people-settings-tabs" role="group" aria-label="Access settings">
+              {[
+                ['access', 'Database access'],
+                ['role', 'Workspace role'],
+                ['invitations', 'Invitations'],
+              ].map(([key, label]) => (
+                <button
+                  type="button"
+                  key={key}
+                  className="btn"
+                  aria-pressed={peoplePanel === key}
+                  disabled={teams.busy}
+                  onClick={() => setPeoplePanel(key)}
+                >
+                  {label}
+                  {key === 'invitations' && details.invitations?.length > 0 && (
+                    <span className="people-pending-count">
+                      {details.invitations.length} pending
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <div hidden={peoplePanel === 'invitations'}>
+              <WorkspaceMembers
+                details={details}
+                disabled={disabled}
+                onAction={action}
+                panel={peoplePanel}
+              />
+            </div>
+            {peoplePanel === 'invitations' && (
+              <WorkspaceInviteManager
+                inline
+                draft={invitationDraft}
+                setDraft={setInvitationDraft}
+                invitations={details.invitations || []}
+                disabled={disabled}
+                onAction={action}
+                onError={teams.setError}
+              />
+            )}
+          </div>
+        </WorkspaceDialog>
+      )}
       {modal === 'create' && (
         <CreateWorkspaceDialog
           disabled={disabled}

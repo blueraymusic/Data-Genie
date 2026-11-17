@@ -30,6 +30,7 @@ const errors = {
   already_linked: 'That Microsoft account is already connected to another Data Genie account.',
   link_expired: 'The connection request expired. Confirm your Data Genie password and start again.',
   rate_limited: 'Too many sign-in attempts. Wait a few minutes before trying again.',
+  email_not_allowed: 'Use a personal, work, or school email approved for this installation.',
 };
 
 export function microsoftError(route) {

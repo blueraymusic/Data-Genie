@@ -6,6 +6,8 @@ own SQLite files. A session's database path never changes.
 
 from contextlib import contextmanager
 from contextvars import ContextVar
+from collections import OrderedDict
+from copy import deepcopy
 from functools import wraps
 from pathlib import Path
 import sqlite3
@@ -48,6 +50,38 @@ _connector = ContextVar("data_genie_connector", default=None)
 _state_lock = threading.RLock()
 _repositories = {}
 _database_locks = {}
+_metadata_cache_lock = threading.RLock()
+_sqlite_details_cache = OrderedDict()
+_sqlite_sync_cache = OrderedDict()
+SQLITE_METADATA_CACHE_ENTRIES = 128
+
+
+def _sqlite_file_signature(path):
+    """Observe both rollback-journal and WAL commits, including file replacement."""
+    values = []
+    for candidate in (Path(path), Path(str(path) + '-wal'), Path(str(path) + '-journal')):
+        try:
+            stat = candidate.stat()
+            values.append((stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns))
+        except FileNotFoundError:
+            values.append(None)
+    return tuple(values)
+
+
+def _metadata_cached(cache, key):
+    with _metadata_cache_lock:
+        if key not in cache:
+            return None
+        cache.move_to_end(key)
+        return deepcopy(cache[key])
+
+
+def _cache_metadata(cache, key, value):
+    with _metadata_cache_lock:
+        cache[key] = deepcopy(value)
+        cache.move_to_end(key)
+        while len(cache) > SQLITE_METADATA_CACHE_ENTRIES:
+            cache.popitem(last=False)
 
 
 class Conn(sqlite3.Connection):
@@ -221,8 +255,15 @@ def _authorized_read(function):
 def visible_tables():
     if _connector.get() is not None:
         return [table["name"] for table in _connector.get().schema()]
-    with db(readonly=True) as connection:
-        names = [row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")]
+    path = _path()
+    signature = _sqlite_file_signature(path)
+    key = (str(path), signature, 'names')
+    names = _metadata_cached(_sqlite_details_cache, key)
+    if names is None:
+        with db(readonly=True) as connection:
+            names = [row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")]
+        if signature == _sqlite_file_signature(path):
+            _cache_metadata(_sqlite_details_cache, key, names)
     return [name for name in names if not (_path() == DEFAULT_DB_PATH.resolve() and name == "preset_answers")]
 
 
@@ -233,6 +274,12 @@ def table_schema(name):
         if table is None:
             raise ValueError("Unknown table: " + name)
         return table
+    path = _path()
+    signature = _sqlite_file_signature(path)
+    cache_key = (str(path), signature, 'table', name)
+    cached = _metadata_cached(_sqlite_details_cache, cache_key)
+    if cached is not None:
+        return cached
     with db(readonly=True) as connection:
         quoted = quote_identifier(name)
         columns = []
@@ -248,7 +295,10 @@ def table_schema(name):
         for key in keys:
             key["single_column"] = sum(other["id"] == key["id"] for other in keys) == 1
         count = connection.execute(f"SELECT COUNT(*) FROM {quoted}").fetchone()[0]
-    return {"name": name, "row_count": count, "columns": columns, "foreign_keys": keys}
+    result = {"name": name, "row_count": count, "columns": columns, "foreign_keys": keys}
+    if signature == _sqlite_file_signature(path):
+        _cache_metadata(_sqlite_details_cache, cache_key, result)
+    return result
 
 
 @_authorized_read
@@ -304,12 +354,13 @@ def database_info():
     tables = visible_tables()
     path = _path()
     access_fields = {"access": access} if access else {}
+    history_fields = {"history_revision": get_repository().history_revision(current["session_id"]) + ':' + str(current.get('conversation_after', 0))} if current else {}
     if _connector.get() is not None:
         adapter = _connector.get()
         if access and adapter.config["read_only"]:
             access = {**access, "permissions": {**access["permissions"], "write": False, "delete": False, "structure": False}}
             access_fields = {"access": access}
-        return {**current, **access_fields, "database": current["database"], "tables": tables, "table_count": len(tables),
+        return {**current, **access_fields, **history_fields, "database": current["database"], "tables": tables, "table_count": len(tables),
                 "source": "postgresql", "dialect": "postgresql", "schema_name": adapter.config["schema_name"],
                 "read_only": adapter.config["read_only"] or bool(access and not any(access["permissions"][key] for key in ("write", "delete", "structure"))), "table_details": adapter.schema(),
                 "ai": settings.public_ai_settings(), "conversation_context": conversation_context(get_repository().conversation(current["session_id"])),
@@ -322,7 +373,7 @@ def database_info():
         source = "created"
     else:
         source = "attached"
-    return {**(current or {}), **access_fields, "read_only": bool(access and not any(access["permissions"][key] for key in ("write", "delete", "structure"))), "database": current["database"] if current else ACTIVE_DB_NAME,
+    return {**(current or {}), **access_fields, **history_fields, "read_only": bool(access and not any(access["permissions"][key] for key in ("write", "delete", "structure"))), "database": current["database"] if current else ACTIVE_DB_NAME,
             "tables": tables, "table_count": len(tables), "source": source,
             "table_details": [table_schema(name) for name in tables], "ai": settings.public_ai_settings(),
             "conversation_context": conversation_context(get_repository().conversation(current["session_id"])) if current else None,
@@ -416,7 +467,19 @@ def _sync(session):
             table["row_count_estimated"] = True
         return saved
     excluded = ("preset_answers",) if Path(session["path"]).resolve() == DEFAULT_DB_PATH.resolve() else ()
-    return get_repository().sync_schema(session["database_id"], session["path"], exclude_tables=excluded)
+    path = Path(session['path']).resolve()
+    signature = _sqlite_file_signature(path)
+    repository = get_repository()
+    key = (str(repository.path), session['database_id'], str(path), signature, excluded)
+    cached = _metadata_cached(_sqlite_sync_cache, key)
+    if cached is not None:
+        return cached
+    # Populate only after a real sync; the repository must establish table IDs
+    # and column lifecycle records before a later poll can reuse them.
+    result = repository.sync_schema(session["database_id"], session["path"], exclude_tables=excluded)
+    if signature == _sqlite_file_signature(path):
+        _cache_metadata(_sqlite_sync_cache, key, result)
+    return result
 
 
 def _validate_database(path):
@@ -576,7 +639,7 @@ def history_for_session(session_id, search="", operation=None, history_session_i
 
 def _display(command, visualization=None):
     sql = command["sql"]
-    visualization = visualization or ("line" if " AS period" in sql else "bar" if " AS label" in sql else "table")
+    visualization = visualization or command.get("visualization") or ("line" if " AS period" in sql else "bar" if " AS label" in sql else "table")
     return {"matched": True, "session_id": command["session_id"], "request_id": command["request_id"],
             "command_id": command["command_id"], "confirmation_token": command["confirmation_token"],
             "requires_confirmation": command["requires_confirmation"] and command["status"] == "pending",
@@ -585,16 +648,17 @@ def _display(command, visualization=None):
             "answer": command.get("summary") or f"{command['operation'].title()} command.", "rows": [], "changes": 0, "targets": command.get("targets", [])}
 
 
-def _run_command(session_id, command_id, token=None, summary=None, visualization=None):
+def _run_command(session_id, command_id, token=None, summary=None, visualization=None, chart=None):
     with AUTHORIZATION_LOCK:
         command = get_repository().get_command(command_id, session_id)
         _authorize_sql(command["sql"])
-        return _run_authorized_command(session_id, command_id, token, summary, visualization)
+        return _run_authorized_command(session_id, command_id, token, summary, visualization, chart)
 
 
-def _run_authorized_command(session_id, command_id, token=None, summary=None, visualization=None):
+def _run_authorized_command(session_id, command_id, token=None, summary=None, visualization=None, chart=None):
     repository = get_repository()
     command = repository.get_command(command_id, session_id)
+    chart = chart if chart is not None else command.get("chart")
     earlier = [item for item in repository.get_request(command["request_id"])["commands"] if item["command_id"] < command_id]
     if any(item["status"] != "executed" for item in earlier):
         raise ValueError("Run the earlier commands in this request first. A declined or failed step prevents later execution.")
@@ -608,6 +672,18 @@ def _run_authorized_command(session_id, command_id, token=None, summary=None, vi
         after = result.pop("_guard_after", None)
         preview_guard.advance(repository, command["request_id"], command_id, after)
         response.update(result)
+        if response["operation"] == "read" and isinstance(chart, dict):
+            # Chart hints only select real result fields; the model supplies no code
+            # or values. Keep invalid hints in the table without losing the answer.
+            if chart.get("type") in {"bar", "line"} and all(
+                    isinstance(chart.get(key), str) and chart[key].strip() and len(chart[key]) <= 200
+                    for key in ("x", "y", "title")) and all(
+                    chart["x"] in row and chart["y"] in row for row in result["rows"]):
+                response["chart"] = {key: chart[key] for key in ("type", "x", "y", "title")}
+                response["visualization"] = chart["type"]
+                response["result_heading"] = chart["title"]
+            else:
+                response["visualization"] = "table"
         if response["operation"] == "read":
             question = repository.get_request(command["request_id"])["text"]
             context = describe_read(command["sql"], [target["table_name"] for target in command.get("targets", []) if target["access_type"] == "read"], question)
@@ -795,7 +871,8 @@ def submit_request(session_id, text, raw_sql=False, interpreter="keywords", sele
         for plan in plans:
             deferred = deferred or plan["access"] == "write"
             command = repository.add_command(request_id, plan["sql"], plan["kind"], deferred,
-                                             targets=plan["targets"], operation=plan["operation"], has_aggregation=plan["has_aggregation"], summary=plan["summary"])
+                                             targets=plan["targets"], operation=plan["operation"], has_aggregation=plan["has_aggregation"], summary=plan["summary"],
+                                             presentation={key: plan[key] for key in ("visualization", "chart") if key in plan})
             commands.append(command)
             if plan["access"] == "write":
                 preview_guard.save(repository, command["command_id"], plan["preview_guard"])
@@ -807,7 +884,7 @@ def submit_request(session_id, text, raw_sql=False, interpreter="keywords", sele
                 response["preview"] = plan.get("preview")
             else:
                 try:
-                    response = _run_command(session_id, command["command_id"], summary=plan["summary"], visualization=plan["visualization"])
+                    response = _run_command(session_id, command["command_id"], summary=plan["summary"], visualization=plan["visualization"], chart=plan.get("chart"))
                 except (ValueError, sqlite3.Error) as exc:
                     response = {**_display(repository.get_command(command["command_id"])), "error": str(exc), "matched": False}
             responses.append(response)
@@ -906,19 +983,23 @@ def connect_upload(session_id, name, contents):
 def reset_session(session_id, sample=False):
     current = get_repository().get_session(session_id, active_only=True)
     if current.get("account_id") is not None:
-        result = start_sample_session(current["first_name"], current["last_name"], current["email"], current["account_id"])
+        with AUTHORIZATION_LOCK:
+            store = WorkspaceStore(get_repository())
+            workspace_id = store.access(current['account_id'], current['database_id'])['workspace_id']
+            name = store.available_database_name(current['account_id'], workspace_id, 'shop.sqlite')
+            result = start_sample_session(current["first_name"], current["last_name"], current["email"], current["account_id"], name=name)
     else:
         result = start_session(current["first_name"], current["last_name"], current["email"], path=ensure_shop_database(), name="shop.sqlite") if sample else start_session(current["first_name"], current["last_name"], current["email"], use_demo=True)
     end_session(session_id)
     return result
 
 
-def start_sample_session(first_name, last_name, email, account_id):
+def start_sample_session(first_name, last_name, email, account_id, name="shop.sqlite"):
     """Each authenticated user gets a fresh sample, never a shared writable file."""
     path = DATABASE_DIRECTORY / ("sample-" + uuid.uuid4().hex + ".sqlite3")
     try:
         ensure_shop_database(path)
-        return start_session(first_name, last_name, email, path=path, name="shop.sqlite", account_id=account_id)
+        return start_session(first_name, last_name, email, path=path, name=name, account_id=account_id)
     except Exception:
         path.unlink(missing_ok=True)
         raise

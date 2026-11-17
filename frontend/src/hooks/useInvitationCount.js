@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { useLiveRefresh } from './useLiveRefresh';
 
 export function useInvitationCount() {
   const [count, setCount] = useState(0);
@@ -17,13 +18,14 @@ export function useInvitationCount() {
         .catch(() => {});
     };
     load();
-    window.addEventListener('focus', load);
-    window.addEventListener('dg-workspaces-changed', load);
     return () => {
       controller?.abort();
-      window.removeEventListener('focus', load);
-      window.removeEventListener('dg-workspaces-changed', load);
     };
   }, []);
+  useLiveRefresh(async (signal) => {
+    const data = await api('/api/workspaces', { signal });
+    if (!signal.aborted)
+      setCount((data.invitations?.length || 0) + (data.ownership_transfers?.length || 0));
+  });
   return count;
 }

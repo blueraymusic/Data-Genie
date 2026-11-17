@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import WorkspacesPage from './pages/WorkspacesPage';
 import { captureWorkspaceInvitation, readWorkspaceInvitation } from './lib/workspaceInvites';
@@ -65,7 +65,7 @@ function fixture(role = 'owner', invitations = [], configuration = {}) {
         permissions: { read: true, write: false, delete: false, structure: false, export: false },
       },
     ],
-    invitations: role === 'owner' ? [invitation] : [],
+    invitations: role === 'owner' ? configuration.pendingInvitations || [invitation] : [],
   };
   fetch.mockImplementation((path, options = {}) => {
     if (path.endsWith('/reports')) return response({ reports: [] });
@@ -152,9 +152,39 @@ async function openPeople(events) {
   const navigation = await screen.findByRole('navigation', { name: 'Workspace sections' });
   await events.click(within(navigation).getByRole('button', { name: /^People & access/ }));
 }
+async function peoplePanel(events, name) {
+  await events.click(
+    within(screen.getByRole('group', { name: 'Access settings' })).getByRole('button', { name }),
+  );
+}
 beforeEach(() => {
   sessionStorage.clear();
   vi.stubGlobal('fetch', vi.fn());
+});
+
+it('offers bordered database destinations and accepts only database drops into another owned space', async () => {
+  const workbench = fixture();
+  render(<WorkspacesPage workbench={workbench} />);
+  const navigation = await screen.findByRole('navigation', { name: 'Workspaces' });
+  const target = within(navigation).getByRole('button', { name: /^Personal.*Only you$/ });
+  const dataTransfer = {
+    types: ['application/x-data-genie-database'],
+    getData: () => '7',
+    dropEffect: 'none',
+  };
+  fireEvent.dragOver(target, { dataTransfer });
+  expect(target.classList.contains('is-drop-target')).toBe(true);
+  expect(within(target).getByText('Release to move here')).toBeTruthy();
+  fireEvent.drop(target, { dataTransfer });
+  await waitFor(() =>
+    expect(
+      fetch.mock.calls.some(
+        ([path, options]) =>
+          path === '/api/workspaces/personal/attach' && JSON.parse(options.body).database_id === 7,
+      ),
+    ).toBe(true),
+  );
+  expect(target.classList.contains('is-drop-target')).toBe(false);
 });
 afterEach(() => {
   cleanup();
@@ -185,10 +215,34 @@ it('lets an owner save explicit nested per-database grants', async () => {
   expect(await screen.findByText('Database access updated.')).toBeTruthy();
 });
 
+it('keeps a twenty-database workspace compact and makes later databases searchable', async () => {
+  const events = userEvent.setup();
+  const databases = Array.from({ length: 20 }, (_, index) => ({
+    database_id: index + 1,
+    database: `Layout database ${index + 1}`,
+    provider: 'sqlite',
+    permissions: all,
+  }));
+  render(<WorkspacesPage workbench={fixture('owner', [], { databases })} />);
+  await screen.findByRole('searchbox', { name: 'Find a database' });
+  expect(screen.getAllByRole('button', { name: 'Open database' })).toHaveLength(2);
+  await events.click(screen.getByRole('button', { name: 'Next databases' }));
+  expect(screen.getByRole('heading', { name: 'Layout database 3' })).toBeTruthy();
+  await events.type(
+    screen.getByRole('searchbox', { name: 'Find a database' }),
+    'Layout database 20',
+  );
+  expect(screen.getAllByRole('button', { name: 'Open database' })).toHaveLength(1);
+  expect(screen.getByRole('heading', { name: 'Layout database 20' })).toBeTruthy();
+  await events.click(screen.getByRole('button', { name: 'Clear search' }));
+  expect(screen.getByRole('heading', { name: 'Layout database 1' })).toBeTruthy();
+});
+
 it('changes member roles and removes people without offering changes to the owner', async () => {
   const events = userEvent.setup();
   render(<WorkspacesPage workbench={fixture()} />);
   await openPeople(events);
+  await peoplePanel(events, 'Workspace role');
   await events.selectOptions(
     await screen.findByRole('combobox', { name: 'Role for lin@example.test' }),
     'viewer',
@@ -202,11 +256,13 @@ it('changes member roles and removes people without offering changes to the owne
     account_id: 2,
     role: 'viewer',
   });
-  await events.click(screen.getByRole('button', { name: /Ada Owner.*ada@example.test.*owner/ }));
+  await events.click(screen.getByRole('combobox', { name: 'Select a person' }));
+  await events.click(screen.getByRole('option', { name: /ada@example.test/ }));
   expect(screen.queryByRole('combobox', { name: 'Role for ada@example.test' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Remove from workspace' })).toBeNull();
   expect(screen.getByText('Full workspace access')).toBeTruthy();
-  await events.click(screen.getByRole('button', { name: /Lin Member.*lin@example.test.*viewer/ }));
+  await events.click(screen.getByRole('combobox', { name: 'Select a person' }));
+  await events.click(screen.getByRole('option', { name: /lin@example.test/ }));
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Remove from workspace' }).disabled).toBe(false),
   );
@@ -245,6 +301,7 @@ it('guards workspace changes while a database command awaits confirmation', asyn
   expect(screen.getByRole('button', { name: 'New workspace' }).disabled).toBe(true);
   expect(screen.getByRole('button', { name: 'Open database' }).disabled).toBe(true);
   await openPeople(events);
+  await peoplePanel(events, /Invitations/);
   expect(screen.getByRole('button', { name: 'Invite a teammate' }).disabled).toBe(true);
   expect(screen.getByText(/before switching workspaces/)).toBeTruthy();
 });
@@ -253,6 +310,7 @@ it('creates a private invitation code with an optional link and lets the owner r
   const events = userEvent.setup();
   render(<WorkspacesPage workbench={fixture()} />);
   await openPeople(events);
+  await peoplePanel(events, /Invitations/);
   await events.click(screen.getByRole('button', { name: 'Invite a teammate' }));
   await events.type(
     await screen.findByRole('textbox', { name: 'Email', exact: true }),
@@ -268,7 +326,7 @@ it('creates a private invitation code with an optional link and lets the owner r
   });
   expect(new URL(link.value).searchParams.get('token')).toBe('private-invitation-token');
   expect(new URL(link.value).pathname).toBe('/workspaces');
-  expect(screen.getByText(/No emails are sent/)).toBeTruthy();
+  expect(screen.getByText(/No email is sent/)).toBeTruthy();
   await events.click(screen.getByRole('button', { name: '1 pending' }));
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Revoke invitation' }).disabled).toBe(false),
@@ -294,6 +352,7 @@ it('explains an unavailable private invitation and displays invitation expiry fr
     await screen.findByText(/This invitation is not available for your signed-in email/),
   ).toBeTruthy();
   await openPeople(events);
+  await peoplePanel(events, /Invitations/);
   await events.click(screen.getByRole('button', { name: '1 pending' }));
   expect(
     await screen.findByText(
@@ -492,6 +551,7 @@ it('shows the one-time code clearly, copies it, and keeps email delivery out of 
   const clipboard = vi.spyOn(navigator.clipboard, 'writeText');
   render(<WorkspacesPage workbench={fixture()} />);
   await openPeople(events);
+  await peoplePanel(events, /Invitations/);
   await events.click(screen.getByRole('button', { name: 'Invite a teammate' }));
   expect(screen.getByText(/Invitations expire after 7 days/)).toBeTruthy();
   await events.type(
@@ -518,7 +578,7 @@ it('opens people and invitation management directly from the workspace header', 
   const events = userEvent.setup();
   render(<WorkspacesPage workbench={fixture()} />);
   await events.click(await screen.findByRole('button', { name: 'Manage people and access' }));
-  expect(screen.getByRole('button', { name: 'Invite a teammate' })).toBeTruthy();
+  expect(screen.getByRole('combobox', { name: 'Select a person' })).toBeTruthy();
   expect(screen.getByRole('group', { name: 'Workspace members' })).toBeTruthy();
   expect(screen.getByText('1 pending')).toBeTruthy();
   expect(screen.getByText(/Invite teammates & set permissions/)).toBeTruthy();
@@ -602,7 +662,7 @@ it('groups the compact workspace picker and opens its selected workspace', async
   expect(screen.queryByRole('button', { name: 'Manage people and access' })).toBeNull();
 });
 
-it('scrolls explicit mobile section changes into view and respects reduced motion', async () => {
+it('opens access in one popup without scrolling the page and respects reduced motion for page tabs', async () => {
   const events = userEvent.setup();
   let reducedMotion = true;
   vi.stubGlobal(
@@ -619,18 +679,24 @@ it('scrolls explicit mobile section changes into view and respects reduced motio
   navigation.scrollIntoView = scroll;
   expect(scroll).not.toHaveBeenCalled();
   await events.click(screen.getByRole('button', { name: 'Manage people and access' }));
-  expect(screen.getByRole('button', { name: 'Invite a teammate' })).toBeTruthy();
-  expect(scroll).toHaveBeenLastCalledWith({ block: 'start', behavior: 'instant' });
+  expect(screen.getByRole('combobox', { name: 'Select a person' })).toBeTruthy();
+  expect(scroll).not.toHaveBeenCalled();
+  expect(screen.getAllByRole('dialog')).toHaveLength(1);
+  await peoplePanel(events, /Invitations/);
+  await events.click(screen.getByRole('button', { name: 'Invite a teammate' }));
+  expect(screen.getAllByRole('dialog')).toHaveLength(1);
+  await events.click(screen.getByRole('button', { name: 'Close dialog' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   reducedMotion = false;
   await events.click(within(navigation).getByRole('button', { name: /^Databases/ }));
   expect(scroll).toHaveBeenLastCalledWith({ block: 'start', behavior: 'smooth' });
-  expect(scroll).toHaveBeenCalledTimes(2);
+  expect(scroll).toHaveBeenCalledTimes(1);
   await events.selectOptions(
     screen.getByRole('combobox', { name: 'Select workspace' }),
     'personal',
   );
   await screen.findByText('Your databases, just for you.');
-  expect(scroll).toHaveBeenCalledTimes(2);
+  expect(scroll).toHaveBeenCalledTimes(1);
 });
 
 it('keeps desktop section changes at the current scroll position', async () => {
@@ -644,9 +710,54 @@ it('keeps desktop section changes at the current scroll position', async () => {
   const scroll = vi.fn();
   navigation.scrollIntoView = scroll;
   await events.click(screen.getByRole('button', { name: 'Manage people and access' }));
-  expect(screen.getByRole('button', { name: 'Invite a teammate' })).toBeTruthy();
-  expect(document.activeElement).toBe(
-    within(navigation).getByRole('button', { name: /^People & access/ }),
-  );
+  expect(screen.getByRole('combobox', { name: 'Select a person' })).toBeTruthy();
+  expect(document.activeElement).toBe(screen.getByRole('combobox', { name: 'Select a person' }));
   expect(scroll).not.toHaveBeenCalled();
+});
+
+it('shows one access task at a time and retains drafts across role and invitation views', async () => {
+  const events = userEvent.setup();
+  render(<WorkspacesPage workbench={fixture()} />);
+  await openPeople(events);
+  await events.click(
+    screen.getByRole('checkbox', { name: 'Edit rows permission for customers.sqlite3' }),
+  );
+  expect(screen.queryByRole('button', { name: 'Save role' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Invite a teammate' })).toBeNull();
+  await peoplePanel(events, 'Workspace role');
+  await events.selectOptions(
+    screen.getByRole('combobox', { name: 'Role for lin@example.test' }),
+    'viewer',
+  );
+  expect(screen.queryByRole('button', { name: 'Save access' })).toBeNull();
+  await peoplePanel(events, /Invitations/);
+  expect(screen.getByRole('button', { name: 'Invite a teammate' })).toBeTruthy();
+  expect(screen.queryByRole('combobox', { name: 'Select a person' })).toBeNull();
+  await peoplePanel(events, 'Workspace role');
+  expect(screen.getByRole('combobox', { name: 'Role for lin@example.test' }).value).toBe('viewer');
+  await peoplePanel(events, 'Database access');
+  expect(
+    screen.getByRole('checkbox', { name: 'Edit rows permission for customers.sqlite3' }).checked,
+  ).toBe(true);
+  expect(screen.getByRole('button', { name: 'Save access' }).disabled).toBe(false);
+});
+
+it('pages pending invitations and keeps composing separate from the list', async () => {
+  const events = userEvent.setup();
+  const pendingInvitations = Array.from({ length: 20 }, (_, i) => ({
+    ...invitation,
+    invitation_id: `pending-${i}`,
+    email: `guest${i}@example.test`,
+  }));
+  render(<WorkspacesPage workbench={fixture('owner', [], { pendingInvitations })} />);
+  await openPeople(events);
+  await peoplePanel(events, /Invitations/);
+  await events.click(screen.getByRole('button', { name: '20 pending', exact: true }));
+  expect(screen.getAllByRole('button', { name: 'Revoke invitation' })).toHaveLength(3);
+  await events.click(screen.getByRole('button', { name: 'Next invitations' }));
+  expect(screen.getByText('guest3@example.test')).toBeTruthy();
+  await events.click(screen.getByRole('button', { name: 'Invite a teammate' }));
+  expect(screen.queryByRole('button', { name: 'Revoke invitation' })).toBeNull();
+  expect(screen.getByRole('textbox', { name: 'Email', exact: true })).toBeTruthy();
+  expect(screen.getAllByRole('dialog')).toHaveLength(1);
 });

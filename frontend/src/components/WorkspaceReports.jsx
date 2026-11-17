@@ -5,6 +5,9 @@ import { ReportEditor } from './ReportEditor';
 import { ReportReader } from './ReportReader';
 import { Icon } from './Icon';
 import { useEnterMotion } from '../hooks/useMotion';
+import { useLiveRefresh } from '../hooks/useLiveRefresh';
+import { useReportCollaboration } from '../hooks/useReportCollaboration';
+import { setDragPreview } from '../lib/dragPreview';
 
 const blank = { title: '', body: '', published: false };
 function excerpt(body) {
@@ -12,7 +15,7 @@ function excerpt(body) {
   return text.length > 180 ? text.slice(0, 177) + '…' : text || 'Open to read this report.';
 }
 
-export function WorkspaceReports({ workspace, busy: parentBusy }) {
+export function WorkspaceReports({ workspace, workspaces = [], busy: parentBusy }) {
   const [reports, setReports] = useState([]),
     [selected, setSelected] = useState(null),
     [overlayOpen, setOverlayOpen] = useState(false),
@@ -25,8 +28,12 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
     [activity, setActivity] = useState(''),
     [error, setError] = useState(''),
     [message, setMessage] = useState(''),
+    [dragging, setDragging] = useState(null),
+    [dropTarget, setDropTarget] = useState(null),
     [revision, setRevision] = useState(0);
   const lock = useRef(false),
+    loadRequest = useRef(null),
+    loadedBase = useRef(null),
     baseline = useRef(blank),
     newReportButton = useRef(null),
     surface = useRef(null);
@@ -34,12 +41,21 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
   const owner = workspace.role === 'owner',
     viewer = workspace.role === 'viewer' || Boolean(workspace.archived_at);
   const base = '/api/workspaces/' + encodeURIComponent(workspace.workspace_id) + '/reports';
+  const destinations = workspaces.filter(
+    (item) =>
+      item.role === 'owner' && !item.archived_at && item.workspace_id !== workspace.workspace_id,
+  );
+  useLiveRefresh(() => {
+    if (!lock.current && !loadRequest.current) setRevision((value) => value + 1);
+  });
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
+    loadRequest.current = controller;
+    if (loadedBase.current !== base) setLoading(true);
     api(base, { signal: controller.signal })
       .then((data) => {
         if (!controller.signal.aborted) {
+          loadedBase.current = base;
           setReports(data.reports || []);
         }
       })
@@ -47,6 +63,7 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
         if (!controller.signal.aborted) setError(failure.message);
       })
       .finally(() => {
+        if (loadRequest.current === controller) loadRequest.current = null;
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
@@ -56,6 +73,14 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
   }, [overlayOpen, loading, message]);
   const disabled = busy || parentBusy || loading;
   const report = reports.find((item) => item.report_id === selected);
+  const live = useReportCollaboration({
+    base,
+    enabled: Boolean(draft && report?.live_editing && !viewer),
+    draft,
+    setDraft,
+  });
+  const editorDisabled =
+    disabled || (draft?.report_id && !report?.can_edit) || (live.active && !live.ready);
   function open(item) {
     setOverlayOpen(true);
     setSelected(item?.report_id || null);
@@ -82,7 +107,7 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
         method: 'POST',
         body: { goal, source },
       });
-      setDraft((current) => ({ ...current, body: result.body }));
+      live.changeDraft((current) => ({ ...current, body: result.body }));
       setAi(false);
       setMessage('AI draft ready. Check its facts and edit before saving.');
     } catch (failure) {
@@ -101,12 +126,25 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
     setActivity('save');
     setError('');
     try {
-      const result = await api(base, { method: 'POST', body: draft });
+      const synced = await live.flush();
+      const payload = synced
+        ? {
+            ...draft,
+            title: synced.title,
+            body: synced.body,
+            published: synced.published,
+            version: synced.base_version,
+            collaboration_revision: synced.revision,
+          }
+        : draft;
+      const result = await api(base, { method: 'POST', body: payload });
       setDraft(null);
       setSelected(result.report_id);
+      setLoading(true);
       setRevision((value) => value + 1);
+      window.dispatchEvent(new Event('dg-workspaces-changed'));
       setMessage(
-        draft.published
+        payload.published
           ? 'Report shared with this workspace.'
           : 'Draft saved. Only you and the owner can see it.',
       );
@@ -121,7 +159,9 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
   }
   const hasUnsavedChanges = Boolean(
     draft &&
-    (['title', 'body', 'published'].some((field) => draft[field] !== baseline.current[field]) ||
+    ((live.active
+      ? live.pending || draft.published !== baseline.current.published
+      : ['title', 'body', 'published'].some((field) => draft[field] !== baseline.current[field])) ||
       goal.trim() ||
       source.trim()),
   );
@@ -134,7 +174,7 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
   function edit() {
     setError('');
     setMessage('');
-    baseline.current = { ...report, published: false };
+    baseline.current = { ...report };
     setDraft({ ...baseline.current });
     setGoal('');
     setSource('');
@@ -156,6 +196,62 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
       setReports((current) => current.filter((report) => report.report_id !== item.report_id));
       setMessage('Report deleted.');
       setRevision((value) => value + 1);
+      window.dispatchEvent(new Event('dg-workspaces-changed'));
+    } catch (failure) {
+      setError(failure.message);
+      if (failure.message.includes('changed in another session')) setRevision((value) => value + 1);
+    } finally {
+      lock.current = false;
+      setBusy(false);
+      setActivity('');
+    }
+  }
+  async function shareReport(item) {
+    if (disabled || lock.current || !owner || !item.can_share) return;
+    lock.current = true;
+    setBusy(true);
+    setActivity('share');
+    setError('');
+    setMessage('');
+    try {
+      await api(base, { method: 'POST', body: { ...item, published: !item.published } });
+      setRevision((value) => value + 1);
+      window.dispatchEvent(new Event('dg-workspaces-changed'));
+      setMessage(
+        item.published
+          ? 'Report is now private to its author and workspace owner.'
+          : 'Report shared with this workspace.',
+      );
+    } catch (failure) {
+      setError(failure.message);
+      if (failure.message.includes('changed in another session')) setRevision((value) => value + 1);
+    } finally {
+      lock.current = false;
+      setBusy(false);
+      setActivity('');
+    }
+  }
+  async function moveReport(item, destinationId) {
+    if (disabled || lock.current || !item?.can_move || !owner) return;
+    const destination = destinations.find((target) => target.workspace_id === destinationId);
+    if (!destination) return;
+    lock.current = true;
+    setBusy(true);
+    setActivity('move');
+    setError('');
+    setMessage('');
+    try {
+      await api(base + '/' + encodeURIComponent(item.report_id) + '/move', {
+        method: 'POST',
+        body: { workspace_id: destinationId, version: item.version },
+      });
+      setReports((current) => current.filter((report) => report.report_id !== item.report_id));
+      setOverlayOpen(false);
+      setSelected(null);
+      setDragging(null);
+      setRevision((value) => value + 1);
+      window.dispatchEvent(new Event('dg-workspaces-changed'));
+      setMessage('Report moved to ' + destination.name + ' as a private draft.');
     } catch (failure) {
       setError(failure.message);
       if (failure.message.includes('changed in another session')) setRevision((value) => value + 1);
@@ -245,6 +341,18 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
         {reports.map((item) => (
           <button
             key={item.report_id}
+            className={dragging === item.report_id ? 'is-dragging' : undefined}
+            draggable={Boolean(item.can_move && destinations.length && !disabled)}
+            onDragStart={(event) => {
+              event.dataTransfer.setData('application/x-data-genie-report', item.report_id);
+              event.dataTransfer.effectAllowed = 'move';
+              setDragPreview(event);
+              setDragging(item.report_id);
+            }}
+            onDragEnd={() => {
+              setDragging(null);
+              setDropTarget(null);
+            }}
             aria-label={'Open report: ' + item.title}
             disabled={disabled}
             onClick={() => open(item)}
@@ -276,6 +384,45 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
           </button>
         ))}
       </nav>
+      {dragging && destinations.length > 0 && (
+        <section className="report-move-targets" aria-label="Move report to a workspace">
+          <p>Drop the report into a workspace you own. It will become a private draft.</p>
+          <div>
+            {destinations.map((target) => (
+              <button
+                className={'btn' + (dropTarget === target.workspace_id ? ' is-drop-target' : '')}
+                key={target.workspace_id}
+                disabled={disabled}
+                onDragOver={(event) => {
+                  if (event.dataTransfer.types.includes('application/x-data-genie-report')) {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = 'move';
+                    setDropTarget(target.workspace_id);
+                  }
+                }}
+                onDragLeave={() => setDropTarget(null)}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setDropTarget(null);
+                  const id = event.dataTransfer.getData('application/x-data-genie-report');
+                  moveReport(
+                    reports.find((item) => item.report_id === id),
+                    target.workspace_id,
+                  );
+                }}
+                onClick={() =>
+                  moveReport(
+                    reports.find((item) => item.report_id === dragging),
+                    target.workspace_id,
+                  )
+                }
+              >
+                {target.name}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
       {!loading && !reports.length && (
         <div className="report-library-empty">
           <span className="report-empty-mark" aria-hidden="true">
@@ -313,37 +460,54 @@ export function WorkspaceReports({ workspace, busy: parentBusy }) {
                 </p>
               )}
               {draft ? (
-                <ReportEditor
-                  {...{
-                    draft,
-                    setDraft,
-                    owner,
-                    disabled,
-                    busy,
-                    activity,
-                    ai,
-                    setAi,
-                    goal,
-                    setGoal,
-                    source,
-                    setSource,
-                    generate,
-                    save,
-                  }}
-                  onClose={requestClose}
-                />
+                <>
+                  {draft.report_id && !report?.can_edit && (
+                    <p role="status" className="report-overlay-notice">
+                      Live editing is no longer available for this report. Your local writing is
+                      kept here so you can copy it.
+                    </p>
+                  )}
+                  {!live.active && report && report.version !== draft.version && (
+                    <p role="status" className="report-overlay-notice">
+                      This report changed in another session. Your writing is kept here; reopen the
+                      saved report before saving your changes.
+                    </p>
+                  )}
+                  <ReportEditor
+                    {...{
+                      draft,
+                      owner,
+                      busy,
+                      activity,
+                      ai,
+                      setAi,
+                      goal,
+                      setGoal,
+                      source,
+                      setSource,
+                      generate,
+                      save,
+                    }}
+                    setDraft={live.changeDraft}
+                    disabled={editorDisabled}
+                    live={live}
+                    onClose={requestClose}
+                  />
+                </>
               ) : report ? (
                 <ReportReader
-                  {...{ report, disabled, activity }}
+                  {...{ report, disabled, activity, destinations }}
                   onEdit={edit}
                   onDelete={deleteReport}
                   onDownload={downloadPdf}
+                  onShare={shareReport}
+                  onMove={moveReport}
                 />
               ) : (
                 <p className="report-overlay-notice" role="status">
                   {loading
                     ? 'Refreshing saved report…'
-                    : 'Report saved. Close this view to return to your reports.'}
+                    : 'This report is no longer available in this workspace. It may have been moved, deleted, or made private.'}
                 </p>
               )}
             </>

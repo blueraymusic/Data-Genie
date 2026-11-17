@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { prepareProfilePhoto } from '../lib/profilePhoto';
 import { ProfileAvatar } from './ProfileAvatar';
 import { Icon } from './Icon';
+import { useFileDrop } from '../hooks/useFileDrop';
 
 export function AccountProfile({ user }) {
   const { updateProfile } = useAuth();
@@ -52,10 +53,8 @@ export function AccountProfile({ user }) {
     setProcessing(false);
     setError('');
   }
-  async function photo(event) {
-    const file = event.target.files[0];
-    event.target.value = '';
-    if (!file) return;
+  async function photo(file) {
+    if (!file || busy || processing) return;
     const revision = ++generation.current;
     setProcessing(true);
     setError('');
@@ -69,6 +68,16 @@ export function AccountProfile({ user }) {
       if (generation.current === revision) setProcessing(false);
     }
   }
+  const fileDrop = useFileDrop({
+    disabled: busy || processing,
+    onFiles: (files) => {
+      if (files.length !== 1) {
+        setError('Choose one profile photo.');
+        return;
+      }
+      photo(files[0]);
+    },
+  });
   async function save(event) {
     event.preventDefault();
     if (busy || processing) return;
@@ -92,7 +101,10 @@ export function AccountProfile({ user }) {
     >
       {editing ? (
         <form onSubmit={save} className="account-profile-form" aria-label="Edit profile">
-          <div className="account-photo-editor">
+          <div
+            className={'account-photo-editor' + (fileDrop.active ? ' is-file-drop-target' : '')}
+            {...fileDrop.handlers}
+          >
             <ProfileAvatar user={draft} className="account-avatar" />
             <div>
               <div className="account-photo-actions">
@@ -102,7 +114,11 @@ export function AccountProfile({ user }) {
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
                   aria-label="Profile photo"
-                  onChange={photo}
+                  onChange={(event) => {
+                    const file = event.target.files[0];
+                    event.target.value = '';
+                    photo(file);
+                  }}
                   disabled={busy || processing}
                 />
                 <button
@@ -126,7 +142,7 @@ export function AccountProfile({ user }) {
                 )}
               </div>
               <p className="account-setting-help">
-                PNG, JPEG or WebP · Up to 5 MB. No photo? We’ll use your initials.
+                Choose or drop a PNG, JPEG or WebP · Up to 5 MB. No photo? We’ll use your initials.
               </p>
             </div>
           </div>

@@ -6,6 +6,7 @@ Start with the [user guide](user-guide.md) for Ask, SQL, Structure, History, and
 
 | Topic | Read |
 | --- | --- |
+| Account creation, recovery, and the first workspace | [Account walkthrough](account-lifecycle.md) |
 | Teams, invitation codes, permissions, reports | [Workspaces and access](workspaces.md) |
 | SQLite and live PostgreSQL connections | [Database connections](database-connections.md) |
 | Connect an agent with MCP or the HTTP API | [Agent setup](agents.md) |

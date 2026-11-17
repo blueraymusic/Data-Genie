@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { permissionNames } from '../lib/access';
 import { useEnterMotion } from '../hooks/useMotion';
+import { PersonPicker } from './PersonPicker';
 
 const labels = {
   read: 'Read',
@@ -18,13 +19,22 @@ const hints = {
 };
 const emptyAccess = () => Object.fromEntries(permissionNames.map((name) => [name, false]));
 
-function DatabaseAccess({ database, grant, disabled, onSave }) {
+function DatabaseAccess({ database, grant, disabled, onSave, compact }) {
   const saved = grant?.permissions || grant;
   const signature = permissionNames.map((name) => (saved?.[name] === true ? '1' : '0')).join('');
   const [permissions, setPermissions] = useState(() =>
-    Object.fromEntries(permissionNames.map((name) => [name, saved?.[name] === true])),
-  );
+      Object.fromEntries(permissionNames.map((name) => [name, saved?.[name] === true])),
+    ),
+    [conflict, setConflict] = useState(false);
+  const editing = useRef(false),
+    previous = useRef(signature);
   useEffect(() => {
+    if (signature === previous.current) return;
+    previous.current = signature;
+    if (editing.current) {
+      setConflict(true);
+      return;
+    }
     setPermissions(
       Object.fromEntries(permissionNames.map((name, index) => [name, signature[index] === '1'])),
     );
@@ -40,19 +50,31 @@ function DatabaseAccess({ database, grant, disabled, onSave }) {
         : 'read'
       : 'custom';
   function toggle(name, value) {
+    editing.current = true;
     setPermissions((current) => ({
       ...current,
       [name]: value,
       ...(name === 'read' && !value ? emptyAccess() : {}),
     }));
   }
+  async function save(value) {
+    const result = await onSave(value);
+    if (result) {
+      editing.current = false;
+      setConflict(false);
+    }
+  }
   return (
-    <section className="workspace-access-card" aria-label={'Access to ' + database.database}>
+    <section
+      className={'workspace-access-card' + (compact ? ' is-compact' : '')}
+      aria-label={'Access to ' + database.database}
+    >
       <header>
         <div>
           <h4>{database.database}</h4>
           <p className="small muted">
-            {database.provider === 'postgresql' ? 'PostgreSQL' : 'SQLite'}
+            {database.provider === 'postgresql' ? 'PostgreSQL' : 'SQLite'} · Permissions for this
+            person
           </p>
         </div>
         <label className="workspace-access-preset">
@@ -63,12 +85,14 @@ function DatabaseAccess({ database, grant, disabled, onSave }) {
             disabled={disabled}
             onChange={(event) => {
               const value = event.target.value;
-              if (value !== 'custom')
+              if (value !== 'custom') {
+                editing.current = true;
                 setPermissions({
                   ...emptyAccess(),
                   read: value !== 'none',
                   write: value === 'edit',
                 });
+              }
             }}
           >
             <option value="none">No access</option>
@@ -82,7 +106,7 @@ function DatabaseAccess({ database, grant, disabled, onSave }) {
       </header>
       <div className="workspace-permission-options">
         {permissionNames.map((name) => (
-          <label className="workspace-permission-choice" key={name}>
+          <label className="workspace-permission-choice" key={name} title={hints[name]}>
             <input
               type="checkbox"
               checked={permissions[name]}
@@ -92,29 +116,40 @@ function DatabaseAccess({ database, grant, disabled, onSave }) {
             />
             <span>
               <strong>{labels[name]}</strong>
-              <small>{hints[name]}</small>
+              <small className={compact ? 'sr-only' : undefined}>{hints[name]}</small>
             </span>
           </label>
         ))}
       </div>
+      {conflict && (
+        <p className="small workspace-permission-conflict" role="status">
+          Access changed in another session. Your choices are kept; review them before saving.
+        </p>
+      )}
       <footer>
-        <span className="small muted">
-          {changed
-            ? 'Unsaved changes'
-            : permissions.read
-              ? 'Access is up to date'
-              : 'This database is not shared with this person'}
-        </span>
+        {(changed || !compact) && (
+          <span className="small muted">
+            {changed
+              ? 'Unsaved changes'
+              : permissions.read
+                ? 'Access is up to date'
+                : 'This database is not shared with this person'}
+          </span>
+        )}
         {saved?.read === true && (
           <button
             className="btn quiet workspace-remove"
             disabled={disabled}
-            onClick={() => onSave(emptyAccess())}
+            onClick={() => save(emptyAccess())}
           >
             Revoke access
           </button>
         )}
-        <button className="btn" disabled={disabled || !changed} onClick={() => onSave(permissions)}>
+        <button
+          className="btn pri"
+          disabled={disabled || !changed}
+          onClick={() => save(permissions)}
+        >
           Save access
         </button>
       </footer>
@@ -122,7 +157,7 @@ function DatabaseAccess({ database, grant, disabled, onSave }) {
   );
 }
 
-function PersonAccess({ member, details, disabled, onAction }) {
+function PersonAccess({ member, details, disabled, onAction, panel = 'all' }) {
   const surface = useRef(null);
   useEnterMotion(surface, member.account_id);
   const [role, setRole] = useState(member.role);
@@ -149,7 +184,9 @@ function PersonAccess({ member, details, disabled, onAction }) {
           </h3>
           <p className="small muted">{member.email}</p>
         </div>
-        {owner && <span className="workspace-role">Owner</span>}
+        <span className="workspace-role">
+          {owner ? 'Owner' : member.role === 'viewer' ? 'Viewer' : 'Member'}
+        </span>
       </header>
       {owner ? (
         <div className="workspace-access-explanation">
@@ -161,54 +198,90 @@ function PersonAccess({ member, details, disabled, onAction }) {
         </div>
       ) : (
         <>
-          <div className="workspace-member-role">
-            <label>
-              Workspace role
-              <select
-                aria-label={'Role for ' + member.email}
-                value={role}
-                disabled={disabled}
-                onChange={(event) => setRole(event.target.value)}
+          <div hidden={panel === 'access'}>
+            <div className="workspace-member-role">
+              {panel === 'all' && (
+                <div className="workspace-access-step">
+                  <span aria-hidden="true">1</span>
+                  <div>
+                    <h4>Workspace role</h4>
+                    <p>Choose how this person takes part.</p>
+                  </div>
+                </div>
+              )}
+              <label>
+                Role
+                <select
+                  aria-label={'Role for ' + member.email}
+                  value={role}
+                  disabled={disabled}
+                  onChange={(event) => setRole(event.target.value)}
+                >
+                  <option value="member">Member</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+              </label>
+              <button
+                className="btn"
+                disabled={disabled || role === member.role}
+                onClick={() =>
+                  onAction(
+                    'members',
+                    { account_id: member.account_id, role },
+                    'Member role updated.',
+                  )
+                }
               >
-                <option value="member">Member</option>
-                <option value="viewer">Viewer</option>
-              </select>
-            </label>
-            <button
-              className="btn"
-              disabled={disabled || role === member.role}
-              onClick={() =>
-                onAction('members', { account_id: member.account_id, role }, 'Member role updated.')
-              }
-            >
-              Save role
-            </button>
+                Save role
+              </button>
+            </div>
+            <p className="small muted workspace-role-hint">
+              {role === 'viewer'
+                ? 'Viewers can read reports shared by the owner. They cannot open databases.'
+                : 'Members can open the databases you share in Database access. Row and table changes still require confirmation.'}
+            </p>
+            {role !== member.role && (
+              <p className="small workspace-role-pending" role="status">
+                Save the role to apply this change.
+              </p>
+            )}
           </div>
-          <p className="small muted workspace-role-hint">
-            {member.role === 'viewer'
-              ? 'Viewers can read reports shared by the owner. They cannot open databases.'
-              : 'Members can open only the databases you share below. Row and table changes still require confirmation.'}
-          </p>
+          {member.role === 'viewer' && panel === 'access' && (
+            <p className="muted">
+              Viewers read shared reports only. Change their workspace role to grant database
+              access.
+            </p>
+          )}
           {member.role === 'member' && (
-            <div className="workspace-member-databases">
-              <h4>Database access</h4>
+            <div className="workspace-member-databases" hidden={panel === 'role'}>
+              {panel === 'all' && (
+                <div className="workspace-access-step">
+                  <span aria-hidden="true">2</span>
+                  <div>
+                    <h4>Database access</h4>
+                    <p>Grant only the actions this person needs.</p>
+                  </div>
+                </div>
+              )}
               {!(details.databases || []).length ? (
                 <p className="small muted">Add a database to set its permissions.</p>
               ) : (
                 <>
-                  <label>
-                    Database
-                    <select
-                      value={databaseId || String(details.databases[0].database_id)}
-                      onChange={(event) => setDatabaseId(event.target.value)}
-                    >
-                      {details.databases.map((database) => (
-                        <option key={database.database_id} value={database.database_id}>
-                          {database.database}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  {details.databases.length > 1 && (
+                    <label className="workspace-database-selector">
+                      Database
+                      <select
+                        value={databaseId || String(details.databases[0].database_id)}
+                        onChange={(event) => setDatabaseId(event.target.value)}
+                      >
+                        {details.databases.map((database) => (
+                          <option key={database.database_id} value={database.database_id}>
+                            {database.database}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   {details.databases.map((database) => (
                     <div
                       key={database.database_id}
@@ -219,6 +292,7 @@ function PersonAccess({ member, details, disabled, onAction }) {
                     >
                       <DatabaseAccess
                         database={database}
+                        compact={panel !== 'all'}
                         disabled={disabled}
                         grant={(details.grants || []).find(
                           (grant) =>
@@ -243,7 +317,7 @@ function PersonAccess({ member, details, disabled, onAction }) {
               )}
             </div>
           )}
-          <div className="workspace-remove-member">
+          <div className="workspace-remove-member" hidden={panel === 'access'}>
             <p className="small muted">Removing this person ends their access to this workspace.</p>
             <button
               className="text-button workspace-remove"
@@ -265,15 +339,24 @@ function PersonAccess({ member, details, disabled, onAction }) {
   );
 }
 
-export function WorkspaceMembers({ details, disabled, onAction }) {
+export function WorkspaceMembers({ details, disabled, onAction, panel = 'all' }) {
   const members = details.members || [];
+  const visited = useRef(new Set());
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [account, setAccount] = useState(() =>
     String((members.find((member) => member.role === 'member') || members[0])?.account_id || ''),
   );
+  useEffect(() => {
+    if (members.some((member) => String(member.account_id) === account)) return;
+    setAccount(
+      String((members.find((member) => member.role === 'member') || members[0])?.account_id || ''),
+    );
+  }, [members, account]);
   const selected =
     members.find((member) => String(member.account_id) === account) ||
     members.find((member) => member.role === 'member') ||
     members[0];
+  if (selected) visited.current.add(String(selected.account_id));
   return (
     <section className="workspace-section" aria-labelledby="workspaceMembersTitle">
       <header className="workspace-section-heading">
@@ -286,36 +369,39 @@ export function WorkspaceMembers({ details, disabled, onAction }) {
         <p className="muted">Invite a teammate to get started.</p>
       ) : (
         <div className="workspace-people-layout">
-          <div className="workspace-person-list" role="group" aria-label="Workspace members">
-            {members.map((member) => (
-              <button
-                key={member.account_id}
-                className="workspace-person-button"
-                aria-pressed={selected.account_id === member.account_id}
-                disabled={disabled}
-                onClick={() => setAccount(String(member.account_id))}
-              >
-                <span className="workspace-avatar" aria-hidden="true">
-                  {(member.first_name?.[0] || member.email?.[0] || '?').toUpperCase()}
-                  {member.last_name?.[0]?.toUpperCase()}
-                </span>
-                <span>
-                  <strong>
-                    {member.first_name} {member.last_name}
-                  </strong>
-                  <small>{member.email}</small>
-                  <span className="workspace-person-role">{member.role}</span>
-                </span>
-              </button>
-            ))}
+          <div className="workspace-person-picker" role="group" aria-label="Workspace members">
+            <PersonPicker
+              members={members}
+              selected={selected}
+              disabled={disabled}
+              onSelect={setAccount}
+              onOpenChange={setPickerOpen}
+            />
+            {panel === 'all' && (
+              <p className="small muted">
+                {members.length} {members.length === 1 ? 'person' : 'people'} · Select a name to
+                manage access. Your unsaved choices stay here when you switch.
+              </p>
+            )}
           </div>
-          <PersonAccess
-            key={selected.account_id}
-            member={selected}
-            details={details}
-            disabled={disabled}
-            onAction={onAction}
-          />
+          <div className="workspace-person-panels" hidden={pickerOpen}>
+            {members
+              .filter((member) => visited.current.has(String(member.account_id)))
+              .map((member) => (
+                <div
+                  key={member.account_id}
+                  hidden={String(member.account_id) !== String(selected.account_id)}
+                >
+                  <PersonAccess
+                    member={member}
+                    panel={panel}
+                    details={details}
+                    disabled={disabled}
+                    onAction={onAction}
+                  />
+                </div>
+              ))}
+          </div>
         </div>
       )}
     </section>

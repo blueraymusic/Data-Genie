@@ -8,6 +8,7 @@ import { schemaDialect } from '../lib/schemaSql';
 import { Link } from '../lib/router';
 import '../styles/structure.css';
 import { databaseAccess } from '../lib/access';
+import { useLiveRefresh } from '../hooks/useLiveRefresh';
 const identifierList = (value) => (Array.isArray(value) ? value.join(', ') : value);
 const isSchemaRequest = (request) =>
   /^(CREATE|ALTER|DROP)\s+TABLE\b/i.test(request.text?.trim() || '') ||
@@ -28,7 +29,9 @@ function SchemaTable({ table, sessionId, index, disabled, dialect, onChange, can
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const rows =
-    canRead && sample?.sessionId === sessionId && sample.table === table ? sample.rows : null;
+    canRead && sample?.sessionId === sessionId && sample.tableName === table.name
+      ? sample.rows
+      : null;
   const sampleId = 'schema-sample-' + index;
   useEffect(() => {
     request.current?.abort();
@@ -37,7 +40,18 @@ function SchemaTable({ table, sessionId, index, disabled, dialect, onChange, can
     setBusy(false);
     setError('');
     return () => request.current?.abort();
-  }, [sessionId, table, canRead]);
+  }, [sessionId, table.name, canRead]);
+  useLiveRefresh(
+    async (signal) => {
+      if (busy) return;
+      const data = await api('/api/sample?table=' + encodeURIComponent(table.name), {
+        sessionId,
+        signal,
+      });
+      if (!signal.aborted) setSample({ sessionId, tableName: table.name, rows: data.rows || [] });
+    },
+    { enabled: Boolean(canRead && shown), key: sessionId + ':' + table.name },
+  );
   async function loadSample() {
     if (!canRead || busy) return;
     const controller = new AbortController();
@@ -51,7 +65,8 @@ function SchemaTable({ table, sessionId, index, disabled, dialect, onChange, can
         sessionId,
         signal: controller.signal,
       });
-      if (!controller.signal.aborted) setSample({ sessionId, table, rows: data.rows || [] });
+      if (!controller.signal.aborted)
+        setSample({ sessionId, tableName: table.name, rows: data.rows || [] });
     } catch (error) {
       if (!controller.signal.aborted) {
         setSample(null);
@@ -263,6 +278,23 @@ export default function StructurePage({ workbench }) {
       : null;
   const review = useRef(null),
     toolbar = useRef(null);
+  useLiveRefresh(
+    async (signal) => {
+      if (workbench.busy || workbench.workingCommands?.size) return;
+      const data = await api('/api/schema', { sessionId: session.session_id, signal });
+      if (!signal.aborted) {
+        setError('');
+        setTables((previous) =>
+          JSON.stringify(previous) === JSON.stringify(data.tables) ? previous : data.tables,
+        );
+      }
+    },
+    {
+      enabled: access.canRead && !workbench.busy && !workbench.workingCommands?.size,
+      key: JSON.stringify([session.session_id, revision, schemaOutcomes]),
+      events: ['dg-databases-changed'],
+    },
+  );
   useEffect(() => {
     setChange(null);
     setJumpTable('');

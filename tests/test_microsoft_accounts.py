@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 from backend.authentication import (Accounts, LoginRequired, MicrosoftAccountError,
-                                    TooManyAttempts, password_matches)
+                                    TooManyAttempts, password_matches, MAX_ATTEMPTS)
 from backend.repository import Repository
 
 
@@ -95,7 +95,7 @@ class MicrosoftAccountTests(unittest.TestCase):
     def test_external_only_account_never_accepts_local_password_or_sets_one(self):
         user = self.accounts.microsoft_login(self.identity)
         for password in ("", "dummy password used for timing only", self.password):
-            with self.assertRaises(LoginRequired):
+            with self.assertRaises((LoginRequired, TooManyAttempts)):
                 self.accounts.login(user["email"], password)
             with self.assertRaises(ValueError):
                 self.accounts.change_password(user["account_id"], password, self.password)
@@ -138,12 +138,17 @@ class MicrosoftAccountTests(unittest.TestCase):
 
     def test_password_reauthentication_has_existing_login_attempt_limits(self):
         user = self.local()
-        for _ in range(5):
+        for _ in range(MAX_ATTEMPTS):
             with self.assertRaises(ValueError):
                 self.accounts.verify_password(user["account_id"], "wrong", client="same-ip")
         with self.assertRaises(TooManyAttempts):
             self.accounts.verify_password(user["account_id"], self.password, client="same-ip")
-        self.accounts.verify_password(user["account_id"], self.password, client="another-ip")
+        with self.assertRaises(TooManyAttempts):
+            self.accounts.verify_password(user["account_id"], self.password, client="another-ip")
+
+    def test_new_microsoft_accounts_follow_registration_email_policy(self):
+        self.assert_code('email_not_allowed', self.accounts.microsoft_login,
+                         {**self.identity, 'email': 'temporary@aiqseo.com'})
 
     def test_schema_upgrade_is_additive_and_mapping_survives_new_repository_instance(self):
         local = self.local()

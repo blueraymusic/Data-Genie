@@ -62,6 +62,48 @@ class ReportHttpTests(HttpHarness, unittest.TestCase):
         self.as_user('outsider')
         self.forbidden('GET', path)
 
+    def test_owner_can_move_report_between_owned_spaces_as_a_private_draft(self):
+        self.join('viewer', 'viewer')
+        self.as_user('owner')
+        report = self.create_report(published=True)
+        personal = next(row for row in self.request('GET', '/api/workspaces')[1]['workspaces'] if row['personal'])
+        target = self.route('reports') + '/' + report['report_id'] + '/move'
+        status, moved = self.request('POST', target, {'workspace_id': personal['workspace_id'], 'version': report['version']})
+        self.assertEqual(status, 200, moved)
+        self.assertFalse(moved['published'])
+        self.assertEqual(self.request('GET', self.route('reports'))[1]['reports'], [])
+        personal_reports = '/api/workspaces/' + personal['workspace_id'] + '/reports'
+        saved = self.request('GET', personal_reports)[1]['reports'][0]
+        self.assertEqual(saved['body'], report['body'])
+        self.assertEqual(saved['version'], report['version'] + 1)
+        self.assertFalse(saved['published'])
+        self.assertTrue(saved['can_move'])
+        status, result = self.request('POST', personal_reports + '/' + report['report_id'] + '/move',
+            {'workspace_id': self.workspace_id, 'version': saved['version']})
+        self.assertEqual(status, 200, result)
+        self.as_user('viewer')
+        self.assertEqual(self.request('GET', self.route('reports'))[1]['reports'], [])
+
+    def test_report_moves_require_owner_of_both_spaces_and_current_version(self):
+        self.join('member')
+        self.as_user('owner')
+        report = self.create_report(published=True)
+        personal = next(row for row in self.request('GET', '/api/workspaces')[1]['workspaces'] if row['personal'])
+        target = self.route('reports') + '/' + report['report_id'] + '/move'
+        for invalid in (None, False, '1', 0, report['version'] + 1):
+            self.assertEqual(self.request('POST', target, {'workspace_id': personal['workspace_id'], 'version': invalid})[0], 400)
+        self.assertEqual(self.request('POST', target, {'workspace_id': self.workspace_id, 'version': report['version']})[0], 400)
+        self.as_user('outsider')
+        other = self.request('POST', '/api/workspaces', {'name': 'Other owner'})[1]
+        self.as_user('owner')
+        self.forbidden('POST', target, {'workspace_id': other['workspace_id'], 'version': report['version']})
+        self.as_user('member')
+        member_report = self.request('GET', self.route('reports'))[1]['reports'][0]
+        self.assertFalse(member_report['can_move'])
+        self.forbidden('POST', target, {'workspace_id': personal['workspace_id'], 'version': report['version']})
+        self.as_user('owner')
+        self.assertEqual(self.request('GET', self.route('reports'))[1]['reports'][0]['report_id'], report['report_id'])
+
     def create_report(self, title='Evidence report', body='Verified evidence.', published=False):
         status, result = self.request('POST', self.route('reports'), {'title': title, 'body': body, 'published': published})
         self.assertEqual(status, 200, result)

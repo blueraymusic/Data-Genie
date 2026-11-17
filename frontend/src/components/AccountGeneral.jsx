@@ -130,7 +130,13 @@ export function AccountGeneral({ user, theme, toggle, session, mode, setMode }) 
               </div>
               <a
                 className="btn"
-                href={'/api/download?session_id=' + encodeURIComponent(session.session_id)}
+                href={
+                  session.database_id
+                    ? '/api/databases/' +
+                      encodeURIComponent(session.database_id) +
+                      '/download?format=sqlite'
+                    : '/api/download?session_id=' + encodeURIComponent(session.session_id)
+                }
                 download
               >
                 <Icon name="download" />

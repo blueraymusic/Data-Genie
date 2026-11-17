@@ -17,18 +17,31 @@ function available(node) {
   );
 }
 
-export function WorkspaceDialog({ title, description, busy, onClose, children, wide = false }) {
+export function WorkspaceDialog({
+  title,
+  description,
+  busy,
+  onClose,
+  children,
+  wide = false,
+  initialFocusSelector,
+}) {
   const titleId = useId(),
     descriptionId = useId(),
     panel = useRef(null);
   const { dismiss, closing } = useDismissMotion(panel, onClose);
   useEffect(() => {
     const previous = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const preferred = initialFocusSelector && panel.current?.querySelector(initialFocusSelector);
     const first =
+      (preferred && available(preferred) ? preferred : null) ||
       [...(panel.current?.querySelectorAll('input, select, textarea') || [])].find(available) ||
       [...(panel.current?.querySelectorAll('button') || [])].find(available);
     (first || panel.current)?.focus();
     return () => {
+      document.body.style.overflow = overflow;
       if (previous?.isConnected) previous.focus();
     };
   }, []);

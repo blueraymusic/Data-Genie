@@ -173,6 +173,11 @@ CREATE TABLE IF NOT EXISTS signup_verifications (
     expires_at INTEGER NOT NULL,
     attempts INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS password_resets (
+    token_hash TEXT PRIMARY KEY,
+    account_id INTEGER NOT NULL UNIQUE REFERENCES accounts(account_id) ON DELETE CASCADE,
+    expires_at INTEGER NOT NULL
+);
 CREATE UNIQUE INDEX IF NOT EXISTS ownership_transfer_pending ON ownership_transfers(workspace_id) WHERE status='pending';
 CREATE TABLE IF NOT EXISTS workspace_reports (
     report_id TEXT PRIMARY KEY,
@@ -184,6 +189,30 @@ CREATE TABLE IF NOT EXISTS workspace_reports (
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
     version INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS report_collaboration (
+    report_id TEXT PRIMARY KEY REFERENCES workspace_reports(report_id) ON DELETE CASCADE,
+    base_version INTEGER NOT NULL,
+    revision INTEGER NOT NULL DEFAULT 0,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS report_edit_operations (
+    report_id TEXT NOT NULL REFERENCES report_collaboration(report_id) ON DELETE CASCADE,
+    revision INTEGER NOT NULL,
+    operation_id TEXT NOT NULL,
+    field TEXT NOT NULL CHECK(field IN ('title','body')),
+    operation_json TEXT NOT NULL,
+    old_length INTEGER NOT NULL,
+    PRIMARY KEY(report_id,revision),
+    UNIQUE(report_id,operation_id)
+);
+CREATE TABLE IF NOT EXISTS report_live_editors (
+    report_id TEXT NOT NULL REFERENCES report_collaboration(report_id) ON DELETE CASCADE,
+    client_id TEXT NOT NULL,
+    account_id INTEGER NOT NULL REFERENCES accounts(account_id) ON DELETE CASCADE,
+    last_seen INTEGER NOT NULL,
+    PRIMARY KEY(report_id,client_id)
 );
 CREATE TABLE IF NOT EXISTS agent_tokens (
     token_id TEXT PRIMARY KEY,
@@ -295,6 +324,7 @@ CREATE TABLE IF NOT EXISTS sql_commands (
     request_id INTEGER NOT NULL REFERENCES requests(request_id),
     sql_text TEXT NOT NULL,
     summary TEXT NOT NULL DEFAULT '',
+    presentation_json TEXT,
     kind TEXT NOT NULL CHECK(kind IN ('DDL','DML','SELECT')),
     operation TEXT NOT NULL,
     requires_confirmation INTEGER NOT NULL CHECK(requires_confirmation IN (0,1)),
@@ -462,6 +492,8 @@ class Repository:
                     connection.execute("ALTER TABLE sessions ADD COLUMN conversation_after INTEGER NOT NULL DEFAULT 0")
                 if "summary" not in {row[1] for row in connection.execute("PRAGMA table_info(sql_commands)")}:
                     connection.execute("ALTER TABLE sql_commands ADD COLUMN summary TEXT NOT NULL DEFAULT ''")
+                if "presentation_json" not in {row[1] for row in connection.execute("PRAGMA table_info(sql_commands)")}:
+                    connection.execute("ALTER TABLE sql_commands ADD COLUMN presentation_json TEXT")
                 if "clarification_json" not in {row[1] for row in connection.execute("PRAGMA table_info(requests)")}:
                     connection.execute("ALTER TABLE requests ADD COLUMN clarification_json TEXT")
                 if "connection_id" not in {row[1] for row in connection.execute("PRAGMA table_info(databases)")}:
@@ -812,7 +844,7 @@ class Repository:
             row = connection.execute("SELECT * FROM requests WHERE session_id=? AND request_id>? ORDER BY request_id DESC LIMIT 1", (session_id, session["conversation_after"])).fetchone()
             return self._request_record(row).get("intent", "") if row else ""
 
-    def add_command(self, request_id, sql, kind, requires_confirmation, targets=(), operation=None, has_aggregation=False, summary=""):
+    def add_command(self, request_id, sql, kind, requires_confirmation, targets=(), operation=None, has_aggregation=False, summary="", presentation=None):
         kind = str(kind).upper().replace("_COMMAND", "")
         if kind not in {"DDL", "DML", "SELECT"}:
             raise RepositoryError("Command kind must be DDL, DML, or SELECT.")
@@ -840,9 +872,10 @@ class Repository:
                 for event in [_table_lifecycle(item["sql_text"])] if event]
             current_lifecycle = _table_lifecycle(sql)
             command_id = connection.execute("""
-                INSERT INTO sql_commands(request_id,sql_text,summary,kind,operation,requires_confirmation,confirmation_token,created_at)
-                VALUES(?,?,?,?,?,?,?,?)
-            """, (request_id, sql, str(summary or "")[:500], kind, operation, int(requires_confirmation), token, _now())).lastrowid
+                INSERT INTO sql_commands(request_id,sql_text,summary,presentation_json,kind,operation,requires_confirmation,confirmation_token,created_at)
+                VALUES(?,?,?,?,?,?,?,?,?)
+            """, (request_id, sql, str(summary or "")[:500], json.dumps(presentation, ensure_ascii=False, allow_nan=False) if presentation else None,
+                  kind, operation, int(requires_confirmation), token, _now())).lastrowid
             if kind == "DDL":
                 connection.execute("INSERT INTO ddl_commands VALUES(?,?)", (command_id, operation))
             elif kind == "DML":
@@ -878,6 +911,8 @@ class Repository:
         if row is None or (session_id is not None and row["session_id"] != session_id):
             raise RepositoryError("Unknown command for this session.")
         result = dict(row)
+        presentation = json.loads(result.pop("presentation_json", None) or "{}")
+        result.update({key: presentation[key] for key in ("visualization", "chart") if key in presentation})
         result["sql"] = result.pop("sql_text")
         result["requires_confirmation"] = bool(result["requires_confirmation"])
         result["targets"] = [dict(target) for target in connection.execute("SELECT table_id,table_name,access_type FROM command_targets WHERE command_id=? ORDER BY table_name,access_type", (command_id,))]
@@ -1025,6 +1060,26 @@ class Repository:
         with self._connection() as connection:
             self._session(connection, session_id)
             return connection.execute("SELECT COUNT(*) FROM requests r WHERE " + where, params).fetchone()[0]
+
+    def history_revision(self, session_id):
+        """Fingerprint history metadata without reading saved result payloads.
+
+        Indexed request/command joins keep result rows and large payload JSON out
+        of the status poll. Command outcomes are immutable after completion, so
+        counts by lifecycle state plus IDs detect new work and its completion.
+        """
+        with self._connection() as connection:
+            requests = connection.execute('''SELECT COUNT(*),COALESCE(MAX(request_id),0),
+                COALESCE(SUM(status='pending'),0),COALESCE(SUM(status='confirmed'),0),
+                COALESCE(SUM(status='declined'),0),COALESCE(SUM(status='executed'),0),
+                COALESCE(SUM(status='rejected'),0) FROM requests WHERE session_id=?''', (session_id,)).fetchone()
+            commands = connection.execute('''SELECT COUNT(*),COALESCE(MAX(c.command_id),0),
+                COALESCE(SUM(c.status='pending'),0),COALESCE(SUM(c.status='running'),0),
+                COALESCE(SUM(c.status='declined'),0),COALESCE(SUM(c.status='executed'),0),
+                COALESCE(SUM(c.status='failed'),0),COALESCE(MAX(v.result_id),0)
+                FROM requests r JOIN sql_commands c USING(request_id)
+                LEFT JOIN results v USING(command_id) WHERE r.session_id=?''', (session_id,)).fetchone()
+        return ':'.join(str(value) for value in (*requests, *commands))
 
     def history(self, session_id, search="", operation=None, limit=None, offset=0, request_id=None, pending_only=False):
         if limit is not None and (isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 100):

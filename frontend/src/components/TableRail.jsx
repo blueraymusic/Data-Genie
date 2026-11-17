@@ -8,6 +8,7 @@ export function TableRail({
   setSelected,
   onNewTable,
   onNavigate,
+  onClose,
   open,
   disabled,
 }) {
@@ -29,6 +30,11 @@ export function TableRail({
   }
   return (
     <aside className={'side' + (open ? ' open' : '')} id="tableRail">
+      {open && (
+        <button type="button" className="btn rail-close" onClick={onClose}>
+          Close tables
+        </button>
+      )}
       <div className="rail-connection">
         <div className="rail-heading">
           <span>

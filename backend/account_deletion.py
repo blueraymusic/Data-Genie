@@ -103,6 +103,12 @@ class AccountDeletion:
                             staged.append((path, destination))
                             connection.execute('INSERT INTO account_file_deletions VALUES(?)', (str(destination),))
                 # An anonymous, non-login identity retains report attribution.
+                # Keep reviewed snapshots for their existing audiences, but do
+                # not retain unreviewed working text or edit operations when
+                # their author leaves or the owned workspace becomes read-only.
+                connection.execute('''DELETE FROM report_collaboration WHERE report_id IN (
+                    SELECT report_id FROM workspace_reports WHERE author_id=?
+                    OR workspace_id IN (SELECT workspace_id FROM delete_workspaces))''', (account_id,))
                 cursor = connection.execute("INSERT INTO accounts(first_name,last_name,email,password_hash,created_at) VALUES('Deleted','account',?,'!deleted',?)", ('deleted-' + secrets.token_hex(16) + '@accounts.invalid', int(time.time())))
                 tombstone = cursor.lastrowid
                 connection.execute('UPDATE workspace_reports SET author_id=? WHERE author_id=?', (tombstone, account_id))

@@ -7,6 +7,8 @@ import { Icon } from '../components/Icon';
 import { useRequestWindow } from '../hooks/useRequestWindow';
 import { RequestWindowControls } from '../components/RequestWindowControls';
 import { databaseAccess } from '../lib/access';
+import { useAutosizeTextarea } from '../hooks/useAutosizeTextarea';
+import { useFileDrop } from '../hooks/useFileDrop';
 export default function AskPage({ workbench, selected, draft, setDraft, onNewTable }) {
   const textarea = useRef(null),
     feed = useRef(null),
@@ -34,17 +36,13 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
     workbench.busy ||
     workbench.pending ||
     workbench.workingCommands?.size > 0;
+  const fileDrop = useFileDrop({ disabled: blocked, onFiles: readFiles });
   const context = workbench.session.conversation_context;
   const contextTables = context?.tables || [];
   const changedTable = Boolean(
     selected && contextTables.length && !contextTables.includes(selected),
   );
-  useLayoutEffect(() => {
-    if (textarea.current) {
-      textarea.current.style.height = 'auto';
-      textarea.current.style.height = Math.min(textarea.current.scrollHeight, 150) + 'px';
-    }
-  }, [draft]);
+  useAutosizeTextarea(textarea, draft, workbench.session.session_id);
   useLayoutEffect(() => {
     if (requestWindow.viewingEarlier) return;
     const jumping = lastJump.current !== requestWindow.jumpVersion;
@@ -120,6 +118,55 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
     else result = await workbench.submit(text, false, 'gemini', selected);
     if (result && result.matched !== false) setAttachments([]);
   }
+  async function readFiles(files) {
+    if (blocked || !files.length) return;
+    const revision = fileRevision.current;
+    if (
+      files.length + attachments.length > 2 ||
+      files.reduce(
+        (sum, file) => sum + file.size,
+        attachments.reduce((sum, file) => sum + file.size, 0),
+      ) >
+        4 * 1024 * 1024
+    ) {
+      setValidation('Attach up to two files, 4 MB combined.');
+      return;
+    }
+    setReadingFiles(true);
+    try {
+      if (
+        files.some(
+          (file) =>
+            !['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type),
+        )
+      )
+        throw new Error('Use PDF, PNG, JPEG or WebP files.');
+      const loaded = await Promise.all(
+        files.map(
+          (file) =>
+            new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onerror = () => reject(new Error('Could not read the attachment.'));
+              reader.onload = () =>
+                resolve({
+                  name: file.name,
+                  size: file.size,
+                  mime_type: file.type,
+                  data: String(reader.result).split(',')[1],
+                });
+              reader.readAsDataURL(file);
+            }),
+        ),
+      );
+      if (revision !== fileRevision.current) return;
+      setAttachments((current) => [...current, ...loaded]);
+      setValidation('');
+    } catch (error) {
+      if (revision === fileRevision.current) setValidation(error.message);
+    } finally {
+      if (revision === fileRevision.current) setReadingFiles(false);
+    }
+  }
   return (
     <section id="v-ask" className={workbench.feed.length ? 'has-requests' : undefined}>
       <div className="workspace-intro">
@@ -194,7 +241,10 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
           />
         ))}
       </div>
-      <div className="composer">
+      <div
+        className={'composer' + (fileDrop.active ? ' is-file-drop-target' : '')}
+        {...fileDrop.handlers}
+      >
         {workbench.session.pending_intent && (
           <p className="pending-intent" title={workbench.session.pending_intent}>
             <strong>Working on:</strong> {workbench.session.pending_intent}
@@ -257,58 +307,10 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
               accept="application/pdf,image/png,image/jpeg,image/webp"
               multiple
               disabled={blocked}
-              onChange={async (event) => {
-                const revision = fileRevision.current;
+              onChange={(event) => {
                 const files = [...event.target.files];
                 event.target.value = '';
-                if (
-                  files.length + attachments.length > 2 ||
-                  files.reduce(
-                    (sum, file) => sum + file.size,
-                    attachments.reduce((sum, file) => sum + file.size, 0),
-                  ) >
-                    4 * 1024 * 1024
-                ) {
-                  setValidation('Attach up to two files, 4 MB combined.');
-                  return;
-                }
-                setReadingFiles(true);
-                try {
-                  if (
-                    files.some(
-                      (file) =>
-                        !['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(
-                          file.type,
-                        ),
-                    )
-                  )
-                    throw new Error('Use PDF, PNG, JPEG or WebP files.');
-                  const loaded = await Promise.all(
-                    files.map(
-                      (file) =>
-                        new Promise((resolve, reject) => {
-                          const reader = new FileReader();
-                          reader.onerror = () =>
-                            reject(new Error('Could not read the attachment.'));
-                          reader.onload = () =>
-                            resolve({
-                              name: file.name,
-                              size: file.size,
-                              mime_type: file.type,
-                              data: String(reader.result).split(',')[1],
-                            });
-                          reader.readAsDataURL(file);
-                        }),
-                    ),
-                  );
-                  if (revision !== fileRevision.current) return;
-                  setAttachments((current) => [...current, ...loaded]);
-                  setValidation('');
-                } catch (error) {
-                  if (revision === fileRevision.current) setValidation(error.message);
-                } finally {
-                  if (revision === fileRevision.current) setReadingFiles(false);
-                }
+                readFiles(files);
               }}
             />
           </label>
@@ -376,7 +378,7 @@ export default function AskPage({ workbench, selected, draft, setDraft, onNewTab
         )}
         <p className="composer-hint" id="composer-hint">
           {aiAvailable
-            ? 'Enter to ask · Shift + Enter for a new line · Changes wait for your OK.'
+            ? 'Enter to ask · Shift + Enter for a new line · Drop PDFs or images here · Changes wait for your OK.'
             : 'SQL works without AI. Choose the SQL tab to write a statement.'}
         </p>
       </div>

@@ -46,6 +46,10 @@ const questions = [
     'Can I work with my team?',
     'Yes. Choose “Create team workspace” on the database screen, then add databases and invite teammates using their account email and a private code. You choose what each person can do with each database.',
   ],
+  [
+    'Can an AI agent use my database safely?',
+    'Connect an MCP client, choose one workspace, and grant only the actions it needs. Database permissions still apply, and changes wait for human review in Data Genie. Revoke the connection from your account at any time.',
+  ],
 ];
 export default function HomePage() {
   const { user } = useAuth();
@@ -64,16 +68,17 @@ export default function HomePage() {
         <section className="home-hero" id="top" aria-labelledby="h1">
           <div className="wrap hero-layout">
             <div className="hero-copy">
-              <p className="eyebrow">Your words. Your data.</p>
+              <p className="eyebrow">For people, teams &amp; agents</p>
               <h1 id="h1">
                 Ask your database in <em>plain English.</em>
               </h1>
               <p className="hero-lede">
-                Ask a question. See the SQL and your answer. Changes always wait for your OK.
+                Explore your data with your team or an AI agent. See every SQL statement, choose who
+                has access, and approve changes before they run.
               </p>
               <div className="cta-row">
-                <Link href="/signup" className="btn btn-primary">
-                  Try Data Genie <Icon name="arrow" />
+                <Link href={user ? '/databases' : '/signup'} className="btn btn-primary">
+                  {user ? 'Go to my workspace' : 'Try Data Genie'} <Icon name="arrow" />
                 </Link>
                 <Link href={user ? '/databases' : '/signin'} className="btn btn-dark">
                   Open my database
@@ -86,6 +91,51 @@ export default function HomePage() {
             </div>
             <div className="hero-preview">
               <HeroDemo />
+            </div>
+          </div>
+        </section>
+        <section className="home-section home-control" aria-labelledby="control-h">
+          <div className="wrap">
+            <div className="section-heading centered">
+              <p className="eyebrow">You stay in control</p>
+              <h2 id="control-h">
+                One database. Clear <em>boundaries.</em>
+              </h2>
+            </div>
+            <div className="control-grid">
+              <div className="control-card">
+                <Icon name="check" />
+                <h3>Review every change</h3>
+                <p>
+                  Inspect the SQL and affected rows before approving. Find completed and declined
+                  requests in History.
+                </p>
+                <Link href="/#safety" className="inline-link">
+                  See the review flow <Icon name="arrow" />
+                </Link>
+              </div>
+              <div className="control-card">
+                <Icon name="layers" />
+                <h3>Share with your team</h3>
+                <p>
+                  Start in your private workspace. Move a database into a team, set access per
+                  person, and share approved reports.
+                </p>
+                <Link href={user ? '/workspaces' : '/signup'} className="inline-link">
+                  Set up a team <Icon name="arrow" />
+                </Link>
+              </div>
+              <div className="control-card">
+                <Icon name="workspace" />
+                <h3>Connect your agent</h3>
+                <p>
+                  Give an MCP client access to one workspace. Its requests follow your permissions
+                  and the same review process.
+                </p>
+                <Link href="/faq" className="inline-link">
+                  Explore agent access <Icon name="arrow" />
+                </Link>
+              </div>
             </div>
           </div>
         </section>

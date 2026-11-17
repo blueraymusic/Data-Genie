@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, rememberSession, savedSession } from '../lib/api';
 import { databaseAccess, canConfirmCommand } from '../lib/access';
+import { useLiveRefresh } from './useLiveRefresh';
 
 export function normalizeCommand(command) {
   return {
@@ -13,10 +14,16 @@ export function normalizeCommand(command) {
   };
 }
 export function normalizeRequest(request) {
+  const commands = (request.commands || []).map(normalizeCommand);
+  const completed =
+    commands.length > 0 &&
+    commands.every((command) => command.status === 'executed' && !command.error);
+  const failed = commands.some((command) => command.status === 'failed' || command.error);
   return {
     ...request,
     text: request.text || request.request_text || '',
-    commands: (request.commands || []).map(normalizeCommand),
+    commands,
+    ...(completed ? { status: 'executed', error: null } : failed ? { status: 'rejected' } : {}),
   };
 }
 
@@ -45,6 +52,8 @@ export function useWorkbench(user) {
   const active = useRef(null),
     version = useRef(0),
     statusVersion = useRef(0),
+    activity = useRef(0),
+    seenHistory = useRef(null),
     inFlight = useRef(false),
     commandLocks = useRef(new Set());
   const pending = feed.some((request) =>
@@ -53,7 +62,9 @@ export function useWorkbench(user) {
     ),
   );
   const adopt = useCallback(async (data) => {
-    const revision = ++version.current;
+    const revision = ++version.current,
+      activityRevision = activity.current;
+    seenHistory.current = null;
     active.current = data.session_id;
     rememberSession(data.session_id);
     setSession(data);
@@ -64,8 +75,10 @@ export function useWorkbench(user) {
       const history = await api('/api/history?limit=50&include_pending=1', {
         sessionId: data.session_id,
       });
-      if (version.current === revision)
+      if (version.current === revision && activity.current === activityRevision) {
         setFeed(restoredFeed(history, data.conversation_after || 0));
+        seenHistory.current = { sessionId: data.session_id, revision: data.history_revision };
+      }
     } catch (error) {
       if (version.current === revision)
         setMessage('The database is open, but History could not be loaded. ' + error.message);
@@ -100,10 +113,10 @@ export function useWorkbench(user) {
       active.current = null;
     };
   }, [user.account_id, adopt]);
-  const refresh = useCallback(async (id) => {
+  const refresh = useCallback(async (id, signal) => {
     const revision = version.current;
     const statusRevision = ++statusVersion.current;
-    const current = () => active.current === id && version.current === revision;
+    const current = () => !signal?.aborted && active.current === id && version.current === revision;
     const forget = (message) => {
       version.current++;
       active.current = null;
@@ -113,7 +126,7 @@ export function useWorkbench(user) {
       setMessage(message);
     };
     try {
-      const data = await api('/api/status', { sessionId: id });
+      const data = await api('/api/status', { sessionId: id, signal });
       if (current() && statusVersion.current === statusRevision) {
         if (data.session_required || data.ended_at) {
           forget('Your previous session has ended. Choose a database to continue.');
@@ -121,6 +134,7 @@ export function useWorkbench(user) {
         }
         setSession(data);
         if (!databaseAccess(data).canRead) setFeed([]);
+        return data;
       }
     } catch (error) {
       if (!current() || statusVersion.current !== statusRevision) return;
@@ -135,23 +149,68 @@ export function useWorkbench(user) {
       throw error;
     }
   }, []);
-  useEffect(() => {
-    if (!session?.session_id || !databaseAccess(session).canRead) return;
-    const check = () => {
-      if (document.visibilityState === 'hidden') return;
-      refresh(session.session_id).catch((error) => {
-        if (error.status !== 403) setMessage(error.message);
+  useLiveRefresh(
+    async (signal) => {
+      const id = active.current,
+        revision = version.current,
+        activityRevision = activity.current;
+      if (!id || inFlight.current || commandLocks.current.size) return;
+      const status = await refresh(id, signal);
+      if (
+        !status ||
+        signal.aborted ||
+        active.current !== id ||
+        version.current !== revision ||
+        activity.current !== activityRevision ||
+        inFlight.current ||
+        commandLocks.current.size
+      )
+        return;
+      if (
+        typeof status.history_revision === 'string' &&
+        seenHistory.current?.sessionId === id &&
+        seenHistory.current.revision === status.history_revision
+      )
+        return;
+      const history = await api('/api/history?limit=50&include_pending=1', {
+        sessionId: id,
+        signal,
       });
-    };
-    const timer = setInterval(check, 15000);
-    window.addEventListener('focus', check);
-    document.addEventListener('visibilitychange', check);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener('focus', check);
-      document.removeEventListener('visibilitychange', check);
-    };
-  }, [session?.session_id, session?.access?.role, session?.access?.permissions?.read, refresh]);
+      if (
+        signal.aborted ||
+        active.current !== id ||
+        version.current !== revision ||
+        activity.current !== activityRevision ||
+        inFlight.current ||
+        commandLocks.current.size
+      )
+        return;
+      const boundary = status.conversation_after || 0;
+      const saved = restoredFeed(history, boundary);
+      seenHistory.current = { sessionId: id, revision: status.history_revision };
+      setFeed((previous) => {
+        const merged = new Map(
+          previous
+            .filter(
+              (request) =>
+                !Number.isFinite(Number(request.request_id)) ||
+                Number(request.request_id) > boundary,
+            )
+            .map((request) => [request.request_id, request]),
+        );
+        saved.forEach((request) => merged.set(request.request_id, request));
+        const next = recentFeed(
+          [...merged.values()].sort((a, b) => Number(a.request_id) - Number(b.request_id)),
+        );
+        return JSON.stringify(previous) === JSON.stringify(next) ? previous : next;
+      });
+    },
+    {
+      enabled: Boolean(session?.session_id && databaseAccess(session).canRead),
+      key: session?.session_id,
+      events: ['dg-workspaces-changed', 'dg-databases-changed'],
+    },
+  );
   const open = useCallback(
     async (payload, resumeId) => {
       if (inFlight.current) throw new Error('Wait for the current request to finish.');
@@ -241,6 +300,7 @@ export function useWorkbench(user) {
       setBusy(true);
       setMessage('');
       const temporary = 'sending-' + Date.now();
+      activity.current++;
       setFeed((previous) =>
         recentFeed([
           ...previous,
@@ -280,7 +340,11 @@ export function useWorkbench(user) {
           raw_sql: raw,
           submitted_at: new Date().toISOString(),
           status:
-            data.matched === false
+            data.matched === false ||
+            commands.some(
+              (command) =>
+                command.status === 'failed' || command.error || command.matched === false,
+            )
               ? 'rejected'
               : commands.some((command) => command.requires_confirmation)
                 ? 'pending'
@@ -302,10 +366,17 @@ export function useWorkbench(user) {
         return data;
       } catch (error) {
         if (active.current === id && version.current === revision) {
+          const outcomeUnknown = !error.status || error.status >= 500;
           setFeed((previous) =>
             previous.map((item) =>
               item.request_id === temporary
-                ? { ...item, sending: false, status: 'rejected', error: error.message }
+                ? {
+                    ...item,
+                    sending: false,
+                    status: outcomeUnknown ? 'unverified' : 'rejected',
+                    outcome_unknown: outcomeUnknown,
+                    error: error.message,
+                  }
                 : item,
             ),
           );
@@ -327,6 +398,7 @@ export function useWorkbench(user) {
         return;
       }
       commandLocks.current.add(command.command_id);
+      activity.current++;
       setWorkingCommands(new Set(commandLocks.current));
       setMessage('');
       try {
@@ -433,6 +505,7 @@ export function useWorkbench(user) {
     const id = active.current,
       revision = version.current;
     if (!id || pending || inFlight.current || commandLocks.current.size) return false;
+    activity.current++;
     inFlight.current = true;
     setBusy(true);
     setMessage('');

@@ -64,3 +64,16 @@ class SignupVerificationTests(HttpHarness, unittest.TestCase):
             self.start()
         with workbench.get_repository()._connection() as connection:
             self.assertEqual(connection.execute('SELECT COUNT(*) FROM signup_verifications').fetchone()[0], 0)
+
+    def test_existing_account_gets_signin_guidance_only_after_mailbox_proof(self):
+        self.payload['email'] = self.account['email']
+        challenge, code = self.start()
+        self.assertEqual(set(challenge), {'verification_required', 'challenge', 'expires_at', 'email'})
+        before_cookie = self.cookie
+        status, response = self.request('POST', '/api/auth/verify-email', {'challenge': challenge['challenge'], 'code': code})
+        self.assertEqual(status, 200)
+        self.assertTrue(response['sign_in_required'])
+        self.assertIn('reset your password', response['message'])
+        self.assertNotIn('Set-Cookie:', self.last_headers)
+        self.assertEqual(self.cookie, before_cookie)
+        self.assertEqual(self.request('POST', '/api/auth/verify-email', {'challenge': challenge['challenge'], 'code': code})[0], 400)

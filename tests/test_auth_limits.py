@@ -78,11 +78,11 @@ class AuthAdmissionTests(unittest.TestCase):
                 self.accounts.login("another@example.test", "wrong", "192.0.2.11")
             self.assertEqual(verify.call_count, 31)
 
-    def test_existing_five_attempt_pair_limit_is_preserved(self):
-        self.assertEqual(authentication.MAX_ATTEMPTS, 5)
+    def test_three_failed_password_attempts_apply_across_client_addresses(self):
+        self.assertEqual(authentication.MAX_ATTEMPTS, 3)
         user = self.register(client="seed")
         with patch.object(authentication, "password_matches", return_value=False) as verify:
-            for _ in range(5):
+            for _ in range(authentication.MAX_ATTEMPTS):
                 with self.assertRaises(authentication.LoginRequired):
                     self.accounts.login(" ADA@example.test ", "wrong", "192.0.2.10")
             verify.reset_mock()
@@ -90,9 +90,10 @@ class AuthAdmissionTests(unittest.TestCase):
             with self.assertRaises(authentication.TooManyAttempts):
                 self.accounts.login("ada@example.test", "correct", "192.0.2.10")
             verify.assert_not_called()
-            self.assertEqual(self.accounts.login("ada@example.test", "correct", "192.0.2.11"), user)
+            with self.assertRaises(authentication.TooManyAttempts):
+                self.accounts.login("ada@example.test", "correct", "192.0.2.11")
         # A pair-denied request still spends the shared budget for its source IP.
-        self.assertEqual(self.bucket("login", "192.0.2.10")["attempts"], 6)
+        self.assertEqual(self.bucket("login", "192.0.2.10")["attempts"], 4)
 
     def test_successful_logins_do_not_reset_the_shared_ip_budget(self):
         user = self.register(client="seed")
@@ -127,11 +128,20 @@ class AuthAdmissionTests(unittest.TestCase):
         row = self.bucket("register", "192.0.2.10")
         self.assertEqual((row["started_at"], row["attempts"]), (self.now + 900, 1))
 
+    def test_auth_cleanup_preserves_daily_email_delivery_budgets(self):
+        from backend.agent_tokens import AgentTokens
+        budget = AgentTokens(self.repository)
+        budget.reserve('password-reset-email-delivery', 1, 86400)
+        self.clock.return_value = self.now + 901
+        self.register()
+        with self.assertRaises(authentication.TooManyAttempts):
+            budget.reserve('password-reset-email-delivery', 1, 86400)
+
     def test_repository_recreation_preserves_registration_and_login_lockouts(self):
         for index in range(5):
             self.register(f"reader-{index}@example.test")
         with patch.object(authentication, "password_matches", return_value=False):
-            for _ in range(5):
+            for _ in range(authentication.MAX_ATTEMPTS):
                 with self.assertRaises(authentication.LoginRequired):
                     self.accounts.login("missing@example.test", "wrong", "192.0.2.10")
         reopened = authentication.Accounts(Repository(self.path))
@@ -182,7 +192,7 @@ class AuthAdmissionTests(unittest.TestCase):
     def test_concurrent_login_pair_cannot_over_admit_before_password_verification(self):
         self.register(client="seed")
         start = threading.Barrier(12)
-        verifying = threading.Barrier(5)
+        verifying = threading.Barrier(authentication.MAX_ATTEMPTS)
 
         def wrong_password(password, encoded):
             verifying.wait(timeout=5)
@@ -201,9 +211,9 @@ class AuthAdmissionTests(unittest.TestCase):
         with patch.object(authentication, "password_matches", side_effect=wrong_password) as verify:
             with ThreadPoolExecutor(max_workers=12) as executor:
                 outcomes = list(executor.map(attempt, range(12)))
-        self.assertEqual(outcomes.count("wrong"), 5)
-        self.assertEqual(outcomes.count("limited"), 7)
-        self.assertEqual(verify.call_count, 5)
+        self.assertEqual(outcomes.count("wrong"), 3)
+        self.assertEqual(outcomes.count("limited"), 9)
+        self.assertEqual(verify.call_count, 3)
 
 
 class AuthLimitHttpTests(HttpHarness, unittest.TestCase):

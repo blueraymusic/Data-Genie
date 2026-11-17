@@ -96,6 +96,44 @@ class WorkbenchTests(unittest.TestCase):
         self.confirm(response)
         self.assertEqual(self.rows("SELECT id FROM sales"), [(2,)])
 
+    def test_ai_chart_uses_actual_result_fields_and_is_saved_in_history(self):
+        chart = {'type':'line','x':'day','y':'total_sales','title':'Daily sales'}
+        plan = [{'sql':'SELECT sale_date AS day, SUM(revenue) AS total_sales FROM sales GROUP BY sale_date ORDER BY sale_date',
+                 'summary':'Daily sales.', 'visualization':'line', 'chart':chart}]
+        with patch.object(app.gemini_provider, 'generate_plans', return_value=plan):
+            response = app.submit_request(self.session_id, 'chart daily sales', interpreter='gemini')
+        self.assertEqual(response['chart'], chart)
+        self.assertEqual(response['rows'], [{'day':'2026-01-01','total_sales':20.0},{'day':'2026-01-02','total_sales':60.0}])
+        stored = app.get_repository().get_request(response['request_id'])['commands'][0]['result']['payload']
+        self.assertEqual(stored['chart'], chart)
+
+    def test_invalid_chart_fields_do_not_discard_successful_query(self):
+        plan = [{'sql':'SELECT id, name FROM products', 'summary':'Products.', 'visualization':'bar',
+                 'chart':{'type':'bar','x':'invented','y':'id','title':'Products'}}]
+        with patch.object(app.gemini_provider, 'generate_plans', return_value=plan):
+            response = app.submit_request(self.session_id, 'chart all products', interpreter='gemini')
+        self.assertEqual(response['status'], 'executed')
+        self.assertEqual(response['visualization'], 'table')
+        self.assertNotIn('chart', response)
+        self.assertEqual(response['rows'], [{'id':1,'name':'Pen'}])
+
+    def test_chart_hint_survives_a_deferred_read_and_repository_reload(self):
+        chart = {'type':'bar','x':'sale_date','y':'total_sales','title':'Sales by day'}
+        plans = [
+            {'sql':'UPDATE sales SET revenue=30 WHERE id=1', 'summary':'Change the sale.', 'visualization':'table'},
+            {'sql':'SELECT sale_date, SUM(revenue) AS total_sales FROM sales GROUP BY sale_date',
+             'summary':'Sales by day.', 'visualization':'bar', 'chart':chart},
+        ]
+        with patch.object(app.gemini_provider, 'generate_plans', return_value=plans):
+            response = app.submit_request(self.session_id, 'change first sale to 30 and chart sales by day', interpreter='gemini')
+        self.confirm(response['commands'][0])
+        # A later request reads the stored plan, not the provider's original object.
+        app._repositories.pop(Path(app.REPOSITORY_PATH).resolve(), None)
+        read = self.confirm(response['commands'][1])
+        self.assertEqual(read['chart'], chart)
+        self.assertEqual(read['visualization'], 'bar')
+        self.assertEqual(read['rows'][0]['total_sales'], 30)
+
     def test_gemini_failure_rejects_without_keyword_fallback(self):
         with patch.object(app.gemini_provider, "generate_plans", side_effect=app.gemini_provider.GeminiError("Gemini unavailable")):
             response = app.submit_request(self.session_id, "count sales", interpreter="gemini")
@@ -372,6 +410,18 @@ class WorkbenchTests(unittest.TestCase):
         self.assertEqual(status["source"], "attached")
         sales = next(table for table in status["table_details"] if table["name"] == "sales")
         self.assertIn("revenue", [column["name"] for column in sales["columns"]])
+
+    def test_status_history_revision_changes_after_saved_outcomes_and_conversation_reset(self):
+        with app.session_scope(self.session_id):
+            before = app.database_info()['history_revision']
+        app.submit_request(self.session_id, 'count sales')
+        with app.session_scope(self.session_id):
+            executed = app.database_info()['history_revision']
+        self.assertNotEqual(before, executed)
+        app.reset_conversation(self.session_id)
+        with app.session_scope(self.session_id):
+            reset = app.database_info()['history_revision']
+        self.assertNotEqual(executed, reset)
 
 
 if __name__ == "__main__":

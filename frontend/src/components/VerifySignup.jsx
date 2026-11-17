@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { Link } from '../lib/router';
 
 export function VerifySignup({ initial, onVerified, onRestart }) {
   const { authenticate } = useAuth();
@@ -8,6 +9,7 @@ export function VerifySignup({ initial, onVerified, onRestart }) {
     [code, setCode] = useState(''),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
+    [signInMessage, setSignInMessage] = useState(''),
     [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -21,7 +23,12 @@ export function VerifySignup({ initial, onVerified, onRestart }) {
     setBusy(true);
     setError('');
     try {
-      await authenticate('verify-email', { challenge: challenge.challenge, code });
+      const result = await authenticate('verify-email', { challenge: challenge.challenge, code });
+      if (result?.sign_in_required) {
+        setSignInMessage(result.message);
+        setBusy(false);
+        return;
+      }
       onVerified();
     } catch (error) {
       setError(error.message);
@@ -47,6 +54,21 @@ export function VerifySignup({ initial, onVerified, onRestart }) {
       setBusy(false);
     }
   }
+  if (signInMessage)
+    return (
+      <section aria-label="Email verified">
+        <h2>Your email is verified.</h2>
+        <p role="status">{signInMessage}</p>
+        <div className="account-profile-actions">
+          <Link className="btn pri" href="/signin">
+            Log in
+          </Link>
+          <Link className="btn sec" href="/forgot-password">
+            Reset password
+          </Link>
+        </div>
+      </section>
+    );
   return (
     <form onSubmit={verify}>
       <h2>Check your email.</h2>

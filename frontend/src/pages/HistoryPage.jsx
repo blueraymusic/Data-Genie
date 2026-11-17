@@ -8,6 +8,7 @@ import '../styles/history.css';
 import { canConfirmCommand, databaseAccess } from '../lib/access';
 import { useEnterMotion } from '../hooks/useMotion';
 import { useRouter } from '../lib/router';
+import { useLiveRefresh } from '../hooks/useLiveRefresh';
 
 const PAGE_SIZE = 20;
 
@@ -236,6 +237,57 @@ export default function HistoryPage({ workbench, onReuse }) {
       });
     return () => controller.abort();
   }, [id, target, filters, revision, offset]);
+  useLiveRefresh(
+    async (signal) => {
+      if (!page || workbench.busy || workbench.workingCommands.size) return;
+      const query = new URLSearchParams({
+        history_session_id: target,
+        ...filters,
+        limit: PAGE_SIZE,
+        offset,
+      });
+      const [listed, history] = await Promise.allSettled([
+        api('/api/sessions', { signal }),
+        target ? api('/api/history?' + query, { sessionId: id, signal }) : Promise.resolve(null),
+      ]);
+      if (signal.aborted) return;
+      if (listed.status === 'fulfilled') {
+        setSessions(listed.value.sessions || []);
+        setSessionsError('');
+      }
+      if (history.status === 'rejected') {
+        if (history.reason.status === 403) {
+          setPage({ requests: [], total: 0, has_more: false });
+          setError(history.reason.message);
+        }
+        return;
+      }
+      const data = history.value;
+      if (!data) return;
+      setError('');
+      const paginated = Number.isInteger(data.total),
+        total = paginated ? data.total : data.requests.length;
+      if (total > 0 && offset >= total) {
+        setOffset(Math.floor((total - 1) / PAGE_SIZE) * PAGE_SIZE);
+        return;
+      }
+      const requests = (
+        paginated ? data.requests : data.requests.slice(offset, offset + PAGE_SIZE)
+      ).map(normalizeRequest);
+      lastTotal.current = total;
+      const next = {
+        requests,
+        total,
+        has_more: paginated ? data.has_more : offset + requests.length < total,
+      };
+      setPage((previous) => (JSON.stringify(previous) === JSON.stringify(next) ? previous : next));
+    },
+    {
+      enabled: !workbench.busy && !workbench.workingCommands.size,
+      key: JSON.stringify([id, target, filters, offset, revision]),
+      events: ['dg-databases-changed'],
+    },
+  );
   async function decide(command, decline) {
     await workbench.decide(command, decline);
     setRevision((value) => value + 1);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatTime } from '../lib/api';
 import {
   invitationToken,
@@ -103,6 +103,17 @@ export function WorkspaceInvitations({
   );
 }
 
+function InlineInvitations({ children, onClose }) {
+  return (
+    <div className="inline-invitations" role="region" aria-label="Workspace invitations">
+      <button type="button" className="text-button" onClick={onClose}>
+        Back to invitations
+      </button>
+      {children}
+    </div>
+  );
+}
+
 export function WorkspaceInviteManager({
   invitations,
   disabled,
@@ -111,9 +122,16 @@ export function WorkspaceInviteManager({
   draft,
   setDraft,
   error,
+  inline = false,
 }) {
+  const InvitationSurface = inline ? InlineInvitations : WorkspaceDialog;
+  const inviteTrigger = useRef(null);
   const { email, role, link } = draft;
   const [composing, setComposing] = useState(false);
+  const [page, setPage] = useState(1);
+  const pages = Math.max(1, Math.ceil(invitations.length / 3));
+  const currentPage = Math.min(page, pages);
+  useEffect(() => setPage((value) => Math.min(value, pages)), [pages]);
   const [reviewing, setReviewing] = useState(false);
   const [notice, setNotice] = useState('');
   async function invite(event) {
@@ -126,6 +144,7 @@ export function WorkspaceInviteManager({
     );
     if (result?.token) {
       setComposing(false);
+      setReviewing(false);
       const query = new URLSearchParams({ invite: result.invitation_id, token: result.token });
       setDraft((current) => ({
         ...current,
@@ -167,32 +186,41 @@ export function WorkspaceInviteManager({
               <button
                 className="text-button workspace-heading-count"
                 disabled={disabled}
-                onClick={() => setReviewing(true)}
+                onClick={() => {
+                  setReviewing(true);
+                  setComposing(false);
+                }}
               >
                 {invitations.length} pending
               </button>
             )}
           </h2>
-          <p className="small muted">
-            Invite someone by their account email, then share the code privately. They’ll see the
-            invitation when they log in. No emails are sent.
-          </p>
+          <p className="small muted">Share invitation codes privately. No email is sent.</p>
         </div>
         {!composing && (
-          <button className="btn pri" disabled={disabled} onClick={() => setComposing(true)}>
+          <button
+            ref={inviteTrigger}
+            className="btn pri"
+            disabled={disabled}
+            onClick={() => {
+              setComposing(true);
+              setReviewing(false);
+            }}
+          >
             <Icon name="plus" />
             Invite a teammate
           </button>
         )}
       </header>
       {(composing || reviewing || link) && (
-        <WorkspaceDialog
+        <InvitationSurface
           title="Workspace invitations"
           busy={disabled}
           onClose={() => {
             setComposing(false);
             setReviewing(false);
             setDraft((current) => ({ ...current, link: null }));
+            if (inline) requestAnimationFrame(() => inviteTrigger.current?.focus());
           }}
         >
           {notice && (
@@ -251,7 +279,7 @@ export function WorkspaceInviteManager({
               </p>
             </form>
           )}
-          {link && (
+          {link && (!inline || (!composing && !reviewing)) && (
             <div className="workspace-private-invite">
               <p className="workspace-invite-code-heading" role="status">
                 <strong>Invitation code ready for {link.email}</strong>
@@ -295,28 +323,51 @@ export function WorkspaceInviteManager({
               </details>
             </div>
           )}
-          {invitations.length > 0 && (
-            <ul className="workspace-pending-invitations">
-              {invitations.map((invitation) => (
-                <li key={invitation.invitation_id}>
+          {invitations.length > 0 && (!inline || (reviewing && !composing)) && (
+            <>
+              <ul className="workspace-pending-invitations">
+                {invitations.slice((currentPage - 1) * 3, currentPage * 3).map((invitation) => (
+                  <li key={invitation.invitation_id}>
+                    <span>
+                      {invitation.email}
+                      <small>
+                        {invitation.role} · Expires {invitationExpiry(invitation.expires_at)}
+                      </small>
+                    </span>
+                    <button
+                      className="text-button workspace-remove"
+                      disabled={disabled}
+                      onClick={() => revoke(invitation)}
+                    >
+                      Revoke invitation
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {pages > 1 && (
+                <nav className="person-picker-pagination" aria-label="Invitation pages">
                   <span>
-                    {invitation.email}
-                    <small>
-                      {invitation.role} · Expires {invitationExpiry(invitation.expires_at)}
-                    </small>
+                    {currentPage} of {pages}
                   </span>
                   <button
-                    className="text-button workspace-remove"
-                    disabled={disabled}
-                    onClick={() => revoke(invitation)}
+                    className="btn"
+                    disabled={currentPage === 1}
+                    onClick={() => setPage(currentPage - 1)}
                   >
-                    Revoke invitation
+                    Previous invitations
                   </button>
-                </li>
-              ))}
-            </ul>
+                  <button
+                    className="btn"
+                    disabled={currentPage === pages}
+                    onClick={() => setPage(currentPage + 1)}
+                  >
+                    Next invitations
+                  </button>
+                </nav>
+              )}
+            </>
           )}
-        </WorkspaceDialog>
+        </InvitationSurface>
       )}
       {!invitations.length && !composing && !link && (
         <p className="small muted workspace-no-invitations">

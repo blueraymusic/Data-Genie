@@ -1,6 +1,10 @@
 """HTTP workspace endpoints; all mutations use WorkspaceStore's live owner checks."""
 
 import re
+import base64
+from pathlib import Path
+import tempfile
+from urllib.parse import parse_qs, urlparse
 
 from . import workbench
 from .reports import ReportStore
@@ -27,8 +31,48 @@ def attach_session(account_id, workspace_id, result):
         return workbench.database_info()
 
 
+def create_database(user, payload):
+    """Serialize name reservation, file creation and workspace attachment."""
+    account_id = user['account_id']
+    identity = (user['first_name'], user['last_name'], user['email'])
+    mode = payload.get('database_mode')
+    if mode is None and payload.get('use_demo') is True:
+        mode = 'demo'
+    with AUTHORIZATION_LOCK:
+        workspace_id = owned_workspace(account_id, payload.get('workspace_id'))
+        if mode == 'postgresql':
+            name = workbench.connection_config(payload)['name']
+        elif mode in {'demo', 'sample'}:
+            name = 'shop.sqlite'
+        elif mode in {'create', 'upload'}:
+            name = workbench.database_filename(payload.get('name' if mode == 'upload' else 'database_name'))
+        else:
+            raise ValueError('Choose a database: create a new one, attach a SQLite file, or explicitly use the demo.')
+        store().assert_database_name(account_id, workspace_id, name)
+        if mode == 'postgresql':
+            result = workbench.start_postgres_session(account_id, payload)
+        elif mode in {'demo', 'sample'}:
+            result = workbench.start_sample_session(*identity, account_id=account_id)
+        elif mode == 'create':
+            result = workbench.create_database_session(*identity, name=name, starter=payload.get('starter', False) is True, account_id=account_id)
+        else:
+            contents = base64.b64decode(payload.get('contents', ''), validate=True)
+            result = workbench.start_uploaded_session(*identity, name, contents, account_id=account_id)
+        return attach_session(account_id, workspace_id, result)
+
+
 def get(handler, path, user):
     account_id = user["account_id"]
+    database_download = re.fullmatch(r'/api/databases/([1-9][0-9]*)/download', path)
+    if database_download:
+        from .database_lifecycle import export_database
+        format = parse_qs(urlparse(handler.path).query).get('format', ['sqlite'])[0]
+        with tempfile.TemporaryDirectory(prefix='data-genie-export-') as directory:
+            destination = Path(directory) / 'export'
+            name = export_database(workbench.get_repository(), account_id, int(database_download[1]), destination, format)
+            extension, content_type = {'sqlite': ('.sqlite3', 'application/vnd.sqlite3'), 'csv': ('.zip', 'application/zip'), 'sql': ('.sql', 'application/sql')}[format]
+            handler.send_body(destination.read_bytes(), content_type, filename=Path(name).stem + extension)
+        return True
     transfer = re.fullmatch(r'/api/ownership-transfers/([A-Za-z0-9_-]+)', path)
     if transfer:
         from .ownership_transfers import OwnershipTransfers
@@ -40,6 +84,17 @@ def get(handler, path, user):
     reports = re.fullmatch(r"/api/workspaces/([A-Za-z0-9-]+)/reports", path)
     if reports:
         handler.json(ReportStore(workbench.get_repository()).list_reports(account_id, reports[1]))
+        return True
+    report_live = re.fullmatch(r"/api/workspaces/([A-Za-z0-9-]+)/reports/([A-Za-z0-9-]+)/live", path)
+    if report_live:
+        from .report_collaboration import ReportCollaboration
+        query = parse_qs(urlparse(handler.path).query)
+        try:
+            after = int(query.get('after', ['0'])[0])
+        except (ValueError, TypeError):
+            raise ValueError('Choose a valid live report revision.') from None
+        handler.json(ReportCollaboration(workbench.get_repository()).live(
+            account_id, report_live[1], report_live[2], after, query.get('client_id', [''])[0]))
         return True
     report_download = re.fullmatch(r"/api/workspaces/([A-Za-z0-9-]+)/reports/([A-Za-z0-9-]+)/pdf", path)
     if report_download:
@@ -59,6 +114,12 @@ def get(handler, path, user):
 
 
 def post(handler, path, user):
+    database_delete = re.fullmatch(r'/api/databases/([1-9][0-9]*)/delete', path)
+    if database_delete:
+        from .database_lifecycle import remove_database
+        payload = handler.read_json(4096)
+        handler.json(remove_database(workbench.get_repository(), user['account_id'], int(database_delete[1]), payload.get('name')))
+        return True
     transfer = re.fullmatch(r'/api/ownership-transfers/([A-Za-z0-9_-]+)/(accept|decline|cancel)', path)
     start = re.fullmatch(r'/api/workspaces/([A-Za-z0-9-]+)/ownership-transfer', path)
     if transfer or start:
@@ -89,10 +150,20 @@ def post(handler, path, user):
                   else service.save_report(account_id, reports[1], payload))
         handler.json(result)
         return True
+    report_live = re.fullmatch(r"/api/workspaces/([A-Za-z0-9-]+)/reports/([A-Za-z0-9-]+)/live", path)
+    if report_live:
+        from .report_collaboration import ReportCollaboration
+        handler.json(ReportCollaboration(workbench.get_repository()).edit(account_id, report_live[1], report_live[2], payload))
+        return True
     report_delete = re.fullmatch(r"/api/workspaces/([A-Za-z0-9-]+)/reports/([A-Za-z0-9-]+)/delete", path)
     if report_delete:
         handler.json(ReportStore(workbench.get_repository()).delete_report(
             account_id, report_delete[1], report_delete[2], payload.get('version')))
+        return True
+    report_move = re.fullmatch(r"/api/workspaces/([A-Za-z0-9-]+)/reports/([A-Za-z0-9-]+)/move", path)
+    if report_move:
+        handler.json(ReportStore(workbench.get_repository()).move_report(
+            account_id, report_move[1], report_move[2], payload.get('workspace_id'), payload.get('version')))
         return True
     match = re.fullmatch(r"/api/workspaces/([A-Za-z0-9-]+)/(invite|members|remove|grants|invitations/revoke|open|attach|delete)", path)
     if not match:

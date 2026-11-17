@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { useEnterMotion } from '../hooks/useMotion';
+import { useAutosizeTextarea } from '../hooks/useAutosizeTextarea';
 
 const template = 'Summary\n\nKey findings\n• \n\nEvidence\n\nNext steps\n\nLimitations\n';
 
@@ -20,11 +21,16 @@ export function ReportEditor({
   generate,
   save,
   onClose,
+  live,
 }) {
+  const bodyInput = useRef(null);
+  const sourceInput = useRef(null);
   const titleInput = useRef(null),
     sheet = useRef(null);
   const assistantId = useId();
   const [preview, setPreview] = useState(false);
+  useAutosizeTextarea(bodyInput, draft.body, preview);
+  useAutosizeTextarea(sourceInput, source, ai);
   const words = draft.body.trim() ? draft.body.trim().split(/\s+/u).length : 0;
   useEnterMotion(sheet, preview ? 'preview' : 'write');
   useEffect(() => {
@@ -88,6 +94,7 @@ export function ReportEditor({
               <label>
                 Source notes or query results
                 <textarea
+                  ref={sourceInput}
                   rows={5}
                   maxLength={12000}
                   value={source}
@@ -112,10 +119,50 @@ export function ReportEditor({
           )}
           <p className="report-writing-note">
             <Icon name="check" />
-            Review, then share. Nothing is saved or shared automatically.
+            {live?.active
+              ? 'Typing syncs with your coauthor. Save report to update the reviewed version.'
+              : 'Review, then share. Nothing is saved or shared automatically.'}
           </p>
         </aside>
         <div className="report-editor-main">
+          {live?.active ? (
+            <div className="report-live-status" aria-label="Live report editing">
+              <span
+                className={'report-live-dot' + (live.error ? ' is-error' : '')}
+                aria-hidden="true"
+              />
+              <span>
+                {!live.ready
+                  ? 'Connecting live draft…'
+                  : live.error
+                    ? 'Sync interrupted · Your writing is kept here'
+                    : live.pending
+                      ? 'Live draft · Syncing typing…'
+                      : 'Live draft · All typing synced'}
+              </span>
+              {live.collaborators.length > 0 && (
+                <strong>
+                  Editing with{' '}
+                  {live.collaborators
+                    .map((person) =>
+                      [person.first_name, person.last_name].filter(Boolean).join(' '),
+                    )
+                    .join(', ')}
+                </strong>
+              )}
+              <small>
+                Typing updates this working draft for its author and owner. Save report to update
+                the reviewed version.
+              </small>
+              {live.error && <p role="alert">{live.error}</p>}
+            </div>
+          ) : (
+            !draft.report_id && (
+              <p className="report-live-intro">
+                Save this draft to edit it live with its author and workspace owner.
+              </p>
+            )
+          )}
           <div className="report-document-toolbar">
             <div className="report-view-switch" role="group" aria-label="Report view">
               <button type="button" aria-pressed={!preview} onClick={() => setPreview(false)}>
@@ -149,6 +196,7 @@ export function ReportEditor({
                   <span>Report title</span>
                   <input
                     required
+                    data-live-field="title"
                     ref={titleInput}
                     maxLength={120}
                     value={draft.title}
@@ -165,6 +213,8 @@ export function ReportEditor({
                 <label className="report-body-label">
                   <span>Report</span>
                   <textarea
+                    ref={bodyInput}
+                    data-live-field="body"
                     required
                     maxLength={20000}
                     value={draft.body}
@@ -214,7 +264,7 @@ export function ReportEditor({
         )}
         <div className="report-save-actions">
           <button type="button" className="btn quiet" disabled={disabled} onClick={onClose}>
-            Cancel
+            {live?.active ? 'Close draft' : 'Cancel'}
           </button>
           <button
             className="btn pri"

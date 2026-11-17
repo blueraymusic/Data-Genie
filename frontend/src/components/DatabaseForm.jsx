@@ -6,7 +6,9 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
   const form = useRef(null),
     details = useRef(null);
   const [mode, setMode] = useState(initialMode),
+    [dragOver, setDragOver] = useState(false),
     [file, setFile] = useState(null),
+    [uploadName, setUploadName] = useState(''),
     [name, setName] = useState('my_database.sqlite3'),
     [starter, setStarter] = useState(false),
     [error, setError] = useState(''),
@@ -32,7 +34,7 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
           : mode === 'upload'
             ? {
                 database_mode: mode,
-                name: file?.name,
+                name: uploadName || file?.name,
                 contents: await encodeDatabase(file),
               }
             : { database_mode: mode, database_name: name, starter },
@@ -46,21 +48,46 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
   }
   return (
     <form
-      className="database-form"
+      className={'database-form' + (dragOver ? ' is-file-drop-target' : '')}
       ref={form}
       onSubmit={submit}
-      onDragOver={(event) => event.preventDefault()}
+      onDragOver={(event) => {
+        if (busy || reading || !event.dataTransfer.types.includes('Files')) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+        setDragOver(true);
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setDragOver(false);
+      }}
       onDrop={(event) => {
         event.preventDefault();
+        setDragOver(false);
         if (busy || reading || !event.dataTransfer.files[0]) return;
+        if (event.dataTransfer.files.length !== 1) {
+          setError('Drop one SQLite database at a time.');
+          return;
+        }
+        if (
+          !event.dataTransfer.files[0].size ||
+          event.dataTransfer.files[0].size > 25 * 1024 * 1024
+        ) {
+          setError('Choose a SQLite file between 1 byte and 25 MB.');
+          return;
+        }
         setFile(event.dataTransfer.files[0]);
+        setUploadName(event.dataTransfer.files[0].name);
         setMode('upload');
         setError('');
       }}
     >
       <div className="database-form-heading">
         <h2>Add a database</h2>
-        <p className="small muted">Choose where to start.</p>
+        <p className="small muted">
+          {dragOver
+            ? 'Release to attach your SQLite file.'
+            : 'Choose where to start, or drop a SQLite file here.'}
+        </p>
       </div>
       <fieldset className="database-choice" disabled={busy || reading}>
         <legend className="sr-only">Choose your database</legend>
@@ -121,11 +148,26 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
               id="databaseFile"
               type="file"
               accept=".db,.sqlite,.sqlite3"
-              onChange={(event) => setFile(event.target.files[0])}
+              onChange={(event) => {
+                setFile(event.target.files[0]);
+                setUploadName(event.target.files[0]?.name || '');
+              }}
               required={!file}
               disabled={busy || reading}
             />
             {file && <p className="small muted">Selected: {file.name}</p>}
+            {file && (
+              <label>
+                Save database as
+                <input
+                  value={uploadName}
+                  onChange={(event) => setUploadName(event.target.value)}
+                  maxLength={150}
+                  required
+                  disabled={busy || reading}
+                />
+              </label>
+            )}
             <p className="small muted">
               Drop a SQLite file here, or choose one. Up to 25 MB. You work on a copy and can
               download your changes.

@@ -5,6 +5,7 @@ import { useRequestWindow } from '../hooks/useRequestWindow';
 import { quoteIdentifier } from '../lib/api';
 import '../styles/sql.css';
 import { databaseAccess } from '../lib/access';
+import { useAutosizeTextarea } from '../hooks/useAutosizeTextarea';
 
 export default function SqlPage({ workbench, selected, draft, setDraft, onNewTable }) {
   const textarea = useRef(null),
@@ -60,11 +61,7 @@ export default function SqlPage({ workbench, selected, draft, setDraft, onNewTab
       : []),
     ...(canChangeStructure ? [{ label: 'Create a notes table', sql: createExample }] : []),
   ];
-  useLayoutEffect(() => {
-    if (!textarea.current) return;
-    textarea.current.style.height = 'auto';
-    textarea.current.style.height = Math.min(textarea.current.scrollHeight, 154) + 'px';
-  }, [draft]);
+  useAutosizeTextarea(textarea, draft, session.session_id);
   useLayoutEffect(() => {
     const explicitJump = requestWindow.jumpVersion !== handledJump.current;
     handledJump.current = requestWindow.jumpVersion;

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { WorkspaceReports } from './components/WorkspaceReports';
+import { applyText } from './lib/textOperations';
 const workspace = { workspace_id: 'team', role: 'member' };
 const response = (data) => Promise.resolve({ ok: true, json: async () => data });
 beforeEach(() => {
@@ -251,4 +252,161 @@ it('shows a PDF access failure without downloading an error response', async () 
   await user.click(screen.getByRole('button', { name: 'Download PDF', exact: true }));
   await screen.findByText('This report is no longer available.');
   expect(screen.getByRole('button', { name: 'Download PDF', exact: true }).disabled).toBe(false);
+});
+
+it('keeps a shared report shared when its owner edits the writing', async () => {
+  const report = {
+    report_id: 'shared',
+    title: 'Findings',
+    body: 'Evidence.',
+    published: true,
+    version: 2,
+    can_edit: true,
+    updated_at: 1,
+  };
+  fetch.mockImplementation((path, options) =>
+    response(options?.method === 'POST' ? { report_id: 'shared' } : { reports: [report] }),
+  );
+  const user = userEvent.setup();
+  render(<WorkspaceReports workspace={{ ...workspace, role: 'owner' }} />);
+  await user.click(await screen.findByRole('button', { name: 'Open report: Findings' }));
+  await user.click(screen.getByRole('button', { name: 'Edit report' }));
+  expect(screen.getByRole('checkbox', { name: /Share with all workspace/ }).checked).toBe(true);
+  await user.type(screen.getByLabelText('Report', { exact: true }), ' Checked.');
+  await user.click(screen.getByRole('button', { name: 'Save report' }));
+  await screen.findByText('Report shared with this workspace.');
+  const post = fetch.mock.calls.find(([, options]) => options?.method === 'POST');
+  expect(JSON.parse(post[1].body)).toMatchObject({
+    published: true,
+    version: 2,
+    body: 'Evidence. Checked.',
+  });
+});
+
+it('lets an owner move a report to an owned workspace with its saved version', async () => {
+  const report = {
+    report_id: 'move-me',
+    title: 'Move findings',
+    body: 'Evidence.',
+    published: true,
+    version: 4,
+    can_move: true,
+    updated_at: 1,
+  };
+  let reports = [report];
+  fetch.mockImplementation((path, options) => {
+    if (options?.method === 'POST') {
+      reports = [];
+      return response({ moved: true });
+    }
+    return response({ reports });
+  });
+  const user = userEvent.setup();
+  render(
+    <WorkspaceReports
+      workspace={{ ...workspace, role: 'owner' }}
+      workspaces={[
+        { workspace_id: 'personal', name: 'Personal workspace', role: 'owner' },
+        { workspace_id: 'other', name: 'Another team', role: 'member' },
+      ]}
+    />,
+  );
+  await user.click(await screen.findByRole('button', { name: 'Open report: Move findings' }));
+  await user.click(screen.getByRole('button', { name: 'Move report' }));
+  expect(screen.queryByRole('option', { name: 'Another team' })).toBeNull();
+  await user.selectOptions(screen.getByLabelText('Destination workspace'), 'personal');
+  await user.click(screen.getByRole('button', { name: 'Move as private draft' }));
+  await screen.findByText('Report moved to Personal workspace as a private draft.');
+  const post = fetch.mock.calls.find(([, options]) => options?.method === 'POST');
+  expect(post[0]).toBe('/api/workspaces/team/reports/move-me/move');
+  expect(JSON.parse(post[1].body)).toEqual({ workspace_id: 'personal', version: 4 });
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+it('refreshes externally shared reports on focus without replacing unsaved writing', async () => {
+  const report = {
+    report_id: 'live',
+    title: 'Live findings',
+    body: 'Original evidence.',
+    published: false,
+    version: 1,
+    can_edit: true,
+    updated_at: 1,
+  };
+  let reports = [report];
+  fetch.mockImplementation(() => response({ reports }));
+  const user = userEvent.setup();
+  render(<WorkspaceReports workspace={workspace} />);
+  await user.click(await screen.findByRole('button', { name: 'Open report: Live findings' }));
+  await user.click(screen.getByRole('button', { name: 'Edit report' }));
+  await user.type(screen.getByLabelText('Report', { exact: true }), ' My unsaved note.');
+  reports = [{ ...report, body: 'Remote change.', version: 2 }];
+  window.dispatchEvent(new Event('focus'));
+  await screen.findByText(/This report changed in another session. Your writing is kept here/);
+  expect(screen.getByLabelText('Report', { exact: true }).value).toBe(
+    'Original evidence. My unsaved note.',
+  );
+  expect(fetch.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
+});
+
+it('opens a live working draft and flushes typing before saving the reviewed report', async () => {
+  let report = {
+    report_id: 'live-edit',
+    title: 'Live report',
+    body: 'Saved evidence.',
+    published: false,
+    version: 1,
+    can_edit: true,
+    live_editing: true,
+    updated_at: 1,
+  };
+  const document = {
+    report_id: report.report_id,
+    title: report.title,
+    body: report.body,
+    base_version: 1,
+    revision: 0,
+    published: false,
+  };
+  const operations = [];
+  fetch.mockImplementation((path, options) => {
+    if (path.includes('/live')) {
+      if (options?.method === 'POST') {
+        const edit = JSON.parse(options.body);
+        document[edit.field] = applyText(document[edit.field], edit.operation);
+        document.revision += 1;
+        operations.push({ ...edit, revision: document.revision });
+      }
+      const after = Number(new URL(path, 'https://example.test').searchParams.get('after') || 0);
+      return response({
+        document: { ...document },
+        operations: operations.filter((edit) => edit.revision > after),
+        collaborators: [{ first_name: 'Partner', last_name: 'Writer' }],
+      });
+    }
+    if (options?.method === 'POST') {
+      const saved = JSON.parse(options.body);
+      report = { ...report, ...saved, version: report.version + 1 };
+      document.base_version = report.version;
+      return response({ report_id: report.report_id });
+    }
+    return response({ reports: [report] });
+  });
+  const user = userEvent.setup();
+  render(<WorkspaceReports workspace={workspace} />);
+  await user.click(await screen.findByRole('button', { name: 'Open report: Live report' }));
+  await user.click(screen.getByRole('button', { name: 'Edit report' }));
+  await screen.findByText('Live draft · All typing synced');
+  expect(screen.getByText('Editing with Partner Writer')).toBeTruthy();
+  await user.type(screen.getByLabelText('Report', { exact: true }), ' Live note.');
+  await user.click(screen.getByRole('button', { name: 'Save report' }));
+  await screen.findByText('Draft saved. Only you and the owner can see it.');
+  const posts = fetch.mock.calls.filter(([, options]) => options?.method === 'POST');
+  expect(posts.at(-1)[0]).toBe('/api/workspaces/team/reports');
+  expect(JSON.parse(posts.at(-1)[1].body)).toMatchObject({
+    body: 'Saved evidence. Live note.',
+    collaboration_revision: document.revision,
+  });
+  expect(posts.slice(0, -1).every(([path]) => path.endsWith('/live'))).toBe(true);
+  expect(document.body).toBe(report.body);
 });

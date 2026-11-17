@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api';
+import { useLiveRefresh } from './useLiveRefresh';
 
 export function useWorkspaces(initialId) {
   const [workspaces, setWorkspaces] = useState([]),
@@ -15,13 +16,23 @@ export function useWorkspaces(initialId) {
     [message, setMessage] = useState(''),
     [revision, setRevision] = useState(0);
   const lock = useRef(false),
+    listRequest = useRef(null),
+    detailRequest = useRef(null),
+    hasLoaded = useRef(false),
     detailsWorkspace = useRef(null);
+  const refresh = useCallback(() => {
+    if (!lock.current && !listRequest.current && !detailRequest.current)
+      setRevision((value) => value + 1);
+  }, []);
+  useLiveRefresh(refresh);
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
+    listRequest.current = controller;
+    if (!hasLoaded.current) setLoading(true);
     api('/api/workspaces', { signal: controller.signal })
       .then((data) => {
         if (controller.signal.aborted) return;
+        hasLoaded.current = true;
         setListResolved(true);
         const available = data.workspaces || [];
         setWorkspaces(available);
@@ -39,6 +50,7 @@ export function useWorkspaces(initialId) {
         if (!controller.signal.aborted) setError(failure.message);
       })
       .finally(() => {
+        if (listRequest.current === controller) listRequest.current = null;
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
@@ -51,6 +63,7 @@ export function useWorkspaces(initialId) {
       return;
     }
     const controller = new AbortController();
+    detailRequest.current = controller;
     if (detailsWorkspace.current !== selected) {
       setDetails(null);
       setDetailsLoading(true);
@@ -72,11 +85,11 @@ export function useWorkspaces(initialId) {
         }
       })
       .finally(() => {
+        if (detailRequest.current === controller) detailRequest.current = null;
         if (!controller.signal.aborted) setDetailsLoading(false);
       });
     return () => controller.abort();
   }, [selected, revision]);
-  const refresh = useCallback(() => setRevision((value) => value + 1), []);
   const act = useCallback(async (path, body, success) => {
     if (lock.current) return null;
     lock.current = true;
