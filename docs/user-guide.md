@@ -32,7 +32,7 @@ Open **Account & preferences** from your user menu. **General** shows your name,
 
 Ownership transfer is separate from deletion and applies only to **team workspaces you own**. Your Personal workspace cannot be transferred. In **Teams → Workspace settings → Transfer ownership**, enter an existing account’s email and send a request. The recipient reviews it in **Teams → Ownership requests** and accepts or declines. You keep control until acceptance. Sending a transfer request does not delete your account. See [transfer steps](workspaces.md#transfer-ownership).
 
-**Delete account** opens an impact review. Confirm your email, type **DELETE**, and enter your current password. Microsoft-only accounts must have signed in again within five minutes. Deletion removes your remaining owned Data Genie database copies, connections, private history, logins, invitations, pending transfers, and agent access. Finish any desired transfer in Teams first; move personal databases into a team before transferring them.
+**Delete account** opens an impact review. Confirm your email, type **DELETE**, and enter your current password. Google-only accounts must have signed in again within five minutes. Deletion removes your remaining owned Data Genie database copies, connections, private history, logins, invitations, pending transfers, and agent access. Finish any desired transfer in Teams first; move personal databases into a team before transferring them.
 
 Reports remain in read-only archives for remaining members, preserving existing visibility. Anyone who can view an archived report can delete it. Workspaces without remaining members are deleted with their reports. External PostgreSQL servers are never dropped. See [retention details](workspaces.md#delete-account).
 

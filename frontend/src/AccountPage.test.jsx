@@ -53,7 +53,7 @@ beforeEach(() => {
     vi.fn((path) =>
       response(
         path === '/api/auth/providers'
-          ? { microsoft: { enabled: false } }
+          ? { google: { enabled: false } }
           : path === '/api/workspaces'
             ? {
                 workspaces: [

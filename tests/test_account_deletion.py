@@ -198,3 +198,20 @@ class AccountDeletionTests(AccountWorkspaceFixture, HttpHarness, unittest.TestCa
         self.as_user(self.owner)
         self.assertEqual(self.remove()[0], 200)
         self.assertFalse(self.source.is_file())
+
+    def test_google_only_deletion_requires_recent_login_and_removes_provider_data(self):
+        import time
+        from backend.google_auth import FlowStore
+        self.accounts.link_google(self.owner, {'issuer': 'https://accounts.google.com', 'subject': 'fixture-google'})
+        with self.repository._connection(write=True) as connection:
+            connection.execute("UPDATE accounts SET password_hash='!google' WHERE account_id=?", (self.owner,))
+            connection.execute('UPDATE browser_logins SET created_at=? WHERE account_id=?', (int(time.time()) - 301, self.owner))
+        FlowStore(self.repository).save('fixture-browser-' + 'x' * 32, {}, intent='link_grant', account_id=self.owner)
+        self.assertEqual(self.remove()[0], 400)
+        self.assertTrue(self.source.is_file())
+        self.as_user(self.owner)
+        self.assertEqual(self.remove()[0], 200)
+        with self.repository._connection() as connection:
+            for table in ('google_identities', 'google_auth_flows'):
+                self.assertEqual(connection.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0], 0)
+        self.check_integrity()

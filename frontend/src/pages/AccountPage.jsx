@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Link, useRouter } from '../lib/router';
 import { api } from '../lib/api';
-import { microsoftError, useMicrosoftSignIn } from '../components/MicrosoftSignIn';
+import { googleError, useGoogleSignIn } from '../components/GoogleSignIn';
 import { AccountGeneral } from '../components/AccountGeneral';
 import { AccountSecurity } from '../components/AccountSecurity';
 import { Icon } from '../components/Icon';
@@ -15,12 +15,12 @@ export default function AccountPage({ workbench, mode, setMode }) {
   const { user, changePassword, refresh } = useAuth(),
     { theme, toggle } = useTheme();
   const { route } = useRouter();
-  const microsoftEnabled = useMicrosoftSignIn();
+  const googleEnabled = useGoogleSignIn();
   const [linkBusy, setLinkBusy] = useState(false),
     [linkError, setLinkError] = useState('');
   const passwordEnabled = user.password_enabled !== false;
   const linkedReturn =
-    new URLSearchParams(route.split('?')[1]?.split('#')[0] || '').get('microsoft') === 'linked';
+    new URLSearchParams(route.split('?')[1]?.split('#')[0] || '').get('google') === 'linked';
   useEffect(() => {
     if (linkedReturn) refresh().catch(() => {});
   }, [linkedReturn, refresh]);
@@ -33,7 +33,7 @@ export default function AccountPage({ workbench, mode, setMode }) {
     security = useRef(null);
   useEnterMotion(panel, 'account');
   useEffect(() => {
-    if (linkedReturn || microsoftError(route)) {
+    if (linkedReturn || googleError(route)) {
       security.current?.focus({ preventScroll: true });
       security.current?.scrollIntoView({ block: 'nearest' });
     }
@@ -59,19 +59,19 @@ export default function AccountPage({ workbench, mode, setMode }) {
       setBusy(false);
     }
   }
-  async function connectMicrosoft(event) {
+  async function connectGoogle(event) {
     event.preventDefault();
     if (linkBusy || busy) return;
     const form = event.currentTarget;
     setLinkBusy(true);
     setLinkError('');
     try {
-      const result = await api('/api/auth/microsoft/link', {
+      const result = await api('/api/auth/google/link', {
         method: 'POST',
         body: { password: new FormData(form).get('password') },
       });
-      if (result.url !== '/api/auth/microsoft/start?intent=link')
-        throw new Error('Microsoft sign-in could not be started. Please try again.');
+      if (result.url !== '/api/auth/google/start?intent=link')
+        throw new Error('Google sign-in could not be started. Please try again.');
       form.reset();
       window.location.assign(result.url);
     } catch (error) {
@@ -116,9 +116,9 @@ export default function AccountPage({ workbench, mode, setMode }) {
               error,
               message,
               submit,
-              microsoftEnabled,
+              googleEnabled,
               linkedReturn,
-              connectMicrosoft,
+              connectGoogle,
               linkError,
               route,
             }}

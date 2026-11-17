@@ -64,7 +64,7 @@ it.each(['/signin', '/signup'])(
     let reads = 0;
     fetch.mockImplementation((url) =>
       url === '/api/auth/providers'
-        ? response({ microsoft: { enabled: false } })
+        ? response({ google: { enabled: false } })
         : ++reads === 1
           ? initial.promise
           : retry.promise,

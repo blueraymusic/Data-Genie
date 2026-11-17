@@ -136,7 +136,7 @@ export function WorkspaceOwnership({ workspace, members, disabled, onChanged, on
                 </label>
               ) : (
                 <p className="small muted">
-                  Sign in with Microsoft again within five minutes before confirming.
+                  Sign in with Google again within five minutes before confirming.
                 </p>
               )}
               <p className="small muted">

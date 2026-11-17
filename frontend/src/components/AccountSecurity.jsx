@@ -1,4 +1,4 @@
-import { MicrosoftMark, microsoftError } from './MicrosoftSignIn';
+import { GoogleMark, googleError } from './GoogleSignIn';
 import { AccountPasswordForm } from './AccountPasswordForm';
 import { Icon } from './Icon';
 import { DeleteAccount } from './DeleteAccount';
@@ -12,9 +12,9 @@ export function AccountSecurity({
   error,
   message,
   submit,
-  microsoftEnabled,
+  googleEnabled,
   linkedReturn,
-  connectMicrosoft,
+  connectGoogle,
   linkError,
   route,
 }) {
@@ -32,42 +32,41 @@ export function AccountSecurity({
           message={message}
         />
       )}
-      {(user.microsoft_linked || !passwordEnabled) && (
-        <section className="account-provider" aria-label="Microsoft sign-in">
+      {(user.google_linked || !passwordEnabled) && (
+        <section className="account-provider" aria-label="Google sign-in">
           <div className="account-provider-heading">
-            <MicrosoftMark />
-            <h3>Microsoft account</h3>
+            <GoogleMark />
+            <h3>Google account</h3>
             <span className="account-connected">
               <Icon name="check" />
               Connected
             </span>
           </div>
-          <p className="microsoft-account-note">Microsoft account connected</p>
+          <p className="google-account-note">Google account connected</p>
           <p className="account-setting-help">
             {passwordEnabled
-              ? 'You can log in with Microsoft or your Data Genie password.'
-              : 'Your sign-in is managed by Microsoft. Change your password in your Microsoft account.'}
+              ? 'You can log in with Google or your Data Genie password.'
+              : 'Your sign-in is managed by Google. Change your password in your Google account.'}
           </p>
-          {linkedReturn && user.microsoft_linked && (
+          {linkedReturn && user.google_linked && (
             <p className="ok" role="status">
-              Microsoft sign-in is connected to your account.
+              Google sign-in is connected to your account.
             </p>
           )}
         </section>
       )}
-      {microsoftEnabled && passwordEnabled && !user.microsoft_linked && (
+      {googleEnabled && passwordEnabled && !user.google_linked && (
         <form
           className="account-provider account-provider-form"
-          aria-label="Connect Microsoft account"
-          onSubmit={connectMicrosoft}
+          aria-label="Connect Google account"
+          onSubmit={connectGoogle}
         >
           <div className="account-provider-heading">
-            <MicrosoftMark />
-            <h3>Connect Microsoft</h3>
+            <GoogleMark />
+            <h3>Connect Google</h3>
           </div>
           <p className="account-setting-help">
-            Add another way to log in. Confirm your current password to connect your Microsoft
-            account.
+            Add another way to log in. Confirm your current password to connect your Google account.
           </p>
           <label>
             Data Genie password
@@ -79,9 +78,9 @@ export function AccountSecurity({
               required
             />
           </label>
-          <button className="btn microsoft-button" disabled={linkBusy || busy}>
-            <MicrosoftMark />
-            {linkBusy ? 'Connecting…' : 'Connect Microsoft'}
+          <button className="btn google-button" disabled={linkBusy || busy}>
+            <GoogleMark />
+            {linkBusy ? 'Connecting…' : 'Connect Google'}
           </button>
           {linkError && (
             <p className="err" role="alert">
@@ -90,9 +89,9 @@ export function AccountSecurity({
           )}
         </form>
       )}
-      {microsoftError(route) && (
+      {googleError(route) && (
         <p className="err" role="alert">
-          {microsoftError(route)}
+          {googleError(route)}
         </p>
       )}
       <p className="account-session-note">

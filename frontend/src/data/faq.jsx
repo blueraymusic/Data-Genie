@@ -822,23 +822,23 @@ export const faqGroups = [
         ),
       },
       {
-        question: 'Can I log in with Microsoft?',
+        question: 'Can I log in with Google?',
         search:
-          'When enabled on this installation, Continue with Microsoft appears on Log in and Sign up. It supports Microsoft accounts alongside Data Genie passwords. To connect Microsoft to an existing password account, log in first and use Connect Microsoft in Account & preferences. A matching email does not automatically connect accounts. Microsoft-only accounts manage their password with Microsoft. Logging out of Data Genie does not log you out of Microsoft everywhere.',
+          'When enabled on this installation, Continue with Google appears on Log in and Sign up. It supports Google accounts alongside Data Genie passwords. To connect Google to an existing password account, log in first and use Connect Google in Account & preferences. A matching email does not automatically connect accounts. Google-only accounts manage their password with Google. Logging out of Data Genie does not log you out of Google everywhere.',
         answer: (
           <>
             <p>
-              When enabled, <strong>Continue with Microsoft</strong> appears on Log in and Sign up.
+              When enabled, <strong>Continue with Google</strong> appears on Log in and Sign up.
               Email and password login stays available.
             </p>
             <p>
               To add it to an existing account, log in with your Data Genie password, then choose{' '}
-              <strong>Connect Microsoft</strong> in <strong>Account &amp; preferences</strong>. A
+              <strong>Connect Google</strong> in <strong>Account &amp; preferences</strong>. A
               matching email never connects accounts automatically.
             </p>
             <p>
-              Microsoft-only accounts manage their password with Microsoft. Signing out of Data
-              Genie ends your Data Genie login; it does not sign you out of Microsoft everywhere.
+              Google-only accounts manage their password with Google. Signing out of Data Genie ends
+              your Data Genie login; it does not sign you out of Google everywhere.
             </p>
           </>
         ),
@@ -883,13 +883,13 @@ export const faqGroups = [
       {
         question: 'What happens when I delete my account?',
         search:
-          'Account preferences Sign-in security Delete account separate ownership transfer. Finish transfers in Teams before deleting. Owned database copies credentials private history invitations agent access and pending transfers removed. Reports archive remaining members can delete visible reports. No remaining members workspace cascades. Password email DELETE Microsoft fresh sign in five minutes.',
+          'Account preferences Sign-in security Delete account separate ownership transfer. Finish transfers in Teams before deleting. Owned database copies credentials private history invitations agent access and pending transfers removed. Reports archive remaining members can delete visible reports. No remaining members workspace cascades. Password email DELETE Google fresh sign in five minutes.',
         answer: (
           <>
             <p>
               Open <strong>Account &amp; preferences → Delete account</strong> to review the impact.
               Confirm your email, type <strong>DELETE</strong>, and enter your current password.
-              Microsoft-only accounts require a new sign-in within five minutes.
+              Google-only accounts require a new sign-in within five minutes.
             </p>
             <p>
               Deletion removes your remaining owned Data Genie database copies, connections, private
@@ -936,8 +936,8 @@ export const faqGroups = [
             Choose <a href="/forgot-password">Forgot password?</a> on Log in and enter your email.
             You see the same response for every address. If a password account exists and email
             delivery is configured, it receives a single-use link valid for 15 minutes. Resetting
-            signs out other logins and revokes agent connections. Microsoft-only accounts recover
-            through Microsoft.
+            signs out other logins and revokes agent connections. Google-only accounts recover
+            through Google.
           </p>
         ),
       },

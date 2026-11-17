@@ -13,7 +13,7 @@ export function AccountProfile({ user }) {
       )
     : 'Not available';
   const signIn =
-    [user.password_enabled !== false && 'Password', user.microsoft_linked && 'Microsoft']
+    [user.password_enabled !== false && 'Password', user.google_linked && 'Google']
       .filter(Boolean)
       .join(' · ') || 'Not available';
   const [editing, setEditing] = useState(false),

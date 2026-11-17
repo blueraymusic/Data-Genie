@@ -62,10 +62,40 @@ variable "gemini_model" {
   default = "gemini-3.5-flash-lite"
 }
 
+variable "google_client_id" {
+  type        = string
+  default     = ""
+  description = "Optional Google OAuth Web application client ID. This is separate from Azure deployment identities."
+  validation {
+    condition     = var.google_client_id == "" || can(regex("^[a-zA-Z0-9_-]+\\.apps\\.googleusercontent\\.com$", var.google_client_id))
+    error_message = "Use the Google OAuth client ID ending in .apps.googleusercontent.com, or leave it empty to disable sign-in."
+  }
+}
+
+variable "google_client_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Optional Google OAuth Web client secret. Supply through a sensitive workspace variable; it is stored in private Terraform state and Azure Key Vault."
+}
+
+variable "google_redirect_uri" {
+  type        = string
+  default     = ""
+  description = "Exact registered Google Web callback, for example https://data-genie.space/api/auth/google/callback. Leave empty when Google sign-in is disabled."
+  validation {
+    condition     = var.google_redirect_uri == "" || can(regex("^https://[a-z0-9]([a-z0-9.-]*[a-z0-9])?/api/auth/google/callback$", var.google_redirect_uri))
+    error_message = "Use an HTTPS URL ending in /api/auth/google/callback, without a query or fragment."
+  }
+}
+
+# Retain these deprecated inputs and their existing Key Vault resource so an
+# upgrade does not delete a secret from historical Terraform state. They no
+# longer configure a sign-in provider or grant runtime Microsoft access.
 variable "microsoft_client_id" {
   type        = string
   default     = ""
-  description = "Optional Microsoft sign-in application ID. This is separate from the Terraform and DevOps identities."
+  description = "Deprecated; retained for workspace compatibility. Microsoft sign-in is disabled."
   validation {
     condition     = var.microsoft_client_id == "" || can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", var.microsoft_client_id))
     error_message = "Use the Microsoft sign-in application's UUID, or leave it empty to disable sign-in."
@@ -76,13 +106,13 @@ variable "microsoft_client_secret" {
   type        = string
   default     = ""
   sensitive   = true
-  description = "Optional Microsoft sign-in client secret value. Supply through a sensitive workspace variable; it is stored in private Terraform state and Azure app settings."
+  description = "Deprecated; retained only to preserve the historical Key Vault secret without deletion. No runtime app setting uses it."
 }
 
 variable "microsoft_tenant" {
   type        = string
   default     = "common"
-  description = "common supports personal and work/school Microsoft accounts. Use a tenant UUID to restrict sign-in to one directory. Match the app registration's supported account types."
+  description = "Deprecated; retained for workspace compatibility. This value no longer configures runtime sign-in."
   validation {
     condition     = var.microsoft_tenant == "common" || can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", var.microsoft_tenant))
     error_message = "Use common or a Microsoft Entra tenant UUID."
@@ -92,7 +122,7 @@ variable "microsoft_tenant" {
 variable "microsoft_redirect_uri" {
   type        = string
   default     = ""
-  description = "Exact registered Web callback on the hosted public origin, for example https://data-genie.space/api/auth/microsoft/callback. Leave empty when Microsoft sign-in is disabled."
+  description = "Deprecated; retained for workspace compatibility. This callback is no longer sent to the app."
   validation {
     condition     = var.microsoft_redirect_uri == "" || can(regex("^https://[a-z0-9]([a-z0-9.-]*[a-z0-9])?/api/auth/microsoft/callback$", var.microsoft_redirect_uri))
     error_message = "Use an HTTPS URL ending in /api/auth/microsoft/callback, without a query or fragment."

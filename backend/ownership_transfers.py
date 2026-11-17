@@ -42,8 +42,8 @@ class OwnershipTransfers(WorkspaceStore):
             raise LoginRequired('Log in to continue.')
         if account['password_hash'].startswith('pbkdf2_sha256$'):
             Accounts(self.repository).verify_password(account_id, password, client)
-        elif not account['microsoft_linked'] or time.time() - login['created_at'] > 300:
-            raise ValueError('Log out and sign in with Microsoft again, then confirm within five minutes.')
+        elif not (account['google_linked'] or account['microsoft_linked']) or time.time() - login['created_at'] > 300:
+            raise ValueError('Log out and sign in with Google again, then confirm within five minutes.')
         return account['password_hash']
 
     @staticmethod

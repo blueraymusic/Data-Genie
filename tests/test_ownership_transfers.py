@@ -39,6 +39,29 @@ class OwnershipTransferTests(AccountWorkspaceFixture, HttpHarness, unittest.Test
         self.assertEqual(self.decide(transfer, 'accept', password=self.password, review_version=review['review_version'])[0], 400)
         self.check_integrity()
 
+    def test_google_only_sender_and_recipient_need_recent_login_before_transferring(self):
+        import time
+        team = self.team()
+        for account_id in (self.owner, self.member):
+            self.accounts.link_google(account_id, {'issuer': 'https://accounts.google.com',
+                                                   'subject': 'fixture-google-' + str(account_id)})
+        with self.repository._connection(write=True) as connection:
+            connection.execute("UPDATE accounts SET password_hash='!google' WHERE account_id IN (?,?)", (self.owner, self.member))
+            connection.execute('UPDATE browser_logins SET created_at=? WHERE account_id=?', (int(time.time()) - 301, self.owner))
+        self.assertEqual(self.send(team)[0], 400)
+        self.as_user(self.owner)
+        status, transfer = self.send(team)
+        self.assertEqual(status, 200)
+        self.as_user(self.member)
+        _, review = self.review(transfer)
+        with self.repository._connection(write=True) as connection:
+            connection.execute('UPDATE browser_logins SET created_at=? WHERE account_id=?', (int(time.time()) - 301, self.member))
+        self.assertEqual(self.decide(transfer, 'accept', review_version=review['review_version'])[0], 400)
+        self.as_user(self.member)
+        self.assertEqual(self.decide(transfer, 'accept', review_version=review['review_version'])[0], 200)
+        self.assertEqual(self.store.get_workspace(self.member, team)['workspace']['role'], 'owner')
+        self.check_integrity()
+
     def test_decline_and_cancel_leave_ownership_unchanged(self):
         team = self.team()
         _, transfer = self.send(team)

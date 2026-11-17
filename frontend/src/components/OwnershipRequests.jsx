@@ -99,7 +99,7 @@ function ReviewOwnership({ request, onClose, onComplete }) {
                   </label>
                 ) : (
                   <p className="small muted">
-                    Sign in with Microsoft again within five minutes before accepting.
+                    Sign in with Google again within five minutes before accepting.
                   </p>
                 )}
                 <p className="small muted">

@@ -64,8 +64,8 @@ def check_deployment(origin):
     if not isinstance(health, dict) or health.get("status") != "ok":
         raise ValueError("The application's liveness check failed.")
     providers = json.loads(read_response(origin + "/api/auth/providers", 60, {"application/json"}))
-    microsoft = providers.get("microsoft") if isinstance(providers, dict) else None
-    if not isinstance(microsoft, dict) or type(microsoft.get("enabled")) is not bool:
+    google = providers.get("google") if isinstance(providers, dict) else None
+    if not isinstance(google, dict) or type(google.get("enabled")) is not bool:
         raise ValueError("The application's public sign-in provider check failed.")
     session = json.loads(read_response(origin + "/api/auth/session", 120, {"application/json"}))
     if not isinstance(session, dict) or session.get("user", "missing") is not None:

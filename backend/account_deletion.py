@@ -81,8 +81,8 @@ class AccountDeletion:
         else:
             with self.repository._connection() as connection:
                 login = connection.execute('SELECT created_at FROM browser_logins WHERE token_hash=? AND account_id=?', (token_hash(login_token), account_id)).fetchone()
-            if not account['microsoft_linked'] or not login or time.time() - login['created_at'] > 300:
-                raise ValueError('Log out and sign in with Microsoft again, then delete your account within five minutes.')
+            if not (account['google_linked'] or account['microsoft_linked']) or not login or time.time() - login['created_at'] > 300:
+                raise ValueError('Log out and sign in with Google again, then delete your account within five minutes.')
         staged = []
         try:
             with AUTHORIZATION_LOCK, self.repository._connection(write=True) as connection:
@@ -142,7 +142,7 @@ class AccountDeletion:
                 connection.execute("""DELETE FROM workspaces WHERE archived_at IS NOT NULL
                     AND NOT EXISTS(SELECT 1 FROM workspace_members m JOIN accounts a USING(account_id)
                         WHERE m.workspace_id=workspaces.workspace_id AND a.password_hash<>'!deleted')""")
-                for table in ('external_connections', 'browser_logins', 'external_identities', 'microsoft_auth_flows'):
+                for table in ('external_connections', 'browser_logins', 'external_identities', 'microsoft_auth_flows', 'google_identities', 'google_auth_flows'):
                     connection.execute(f'DELETE FROM {table} WHERE account_id=?', (account_id,))
                 connection.execute('DELETE FROM users WHERE email=? AND NOT EXISTS(SELECT 1 FROM sessions WHERE sessions.user_id=users.user_id)', (account['email'],))
                 connection.execute("UPDATE users SET first_name='Deleted',last_name='account',email=? WHERE email=?", ('deleted-' + secrets.token_hex(16) + '@accounts.invalid', account['email']))

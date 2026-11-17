@@ -30,7 +30,7 @@ class DeploymentVerificationTests(unittest.TestCase):
             "/assets/app.js": (b"console.log('ready');", "text/javascript"),
             "/assets/app.css": (b"body { color: navy; }", "text/css"),
             "/healthz": (b'{"status":"ok"}', "application/json"),
-            "/api/auth/providers": (b'{"microsoft":{"enabled":false}}', "application/json"),
+            "/api/auth/providers": (b'{"google":{"enabled":false}}', "application/json"),
             "/api/auth/session": (b'{"user":null}', "application/json; charset=utf-8"),
         }
 
@@ -107,7 +107,7 @@ class DeploymentVerificationTests(unittest.TestCase):
     def test_public_provider_discovery_accepts_enabled_and_disabled_without_authentication(self):
         for enabled in (False, True):
             resources = self.resources()
-            resources["/api/auth/providers"] = (json.dumps({"microsoft": {"enabled": enabled}}).encode(),
+            resources["/api/auth/providers"] = (json.dumps({"google": {"enabled": enabled}}).encode(),
                                                  "application/json")
             with self.subTest(enabled=enabled), \
                     patch.object(verify_cloud, "urlopen", side_effect=self.fetch(resources)) as request:
@@ -115,8 +115,8 @@ class DeploymentVerificationTests(unittest.TestCase):
             self.assertIn(ORIGIN + "/api/auth/providers", [call.args[0] for call in request.call_args_list])
 
     def test_missing_or_nonboolean_provider_discovery_is_rejected_before_session_check(self):
-        for value in (None, [], {}, {"microsoft": None}, {"microsoft": {}},
-                      {"microsoft": {"enabled": "false"}}, {"microsoft": {"enabled": 0}}):
+        for value in (None, [], {}, {"google": None}, {"google": {}},
+                      {"google": {"enabled": "false"}}, {"google": {"enabled": 0}}):
             resources = self.resources()
             resources["/api/auth/providers"] = (json.dumps(value).encode(), "application/json")
             with self.subTest(value=value), \

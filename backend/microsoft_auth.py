@@ -178,14 +178,17 @@ def finish(config, flow, response):
 
 
 class FlowStore:
+    table = "microsoft_auth_flows"
+    error_class = MicrosoftError
+
     def __init__(self, repository):
         self.repository = repository
 
     def save(self, browser, payload, *, intent="signin", account_id=None, login_hash=None):
         now = int(time.time())
         with self.repository._connection(write=True) as connection:
-            connection.execute("DELETE FROM microsoft_auth_flows WHERE expires_at<=?", (now,))
-            connection.execute("""INSERT OR REPLACE INTO microsoft_auth_flows
+            connection.execute(f"DELETE FROM {self.table} WHERE expires_at<=?", (now,))
+            connection.execute(f"""INSERT OR REPLACE INTO {self.table}
                 (browser_hash,state_hash,payload_json,intent,account_id,login_hash,expires_at)
                 VALUES(?,?,?,?,?,?,?)""", (
                     authentication.token_hash(browser),
@@ -195,9 +198,9 @@ class FlowStore:
 
     def consume(self, browser, *, state=None, grant=False):
         if not isinstance(browser, str) or not 32 <= len(browser) <= 128:
-            raise MicrosoftError("link_expired" if grant else "invalid")
+            raise self.error_class("link_expired" if grant else "invalid")
         with self.repository._connection(write=True) as connection:
-            row = connection.execute("SELECT * FROM microsoft_auth_flows WHERE browser_hash=?",
+            row = connection.execute(f"SELECT * FROM {self.table} WHERE browser_hash=?",
                                      (authentication.token_hash(browser),)).fetchone()
             # Do not destroy a legitimate flow when an unrelated forged callback
             # guesses an incorrect state. The successful match is consumed atomically.
@@ -206,12 +209,12 @@ class FlowStore:
                           or (not grant and row["intent"] in {"signin", "link"} and isinstance(state, str)
                               and hmac.compare_digest(row["state_hash"], authentication.token_hash(state)))))
             if valid:
-                connection.execute("DELETE FROM microsoft_auth_flows WHERE browser_hash=?", (row["browser_hash"],))
+                connection.execute(f"DELETE FROM {self.table} WHERE browser_hash=?", (row["browser_hash"],))
                 record = dict(row)
             else:
                 record = None
         if record is None:
-            raise MicrosoftError("link_expired" if grant else "invalid")
+            raise self.error_class("link_expired" if grant else "invalid")
         record["payload"] = json.loads(record.pop("payload_json"))
         return record
 
@@ -222,7 +225,7 @@ class FlowStore:
                 AND expires_at>? AND last_seen>?""", (record["login_hash"], record["account_id"], now,
                                                      now - authentication.IDLE_LIFETIME)).fetchone()
         if not row:
-            raise MicrosoftError("link_expired")
+            raise self.error_class("link_expired")
 
 
 def new_browser_token():

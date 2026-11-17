@@ -31,16 +31,18 @@ resource "azurerm_key_vault_access_policy" "terraform" {
 
 locals {
   vault_values = {
-    sql-password     = random_password.sql.result
-    connection-key   = replace(replace(base64sha256(random_password.connection_key.result), "+", "-"), "/", "_")
-    ai-key           = var.gemini_api_key != "" ? var.gemini_api_key : "disabled"
+    sql-password   = random_password.sql.result
+    connection-key = replace(replace(base64sha256(random_password.connection_key.result), "+", "-"), "/", "_")
+    ai-key         = var.gemini_api_key != "" ? var.gemini_api_key : "disabled"
+    google-secret  = var.google_client_secret != "" ? var.google_client_secret : "disabled"
+    # Preserve the historical resource; no app setting references this secret.
     microsoft-secret = var.microsoft_client_secret != "" ? var.microsoft_client_secret : "disabled"
     brevo-key        = var.brevo_api_key != "" ? var.brevo_api_key : "disabled"
   }
 }
 
 resource "azurerm_key_vault_secret" "app" {
-  for_each     = toset(["sql-password", "connection-key", "ai-key", "microsoft-secret", "brevo-key"])
+  for_each     = toset(["sql-password", "connection-key", "ai-key", "google-secret", "microsoft-secret", "brevo-key"])
   name         = each.key
   value        = local.vault_values[each.key]
   key_vault_id = azurerm_key_vault.app.id

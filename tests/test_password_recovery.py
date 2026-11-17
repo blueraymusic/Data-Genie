@@ -95,6 +95,15 @@ class PasswordRecoveryTests(HttpHarness, unittest.TestCase):
         self.assertEqual(self.service.start({'email': self.account['email']}, 'recover-fixture', 'http://localhost:8000'), RESPONSE)
         self.delivery.assert_not_called()
 
+    def test_google_only_account_does_not_gain_a_password(self):
+        self.service.accounts.link_google(self.account['account_id'], {
+            'issuer': 'https://accounts.google.com', 'subject': 'fixture-google'})
+        with workbench.get_repository()._connection(write=True) as connection:
+            connection.execute('UPDATE accounts SET password_hash=? WHERE account_id=?',
+                               (authentication.GOOGLE_PASSWORD_SENTINEL, self.account['account_id']))
+        self.assertEqual(self.service.start({'email': self.account['email']}, 'recover-fixture', 'http://localhost:8000'), RESPONSE)
+        self.delivery.assert_not_called()
+
     def test_delivery_does_not_delay_request_or_log_email_or_token_on_failure(self):
         from backend import password_recovery
         with patch('backend.password_recovery.queue_reset_email', wraps=queue_reset_email), \

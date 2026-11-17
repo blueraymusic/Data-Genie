@@ -58,6 +58,24 @@ CREATE TABLE IF NOT EXISTS microsoft_auth_flows (
     login_hash TEXT,
     expires_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS google_identities (
+    provider TEXT NOT NULL CHECK(provider='google'),
+    issuer TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    account_id INTEGER NOT NULL REFERENCES accounts(account_id),
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY(provider,issuer,subject),
+    UNIQUE(account_id,provider)
+);
+CREATE TABLE IF NOT EXISTS google_auth_flows (
+    browser_hash TEXT PRIMARY KEY,
+    state_hash TEXT,
+    payload_json TEXT NOT NULL,
+    intent TEXT NOT NULL CHECK(intent IN ('signin','link_grant','link')),
+    account_id INTEGER REFERENCES accounts(account_id),
+    login_hash TEXT,
+    expires_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS login_attempts (
     attempt_key TEXT PRIMARY KEY,
     started_at INTEGER NOT NULL,

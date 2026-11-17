@@ -111,6 +111,73 @@ afterEach(() => {
 });
 
 describe('React pages and account flow', () => {
+  it.each([
+    ['/databases', false, 'Choose your database.'],
+    ['/databases', true, 'Your databases'],
+    ['/workspaces?workspace=team', true, 'Your workspaces'],
+    ['/account', true, 'Account & preferences'],
+    ['/app?view=ask', true, 'Ask your database.'],
+    ['/app?view=sql', true, 'Run SQL.'],
+  ])(
+    'opens the real authenticated app at %s (restored database: %s)',
+    async (path, restore, title) => {
+      history.replaceState({}, '', path);
+      if (restore)
+        sessionStorage.setItem(
+          'data-genie-session',
+          JSON.stringify({ session_id: session.session_id }),
+        );
+      const personal = {
+        workspace_id: 'personal',
+        name: 'Personal workspace',
+        role: 'owner',
+        personal: true,
+      };
+      const team = { workspace_id: 'team', name: 'Operations', role: 'owner', personal: false };
+      fetch.mockImplementation((url) => {
+        if (url === '/api/auth/session') return response({ user, csrf_token: 'csrf-test' });
+        if (url === '/api/auth/providers') return response({ google: { enabled: false } });
+        if (url === '/api/status') return response(session);
+        if (url.startsWith('/api/history')) return response({ requests: [] });
+        if (url === '/api/sessions') return response({ sessions: [session] });
+        if (url === '/api/workspaces')
+          return response({
+            workspaces: [personal, team],
+            invitations: [],
+            ownership_transfers: [],
+          });
+        if (url === '/api/workspaces/personal' || url === '/api/workspaces/team')
+          return response({
+            workspace: url.endsWith('/team') ? team : personal,
+            databases: [],
+            members: [],
+            invitations: [],
+          });
+        throw new Error('Unexpected smoke-test request: ' + url);
+      });
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const events = userEvent.setup();
+      render(<App />);
+      expect(await screen.findByRole('heading', { name: title, exact: true })).toBeTruthy();
+      if (path.startsWith('/workspaces'))
+        await waitFor(() => expect(screen.getByLabelText('Select workspace').value).toBe('team'));
+      // Exercise a route transition in the same mounted lazy workspace, not only its first render.
+      if (path === '/account') {
+        await events.click(
+          within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
+            name: /Teams/,
+          }),
+        );
+        expect(
+          await screen.findByRole('heading', { name: 'Your workspaces', exact: true }),
+        ).toBeTruthy();
+      }
+      expect(screen.queryByText('The page could not be displayed.')).toBeNull();
+      expect(errors).not.toHaveBeenCalled();
+      errors.mockRestore();
+    },
+  );
+
   it.each(['/signin', '/signup'])(
     'retries an initial connection error on %s with only a GET and preserves form drafts',
     async (path) => {
@@ -119,7 +186,7 @@ describe('React pages and account flow', () => {
         finishCheck;
       fetch.mockImplementation((path) =>
         path === '/api/auth/providers'
-          ? response({ microsoft: { enabled: false } })
+          ? response({ google: { enabled: false } })
           : ++reads === 1
             ? response({ error: 'Cloud storage is starting. Please try again.' }, 503)
             : new Promise((resolve) => {
@@ -177,7 +244,7 @@ describe('React pages and account flow', () => {
     let reads = 0;
     fetch.mockImplementation((path) =>
       path === '/api/auth/providers'
-        ? response({ microsoft: { enabled: false } })
+        ? response({ google: { enabled: false } })
         : response(
             { error: ++reads === 1 ? 'Initial storage error' : 'Storage is still starting' },
             503,

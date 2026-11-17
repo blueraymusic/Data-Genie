@@ -6,13 +6,11 @@ Target: HCP Terraform organization `blueray321`, project `Blueray`, workspace `D
 
 The configured deployment uses **France Central**, app `data-genie-blueray321`, one **Linux B1** instance with Always On enabled, and SQL server `data-genie-blueray321-fr-sql` / database `data-genie-state`. The site is [data-genie.space](https://data-genie.space/). The [manual deployment pipeline](https://dev.azure.com/as4dc/blueray/_build?definitionId=1) is in `as4dc/blueray`; select `appServiceSku=B1` when running it.
 
-The workspace already has the four deployment OIDC environment variables listed below and sensitive `TF_VAR_gemini_api_key`. Its Terraform-category values are `location=francecentral`, `app_service_sku=B1`, `sql_server_name=data-genie-blueray321-fr-sql`, and `public_url=https://data-genie.space`. The deployment identity needs no client secret. Optional [Microsoft user sign-in](microsoft-sign-in.md) uses a separate app registration and server secret. Future hosting changes still require a reviewed plan.
+The workspace already has the four deployment OIDC environment variables listed below and sensitive `TF_VAR_gemini_api_key`. Its Terraform-category values are `location=francecentral`, `app_service_sku=B1`, `sql_server_name=data-genie-blueray321-fr-sql`, `sql_state_tier=basic`, and `public_url=https://data-genie.space`. The deployment identity needs no client secret. Optional [Google user sign-in](google-sign-in.md) uses a separate Google Web OAuth client and server secret. Future hosting changes still require a reviewed plan.
 
-This is a small development/demo deployment. Hosting defaults to **App Service Linux F1**, with **Azure SQL's free offer** for durable state. An explicitly selected **single Linux B1 instance** can use student credit when F1 cannot run the app. It does not create a VM, registry, Key Vault or paid logging workspace. There is no automatic tier upgrade or paid SQL fallback.
+The live deployment uses the approved fixed **SQL Basic, 5 DTUs, 2 GiB** plan. Linux B1 plus SQL is approximately **US$20/month** before tax and small metered extras, funded by the existing student credit. Key Vault already holds service secrets. Google sign-in adds no hosting instance, Google billing account, or paid Google API. This estimate is not a billing cap; keep the student spending limit enabled.
 
-Azure for Students credit is separate from free-service allowances. Keep the student spending limit enabled. Select the Terraform variable `app_service_sku=B1` only after reviewing its cost. The SQL resource explicitly requests `useFreeLimit=true` and `freeLimitExhaustionBehavior=AutoPause`. Reaching free limits can make the site unavailable; do not switch to `BillOverUsage` to keep it online.
-
-The agreed spending target is around **US$15/month**. Microsoft’s retail pricing API lists Linux B1 in France Central at **$0.018/hour**, approximately **$13.14 for 730 hours**, before taxes, checked on November 2, 2026. SQL remains on the free offer. This estimate is not a billing cap. B1 charges continue while its app is stopped; downgrade or remove the plan to stop that charge. Keep the separate Azure student spending limit enabled.
+New-installation defaults remain **App Service Linux F1** and **Azure SQL's free offer** with `AutoPause`. Switching a free-offer database to Basic permanently removes that database's free offer and requires a reviewed cost decision. Keep `sql_state_tier=basic` for this existing deployment; never enable General Purpose serverless overages as a substitute. There is no automatic hosting upgrade or paid SQL fallback.
 
 ## 1. Connect Terraform to Azure
 
@@ -68,15 +66,15 @@ Optional **Terraform-category variables**:
 | `location` | Existing group's region | Override when another allowed region offers the selected host and free SQL. |
 | `public_url` | empty | Set to `https://data-genie.space` for this deployment, after DNS and HTTPS are ready. Empty uses the Azure hostname. |
 | `app_service_sku` | `F1` | Select `B1` explicitly for one budgeted Linux instance; larger tiers are rejected. Match this value when running the pipeline. |
+| `sql_state_tier` | `free` | Existing live deployment uses approved `basic`: fixed 5 DTUs / 2 GiB. Changing from the free offer permanently removes it. |
 | `sql_server_name` | App name plus `-sql` | Optional globally unique name if an earlier failed deployment reserved the original name in another region. Deployment reads this server from the app's configured SQL host. |
 | `gemini_api_key` | Empty | Sensitive. Without a key, use SQL or Structure; AI billing/free quotas are separate. |
 | `gemini_model` | `gemini-3.5-flash-lite` | Only used when a key is supplied. |
-| `microsoft_client_id` | Empty | Optional Microsoft sign-in application ID; separate from deployment identities. |
-| `microsoft_client_secret` | Empty | Sensitive. Client secret value for the sign-in registration. |
-| `microsoft_tenant` | `common` | Personal and work/school accounts, or use a specific tenant UUID. |
-| `microsoft_redirect_uri` | Empty | Exact registered Web callback, `https://data-genie.space/api/auth/microsoft/callback`. |
+| `google_client_id` | Empty | Optional Google Web OAuth client ID; separate from Azure deployment identities. |
+| `google_client_secret` | Empty | Sensitive. Google Web OAuth client secret, stored in the existing Key Vault. |
+| `google_redirect_uri` | Empty | Exact registered callback, `https://data-genie.space/api/auth/google/callback`. |
 
-Confirm the plan contains only the selected F1 or B1 Linux service plan with one instance, SQL logical server, free SQL database, web app, and generated secrets. The database uses the ARM API through AzAPI because AzureRM's database resource does not expose the free-limit safeguards. The API must report both safeguards back. The database has deletion protection. The hosting plan’s original Azure name ends in `-free`; it is retained for in-place upgrades, so check the SKU itself when reviewing cost.
+Confirm the plan contains only the selected F1 or B1 Linux service plan with one instance, SQL logical server, selected free or Basic SQL database, web app, existing Key Vault and runtime identity, and generated secrets. The database uses the ARM API through AzAPI to preserve the selected billing safeguards. Free SQL must report `useFreeLimit=true` and `AutoPause`; Basic must report 5 DTUs and 2 GiB. Inspect any secret updates and reject unrelated replacements. The database has deletion protection. The hosting plan’s original Azure name ends in `-free`; it is retained for in-place upgrades, so check the SKU itself when reviewing cost.
 
 The SQL server initially permits **no client IPs**. After reviewing network access, an administrator runs `GENIE_RESOURCE_GROUP=data_genie GENIE_APP_NAME=data-genie-blueray321 GENIE_APP_SERVICE_SKU=B1 python scripts/configure_cloud_firewall.py` to allow only the web app's current egress IPs. Use `F1` instead when that is the reviewed tier. These can be shared Azure addresses; SQL still requires verified TLS and the private database credentials. The script never enables the broad "Allow Azure services" rule. No VNet or paid private endpoint is created.
 
@@ -96,7 +94,7 @@ After Terraform has created the infrastructure, run the pipeline with the same a
 
 1. Runs the frontend and backend checks and builds React.
 2. Creates an allowlisted ZIP with app code, runtime dependencies, and built assets.
-3. Verifies the selected Linux tier, one B1 instance when selected, `useFreeLimit=true`, and `AutoPause` in Azure before deployment.
+3. Verifies the selected Linux tier, one B1 instance when selected, and either free SQL with `AutoPause` or bounded Basic SQL in Azure before deployment.
 4. Checks the existing SQL firewall rules without changing network access, then deploys using the service connection. A changed egress address needs administrator review before the pipeline can continue.
 5. Verifies HTTPS, built frontend assets, and the cloud-backed anonymous session endpoint.
 
@@ -108,7 +106,7 @@ A storage error alone does not establish that the free allowance is exhausted. I
 
 Use [Log in](https://data-genie.space/signin), choose **Retry connection** if offered, then submit the form explicitly. Form details stay in place. If saving a database change could not be confirmed, inspect [History](https://data-genie.space/history) before repeating it. Server diagnostics record the failure stage, exception types, and numeric SQL codes without recording passwords, query text, or snapshot contents.
 
-Keep the current SQL free-offer safeguards while diagnosing an error. Paid SQL or overages require a separate cost decision; enabling them is not a remedy for a translation, certificate, or snapshot error. See the [Azure SQL free-offer FAQ](https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer-faq).
+Keep the approved SQL plan while diagnosing an error. Basic does not pause at a free serverless quota. A new paid SQL tier or serverless overages require a separate cost decision; enabling them is not a remedy for a translation, certificate, or snapshot error. See the [Azure SQL free-offer FAQ](https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer-faq).
 
 ## Storage and free-tier limits
 

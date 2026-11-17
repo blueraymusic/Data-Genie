@@ -120,12 +120,11 @@ resource "azurerm_linux_web_app" "app" {
     GEMINI_API_KEY                 = var.gemini_api_key != "" ? "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["ai-key"].versionless_id})" : ""
     GEMINI_MODEL                   = var.gemini_model
     GENIE_PUBLIC_URL               = var.public_url
-    GENIE_MICROSOFT_CLIENT_ID      = var.microsoft_client_id
-    GENIE_MICROSOFT_CLIENT_SECRET  = var.microsoft_client_secret != "" ? "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["microsoft-secret"].versionless_id})" : ""
+    GENIE_GOOGLE_CLIENT_ID         = var.google_client_id
+    GENIE_GOOGLE_CLIENT_SECRET     = var.google_client_secret != "" ? "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["google-secret"].versionless_id})" : ""
+    GENIE_GOOGLE_REDIRECT_URI      = var.google_redirect_uri
     BREVO_API_KEY                  = var.brevo_api_key != "" ? "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["brevo-key"].versionless_id})" : ""
     BREVO_SENDER_EMAIL             = var.brevo_sender_email
-    GENIE_MICROSOFT_TENANT         = var.microsoft_tenant
-    GENIE_MICROSOFT_REDIRECT_URI   = var.microsoft_redirect_uri
   }
   tags = local.tags
 }

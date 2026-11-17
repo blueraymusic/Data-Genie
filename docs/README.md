@@ -11,7 +11,7 @@ Start with the [user guide](user-guide.md) for Ask, SQL, Structure, History, and
 | SQLite and live PostgreSQL connections | [Database connections](database-connections.md) |
 | Connect an agent with MCP or the HTTP API | [Agent setup](agents.md) |
 | Cloud setup and deployment | [Azure hosting](azure-free-hosting.md) |
-| Optional Microsoft account sign-in | [Microsoft sign-in](microsoft-sign-in.md) |
+| Optional Google account sign-in | [Google sign-in](google-sign-in.md) |
 
 For code and development, see the [frontend](../frontend/README.md), [backend](../backend/README.md), [MCP connector](../agents/README.md), and [test](../tests/README.md) READMEs.
 

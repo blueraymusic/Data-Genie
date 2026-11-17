@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRouter, Link } from '../lib/router';
 import { AuthShell } from '../components/AuthShell';
-import { MicrosoftSignIn, microsoftError, useMicrosoftSignIn } from '../components/MicrosoftSignIn';
+import { GoogleSignIn, googleError, useGoogleSignIn } from '../components/GoogleSignIn';
 import { readWorkspaceInvitation } from '../lib/workspaceInvites';
 import { VerifySignup } from '../components/VerifySignup';
 export default function AuthPage() {
   const { pathname, route, navigate } = useRouter(),
     { authenticate, refresh, error: authError, connectionError } = useAuth();
-  const microsoftEnabled = useMicrosoftSignIn();
+  const googleEnabled = useGoogleSignIn();
   const signup = pathname === '/signup';
   const [verification, setVerification] = useState(null),
     [show, setShow] = useState(false),
@@ -80,12 +80,12 @@ export default function AuthPage() {
           Your Data Genie account has been deleted.
         </p>
       )}
-      {microsoftError(route) && (
+      {googleError(route) && (
         <p className="err" role="alert">
-          {microsoftError(route)}
+          {googleError(route)}
         </p>
       )}
-      {microsoftEnabled && <MicrosoftSignIn disabled={busy || retrying} />}
+      {googleEnabled && <GoogleSignIn disabled={busy || retrying} />}
       {verification && signup ? (
         <VerifySignup
           initial={verification}

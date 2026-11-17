@@ -123,7 +123,7 @@ function DeleteAccountDialog({ user, onClose }) {
                 </label>
               ) : (
                 <p className="small muted">
-                  Sign in with Microsoft again within the last five minutes before confirming.
+                  Sign in with Google again within the last five minutes before confirming.
                 </p>
               )}
               <label>

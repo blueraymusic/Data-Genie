@@ -1,27 +1,27 @@
-.workspace-page .microsoft-entry {
+.workspace-page .google-entry {
   margin: 0 0 20px;
 }
-.workspace-page .microsoft-button {
+.workspace-page .google-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
   min-height: 46px;
   width: 100%;
-  border: 1px solid var(--rule);
-  background: var(--paper);
-  color: var(--ink);
+  border: 1px solid #747775;
+  background: #fff;
+  color: #1f1f1f;
   text-decoration: none;
 }
-.workspace-page .microsoft-button:hover {
-  border-color: var(--lapis);
-  background: var(--lapis-wash);
+.workspace-page .google-button:hover {
+  border-color: #1f1f1f;
+  background: #f2f2f2;
 }
-.workspace-page .microsoft-button[aria-disabled='true'] {
+.workspace-page .google-button[aria-disabled='true'] {
   opacity: 0.55;
   cursor: wait;
 }
-.workspace-page .microsoft-mark {
+.workspace-page .google-mark {
   flex: none;
 }
 .workspace-page .auth-divider {
@@ -39,14 +39,14 @@
   flex: 1;
   background: var(--rule);
 }
-.workspace-page .microsoft-account-note {
+.workspace-page .google-account-note {
   display: flex;
   align-items: center;
   gap: 12px;
 }
-.workspace-page .microsoft-link-form .microsoft-button {
+.workspace-page .google-link-form .google-button {
   width: auto;
 }
-.workspace-page .microsoft-link-form p {
+.workspace-page .google-link-form p {
   max-width: 58ch;
 }

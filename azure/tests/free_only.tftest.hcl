@@ -113,31 +113,46 @@ run "invalid_public_origin" {
   expect_failures = [var.public_url]
 }
 
-run "microsoft_sign_in_settings" {
+run "google_sign_in_settings" {
   command = plan
   variables {
-    public_url             = "https://data-genie.space"
-    microsoft_client_id    = "00000000-0000-0000-0000-000000000002"
-    microsoft_redirect_uri = "https://data-genie.space/api/auth/microsoft/callback"
+    public_url           = "https://data-genie.space"
+    google_client_id     = "123456789-test.apps.googleusercontent.com"
+    google_client_secret = "test-only-secret"
+    google_redirect_uri  = "https://data-genie.space/api/auth/google/callback"
+  }
+  override_resource {
+    target          = azurerm_key_vault_secret.app["google-secret"]
+    override_during = plan
+    values = {
+      versionless_id = "https://example.vault.azure.net/secrets/google-secret"
+    }
   }
   assert {
-    condition     = azurerm_linux_web_app.app.app_settings["GENIE_MICROSOFT_CLIENT_ID"] == var.microsoft_client_id && azurerm_linux_web_app.app.app_settings["GENIE_MICROSOFT_TENANT"] == "common" && azurerm_linux_web_app.app.app_settings["GENIE_MICROSOFT_REDIRECT_URI"] == var.microsoft_redirect_uri
-    error_message = "Reviewed Microsoft sign-in settings must survive infrastructure applies."
+    condition     = azurerm_linux_web_app.app.app_settings["GENIE_GOOGLE_CLIENT_ID"] == var.google_client_id && azurerm_linux_web_app.app.app_settings["GENIE_GOOGLE_REDIRECT_URI"] == var.google_redirect_uri
+    error_message = "Reviewed Google sign-in settings must survive infrastructure applies."
+  }
+  assert {
+    condition     = azurerm_linux_web_app.app.app_settings["GENIE_GOOGLE_CLIENT_SECRET"] == "@Microsoft.KeyVault(SecretUri=https://example.vault.azure.net/secrets/google-secret)"
+    error_message = "Google credentials must reach the app through Key Vault, not a plain-text app setting."
+  }
+  assert {
+    condition     = !can(azurerm_linux_web_app.app.app_settings["GENIE_MICROSOFT_CLIENT_ID"]) && !can(azurerm_linux_web_app.app.app_settings["GENIE_MICROSOFT_CLIENT_SECRET"])
+    error_message = "The retired Microsoft provider must have no runtime credentials."
   }
 }
 
-run "invalid_microsoft_tenant" {
+run "invalid_google_client" {
   command = plan
-  variables { microsoft_tenant = "https://untrusted.example/tenant" }
-  expect_failures = [var.microsoft_tenant]
+  variables { google_client_id = "not-a-google-client" }
+  expect_failures = [var.google_client_id]
 }
 
-run "invalid_microsoft_callback" {
+run "invalid_google_callback" {
   command = plan
-  variables { microsoft_redirect_uri = "http://data-genie.space/api/auth/microsoft/callback" }
-  expect_failures = [var.microsoft_redirect_uri]
+  variables { google_redirect_uri = "http://data-genie.space/api/auth/google/callback" }
+  expect_failures = [var.google_redirect_uri]
 }
-
 
 run "approved_fixed_basic_sql" {
   command = plan
