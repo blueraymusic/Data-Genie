@@ -34,7 +34,7 @@
   flex: none;
   height: 64px;
   gap: 12px;
-  border-bottom: 0;
+  border-bottom: 1px solid var(--rule);
 }
 .workspace-page.auth-screen .gate-header > nav a {
   display: inline-flex;
@@ -59,7 +59,7 @@
   grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
   align-items: start;
   gap: clamp(24px, 4vw, 48px);
-  margin: 0;
+  margin: 60px 0 0;
   padding: 24px 0 16px;
 }
 .workspace-page.auth-screen .gate-form {
