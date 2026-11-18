@@ -4,7 +4,7 @@
 
 ## What happens when someone creates an account
 
-1. On **Sign up**, enter a first name, last name, email, and matching passwords. Passwords must contain 15–128 characters. Use a personal, work, or school email; common disposable email providers are blocked.
+1. On **Sign up**, enter a first name, last name, and email, then choose **Continue**. Enter matching passwords on the second step and choose **Create account**. **Back** preserves the details you entered. Passwords must contain 15–128 characters. Use a personal, work, or school email; common disposable email providers are blocked. The **Terms & Conditions** link opens separately so the signup draft stays in place.
 2. Hosted signup sends a six-digit verification code through the configured email provider. The page explains that existing account holders will be guided to login or password reset after verification. No account or browser login exists yet. Codes expire in five minutes, allow three incorrect attempts, and can be resent after a minute. A replacement code invalidates the old one.
 3. A correct code creates an account in the installation's metadata repository. The repository keeps the name, normalized unique email, and a salted PBKDF2 password hash. It does not store the original password. A browser receives an HttpOnly login cookie and a CSRF token for account/data changes.
 4. If that email already belongs to an account, successful mailbox verification displays **Log in** and **Reset password**. It does not replace the existing password, create another account, or sign into the existing account. The initial signup response does not disclose whether the email is registered.
