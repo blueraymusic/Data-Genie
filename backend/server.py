@@ -37,6 +37,7 @@ STATIC_FILES = {
     "/faq": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/contact": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/contact.html": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/terms": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/faq.html": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/app": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/dashboard.html": ("frontend/dist/index.html", "text/html; charset=utf-8"),

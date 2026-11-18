@@ -1,5 +1,5 @@
 .home-page .home-tour {
-  padding-block: 48px 56px;
+  padding-block: 40px;
   scroll-margin-top: 74px;
 }
 .home-page .home-tour .section-heading h2 {
@@ -358,7 +358,7 @@
 }
 @media (max-width: 620px) {
   .home-page .home-tour {
-    padding-block: 36px 40px;
+    padding-block: 28px;
   }
   .home-page .home-tour .section-heading h2 {
     font-size: 38px;

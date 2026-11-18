@@ -40,6 +40,7 @@ export default function PasswordRecoveryPage() {
   const invalid = reset && !token;
   return (
     <AuthShell
+      variant="recovery"
       title={reset ? 'Choose a new password.' : 'Forgot your password?'}
       lead={
         reset

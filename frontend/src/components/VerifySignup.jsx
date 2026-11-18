@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { Link } from '../lib/router';
 
-export function VerifySignup({ initial, onVerified, onRestart }) {
+export function VerifySignup({ initial, onVerified, onRestart, showHeading = true }) {
   const { authenticate } = useAuth();
   const [challenge, setChallenge] = useState(initial),
     [code, setCode] = useState(''),
@@ -70,14 +70,13 @@ export function VerifySignup({ initial, onVerified, onRestart }) {
       </section>
     );
   return (
-    <form onSubmit={verify}>
-      <h2>Check your email.</h2>
+    <form className="auth-verification" onSubmit={verify}>
+      {showHeading && <h2>Check your email.</h2>}
       <p>
         Enter the code sent to <strong>{challenge.email}</strong>.
       </p>
       <p className="small muted">
-        If you already have an account, verifying this email will take you to login or password
-        reset. It will not create another account.
+        Already have an account? This check will guide you to login or password reset.
       </p>
       <label>
         Verification code

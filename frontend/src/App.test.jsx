@@ -196,16 +196,19 @@ describe('React pages and account flow', () => {
       const events = userEvent.setup();
       render(<App />);
       await screen.findByText('Cloud storage is starting. Please try again.');
-      const email = screen.getByRole('textbox', { name: 'Email', exact: true }),
+      const email = screen.getByLabelText('Email', { exact: true }),
         password = screen.getByLabelText('Password', { exact: true });
       await events.type(email, user.email);
-      await events.type(password, 'a long test passphrase');
       if (path === '/signup') {
         await events.type(screen.getByRole('textbox', { name: 'First name', exact: true }), 'Test');
         await events.type(
           screen.getByRole('textbox', { name: 'Last name', exact: true }),
           'Reader',
         );
+        await events.click(screen.getByRole('button', { name: 'Continue', exact: true }));
+      }
+      await events.type(password, 'a long test passphrase');
+      if (path === '/signup') {
         await events.type(
           screen.getByLabelText('Confirm password', { exact: true }),
           'a long test passphrase',
@@ -219,14 +222,12 @@ describe('React pages and account flow', () => {
       });
       expect(screen.queryByText('Cloud storage is starting. Please try again.')).toBeNull();
       expect(screen.queryByRole('button', { name: 'Retry connection', exact: true })).toBeNull();
-      expect(screen.getByRole('textbox', { name: 'Email', exact: true })).toBe(email);
+      expect(screen.getByLabelText('Email', { exact: true })).toBe(email);
       expect(email.value).toBe(user.email);
       expect(password.value).toBe('a long test passphrase');
       if (path === '/signup') {
-        expect(screen.getByRole('textbox', { name: 'First name', exact: true }).value).toBe('Test');
-        expect(screen.getByRole('textbox', { name: 'Last name', exact: true }).value).toBe(
-          'Reader',
-        );
+        expect(screen.getByLabelText('First name', { exact: true }).value).toBe('Test');
+        expect(screen.getByLabelText('Last name', { exact: true }).value).toBe('Reader');
         expect(screen.getByLabelText('Confirm password', { exact: true }).value).toBe(
           'a long test passphrase',
         );
@@ -445,6 +446,7 @@ describe('React pages and account flow', () => {
     );
     await events.type(screen.getByRole('textbox', { name: 'Last name', exact: true }), 'Reader');
     await events.type(screen.getByRole('textbox', { name: 'Email', exact: true }), user.email);
+    await events.click(screen.getByRole('button', { name: 'Continue', exact: true }));
     await events.type(screen.getByLabelText('Password', { exact: true }), 'a long test passphrase');
     await events.type(
       screen.getByLabelText('Confirm password', { exact: true }),

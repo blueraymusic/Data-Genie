@@ -273,8 +273,8 @@ describe('one-time scroll reveals', () => {
     act(() => observers[0].enter(target));
     act(() => observers[0].enter(target));
     expect(records).toHaveLength(1);
-    expect(records[0].options.delay).toBe(140);
-    expect(records[0].options.duration).toBe(440);
+    expect(records[0].options.delay).toBe(80);
+    expect(records[0].options.duration).toBe(280);
     act(() => input.focus());
     expect(records[0].animation.cancel).toHaveBeenCalledOnce();
     view.unmount();

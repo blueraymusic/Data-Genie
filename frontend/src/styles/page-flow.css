@@ -27,7 +27,10 @@
   flex: 1 0 auto;
   width: 100%;
   max-width: none;
-  padding: 24px clamp(16px, 3vw, 40px) 40px;
+  padding: 20px clamp(16px, 3vw, 40px) 28px;
+}
+.workspace-page .content > .account-page {
+  padding-top: 0;
 }
 .workspace-page .side {
   overflow: visible;
@@ -88,14 +91,14 @@
 }
 .workspace-page .workspace-selected-heading {
   min-height: 0;
-  padding: 0 0 16px;
+  padding: 0 0 12px;
   margin: 0;
 }
 .workspace-page .workspace-header-actions {
   min-height: 0;
 }
 .workspace-page .workspace-section {
-  padding: 20px 0;
+  padding: 16px 0;
 }
 .workspace-page .workspace-section-heading {
   gap: 16px;
@@ -105,7 +108,7 @@
   margin: 0 0 4px;
 }
 .workspace-page .workspace-page-heading {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 .workspace-page .workspace-person-heading {
   display: none;
@@ -888,6 +891,9 @@
   white-space: nowrap;
 }
 @media (max-width: 680px) {
+  .workspace-page .workspace-dialog:has(.people-access-content) {
+    padding: 20px;
+  }
   .workspace-page .people-settings-tabs .btn {
     flex-direction: column;
     gap: 2px;

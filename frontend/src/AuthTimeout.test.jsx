@@ -80,13 +80,16 @@ it.each(['/signin', '/signup'])(
     expect(screen.getByText('Checking your login took too long. Please try again.')).toBeTruthy();
     expect(savedSession()).toBe('saved-database');
 
-    const email = screen.getByRole('textbox', { name: 'Email', exact: true }),
+    const email = screen.getByLabelText('Email', { exact: true }),
       password = screen.getByLabelText('Password', { exact: true });
     fireEvent.change(email, { target: { value: user.email } });
-    fireEvent.change(password, { target: { value: 'a long test passphrase' } });
     if (path === '/signup') {
       fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Test' } });
       fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Reader' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Continue', exact: true }));
+    }
+    fireEvent.change(password, { target: { value: 'a long test passphrase' } });
+    if (path === '/signup') {
       fireEvent.change(screen.getByLabelText('Confirm password'), {
         target: { value: 'a long test passphrase' },
       });
@@ -99,7 +102,7 @@ it.each(['/signin', '/signup'])(
       retry.resolve(await response({ user: null }));
     });
     expect(screen.queryByRole('button', { name: 'Retry connection', exact: true })).toBeNull();
-    expect(screen.getByRole('textbox', { name: 'Email', exact: true })).toBe(email);
+    expect(screen.getByLabelText('Email', { exact: true })).toBe(email);
     expect(email.value).toBe(user.email);
     expect(password.value).toBe('a long test passphrase');
     if (path === '/signup') {
@@ -111,7 +114,7 @@ it.each(['/signin', '/signup'])(
       // A transport that ignores abort must not restore an account after a newer check.
       initial.resolve(await response({ user, csrf_token: 'late-token' }));
     });
-    expect(screen.getByRole('textbox', { name: 'Email', exact: true })).toBe(email);
+    expect(screen.getByLabelText('Email', { exact: true })).toBe(email);
     expect(fetch.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
       ['/api/auth/session', 'GET'],
       ['/api/auth/providers', 'GET'],

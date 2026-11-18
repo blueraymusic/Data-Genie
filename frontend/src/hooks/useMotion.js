@@ -154,7 +154,7 @@ export function useScrollReveal(ref, selector) {
             if (node.contains(document.activeElement)) continue;
             const requestedDelay = Number(node.dataset.motionDelay);
             const delay = Number.isFinite(requestedDelay)
-              ? Math.max(0, Math.min(140, requestedDelay))
+              ? Math.max(0, Math.min(80, requestedDelay))
               : 0;
             try {
               const animation = node.animate(
@@ -162,7 +162,12 @@ export function useScrollReveal(ref, selector) {
                   { opacity: 0.35, transform: 'translateY(8px)' },
                   { opacity: 1, transform: 'none' },
                 ],
-                { duration: 440, delay, easing, fill: 'backwards' },
+                {
+                  duration: duration(node, '--motion-slow', 280),
+                  delay,
+                  easing,
+                  fill: 'backwards',
+                },
               );
               animations.set(node, animation);
               if (animation) animation.onfinish = () => animations.delete(node);

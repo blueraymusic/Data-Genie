@@ -725,7 +725,7 @@
   border-radius: 12px;
   background: var(--paper);
   box-shadow: var(--shadow-floating);
-  padding: 28px;
+  padding: 24px;
 }
 .workspace-page .workspace-dialog-wide {
   width: 680px;
@@ -735,7 +735,7 @@
   align-items: start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 .workspace-page .workspace-dialog-heading h2 {
   font-size: 28px;
@@ -926,7 +926,7 @@
     padding: 12px;
   }
   .workspace-page .workspace-dialog {
-    padding: 22px 18px;
+    padding: 20px;
     max-height: calc(100dvh - 24px);
   }
   .workspace-page .workspace-invite-form > label,

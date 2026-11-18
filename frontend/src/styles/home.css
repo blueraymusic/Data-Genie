@@ -730,11 +730,11 @@
   color-scheme: dark;
 }
 .home-page .home-section {
-  padding-block: 52px;
+  padding-block: 40px;
   scroll-margin-top: 74px;
 }
 .home-page .section-heading h2 {
-  margin-top: 12px;
+  margin-top: 8px;
   font: 500 clamp(36px, 3.5vw, 48px)/1.13 var(--serif);
   letter-spacing: -0.02em;
   text-wrap: balance;
@@ -745,7 +745,7 @@
 }
 .home-page .section-heading > p:not(.eyebrow) {
   max-width: 520px;
-  margin-top: 14px;
+  margin-top: 10px;
   font-size: 16px;
   line-height: 1.65;
   color: var(--ink-soft);
@@ -1217,7 +1217,7 @@
     height: 13px;
   }
   .home-page .home-section {
-    padding-block: 36px;
+    padding-block: 28px;
   }
   .home-page .section-heading h2 {
     font-size: 36px;

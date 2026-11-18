@@ -26,4 +26,5 @@ import './styles/workspace-edges.css';
 import './styles/reports.css';
 import './styles/polish.css';
 import './styles/page-flow.css';
+import './styles/auth.css';
 createRoot(document.getElementById('root')).render(<App />);

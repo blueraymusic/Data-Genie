@@ -54,7 +54,7 @@ afterEach(() => {
 
 describe('Google sign-in', () => {
   it.each(['/signin', '/signup'])(
-    'offers a native provider redirect on %s alongside the password form',
+    'offers a native provider redirect on %s alongside email authentication',
     async (path) => {
       history.replaceState({}, '', path);
       render(
@@ -67,7 +67,7 @@ describe('Google sign-in', () => {
       expect(screen.getByLabelText('Password', { exact: true })).toBeTruthy();
       expect(
         screen.getByRole('button', {
-          name: path === '/signup' ? 'Create account' : 'Log in',
+          name: path === '/signup' ? 'Continue' : 'Log in',
           exact: true,
         }),
       ).toBeTruthy();

@@ -21,7 +21,7 @@ body {
   animation-delay: 170ms;
 }
 .home-page .hero-preview {
-  animation: preview-enter 560ms var(--ease-out) 100ms backwards;
+  animation: preview-enter 360ms var(--ease-out) 60ms backwards;
 }
 .home-page .hero-copy:focus-within > *,
 .home-page .hero-preview:focus-within {
@@ -43,6 +43,15 @@ body {
 }
 .workspace-page .gate-example {
   animation-delay: 70ms;
+}
+.workspace-page.auth-screen .fields:not([hidden]),
+.workspace-page.auth-screen .auth-verification,
+.workspace-page .person-picker-panel,
+.workspace-page .people-access-content > div:not([hidden]):not(.people-settings-tabs) {
+  animation: soft-content-enter var(--motion-fast) var(--ease-out) backwards;
+}
+.workspace-page.auth-screen .fields:focus-within {
+  animation: none;
 }
 .workspace-page .gate-form:focus-within,
 .contact-page .contact-form:focus-within {

@@ -1,5 +1,5 @@
 .contact-page .contact-intro {
-  padding-block: 40px 72px;
+  padding-block: 28px 32px;
   background: var(--lapis-wash);
 }
 .contact-page .contact-intro h1 {
@@ -23,9 +23,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
   align-items: start;
-  gap: 40px;
-  margin-top: -36px;
-  padding-bottom: 44px;
+  gap: 32px;
+  padding-block: 24px 36px;
 }
 .contact-page .contact-form {
   min-width: 0;
@@ -104,7 +103,7 @@
 }
 .contact-page .contact-help {
   min-width: 0;
-  margin-top: 60px;
+  margin-top: 0;
   padding-top: 20px;
   border-top: 1px solid var(--rule);
 }
@@ -153,7 +152,7 @@
 }
 @media (max-width: 700px) {
   .contact-page .contact-intro {
-    padding-block: 32px 64px;
+    padding-block: 24px;
   }
   .contact-page .contact-intro h1 {
     font-size: 40px;
@@ -163,9 +162,8 @@
   }
   .contact-page .contact-layout {
     grid-template-columns: minmax(0, 1fr);
-    margin-top: -32px;
     gap: 24px;
-    padding-bottom: 36px;
+    padding-block: 20px 28px;
   }
   .contact-page .contact-help {
     margin-top: 0;

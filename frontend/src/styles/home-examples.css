@@ -1,5 +1,5 @@
 .home-page .home-examples {
-  padding-block: 48px;
+  padding-block: 40px;
 }
 .home-page .home-examples .section-heading h2 {
   font-size: clamp(36px, 3.8vw, 48px);
@@ -339,7 +339,7 @@
 }
 @media (max-width: 620px) {
   .home-page .home-examples {
-    padding-block: 36px;
+    padding-block: 28px;
   }
   .home-page .home-examples .section-heading h2 {
     font-size: 36px;
