@@ -1,9 +1,7 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Link, useRouter } from '../lib/router';
-import { api } from '../lib/api';
-import { googleError, useGoogleSignIn } from '../components/GoogleSignIn';
 import { AccountGeneral } from '../components/AccountGeneral';
 import { AccountSecurity } from '../components/AccountSecurity';
 import { Icon } from '../components/Icon';
@@ -12,35 +10,20 @@ const AgentAccess = lazy(() =>
   import('../components/AgentAccess').then((module) => ({ default: module.AgentAccess })),
 );
 export default function AccountPage({ workbench, mode, setMode }) {
-  const { user, changePassword, refresh } = useAuth(),
+  const { user, changePassword } = useAuth(),
     { theme, toggle } = useTheme();
   const { route } = useRouter();
-  const googleEnabled = useGoogleSignIn();
-  const [linkBusy, setLinkBusy] = useState(false),
-    [linkError, setLinkError] = useState('');
   const passwordEnabled = user.password_enabled !== false;
-  const linkedReturn =
-    new URLSearchParams(route.split('?')[1]?.split('#')[0] || '').get('google') === 'linked';
-  useEffect(() => {
-    if (linkedReturn) refresh().catch(() => {});
-  }, [linkedReturn, refresh]);
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState(''),
     [error, setError] = useState('');
   const [agentsOpen, setAgentsOpen] = useState(false);
   const [agentsVisited, setAgentsVisited] = useState(false);
-  const panel = useRef(null),
-    security = useRef(null);
+  const panel = useRef(null);
   useEnterMotion(panel, 'account');
-  useEffect(() => {
-    if (linkedReturn || googleError(route)) {
-      security.current?.focus({ preventScroll: true });
-      security.current?.scrollIntoView({ block: 'nearest' });
-    }
-  }, [linkedReturn, route]);
   async function submit(event) {
     event.preventDefault();
-    if (busy || linkBusy) return;
+    if (busy) return;
     const form = event.currentTarget,
       values = Object.fromEntries(new FormData(form));
     setMessage('');
@@ -57,26 +40,6 @@ export default function AccountPage({ workbench, mode, setMode }) {
       setError(error.message);
     } finally {
       setBusy(false);
-    }
-  }
-  async function connectGoogle(event) {
-    event.preventDefault();
-    if (linkBusy || busy) return;
-    const form = event.currentTarget;
-    setLinkBusy(true);
-    setLinkError('');
-    try {
-      const result = await api('/api/auth/google/link', {
-        method: 'POST',
-        body: { password: new FormData(form).get('password') },
-      });
-      if (result.url !== '/api/auth/google/start?intent=link')
-        throw new Error('Google sign-in could not be started. Please try again.');
-      form.reset();
-      window.location.assign(result.url);
-    } catch (error) {
-      setLinkError(error.message);
-      setLinkBusy(false);
     }
   }
   return (
@@ -104,22 +67,15 @@ export default function AccountPage({ workbench, mode, setMode }) {
         <section
           className="account-panel-surface account-security-panel"
           aria-label="Sign-in & security"
-          ref={security}
-          tabIndex={-1}
         >
           <AccountSecurity
             {...{
               user,
               passwordEnabled,
               busy,
-              linkBusy,
               error,
               message,
               submit,
-              googleEnabled,
-              linkedReturn,
-              connectGoogle,
-              linkError,
               route,
             }}
           />
