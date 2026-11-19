@@ -5,9 +5,11 @@ from datetime import date, datetime, time
 from decimal import Decimal
 import ipaddress
 import logging
+from pathlib import Path
+import re
 from .. import settings
 from .. import preview_guard
-from .network import public_address
+from .network import public_addresses
 from urllib.parse import parse_qsl, unquote, urlsplit
 from uuid import UUID
 
@@ -16,6 +18,16 @@ from .errors import ConnectionFailure, missing_postgres_support
 
 
 SSL_MODES = {"disable", "require", "verify-full"}
+
+
+def _root_certificate(host):
+    # Supabase signs its database endpoints with its own published CA.
+    # Scope this trust to provider-owned endpoints and still verify hostnames.
+    host = host.lower()
+    if (re.fullmatch(r"db\.[a-z0-9]+\.supabase\.co", host)
+            or re.fullmatch(r"[a-z0-9-]+\.pooler\.supabase\.com", host)):
+        return str(Path(__file__).resolve().parent.parent / "assets" / "certificates" / "supabase-prod-ca-2021.crt")
+    return "system"
 
 
 def _result_row(cursor):
@@ -142,9 +154,13 @@ class PostgresConnector:
         if settings.public_url():
             if self.config["sslmode"] != "verify-full":
                 raise ValueError("Hosted PostgreSQL connections require sslmode=verify-full.")
-            parameters["hostaddr"] = public_address(parameters["host"], parameters["port"])
+            addresses = public_addresses(parameters["host"], parameters["port"])
+            parameters["hostaddr"] = ",".join(addresses)
+            # libpq requires a matching hostname for each pinned address;
+            # retain it for certificate verification and pooler routing.
+            parameters["host"] = ",".join([self.config["host"]] * len(addresses))
         if self.config["sslmode"] == "verify-full":
-            parameters["sslrootcert"] = "system"
+            parameters["sslrootcert"] = _root_certificate(self.config["host"])
         try:
             with psycopg.connect(**parameters, connect_timeout=5, prepare_threshold=None, row_factory=dict_row,
                                  application_name="Data Genie", options="-c statement_timeout=5000 -c lock_timeout=2000") as connection:

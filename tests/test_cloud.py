@@ -354,6 +354,7 @@ class HostingTests(unittest.TestCase):
                 names = bundle.namelist()
                 self.assertIn("backend/wsgi.py", names)
                 self.assertIn("backend/requirements-reports.txt", names)
+                self.assertIn("backend/assets/certificates/supabase-prod-ca-2021.crt", names)
                 for font in ('NotoSans-Regular.ttf', 'NotoSans-Bold.ttf', 'NotoSansSymbols2-Regular.ttf',
                              'NotoSansCJK-Regular.ttf', 'OFL.txt', 'NotoSansCJK-OFL.txt', 'SOURCES.txt'):
                     self.assertIn('backend/assets/fonts/' + font, names)

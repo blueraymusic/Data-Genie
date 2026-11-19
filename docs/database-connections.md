@@ -12,6 +12,14 @@ The schema defaults to `public`. Expand **Connection options** to change **Schem
 
 The hosted site already includes the connector. It needs a public PostgreSQL hostname and `sslmode=verify-full` (the default for external hosts). A database listening only on your laptop, a private network, or a cloud-metadata address cannot be reached through the hosted connector. If your provider restricts incoming connections, its network rules must also permit the Data Genie app's outbound addresses; testing a URL does not change those rules.
 
+### Supabase, IPv4, and IPv6
+
+Data Genie accepts IPv4 and IPv6 PostgreSQL endpoints. Hosted connections try all resolved public addresses, retaining hostname and certificate verification. The server's network must support the selected endpoint's IP version.
+
+Supabase's free plan includes a direct IPv6 endpoint and a shared IPv4 Session pooler. On IPv4 networks, choose **Connect → Session pooler** in Supabase and copy the exact URI: the pooler hostname differs from the direct hostname, and the username becomes `postgres.<project-ref>`. Use port `5432` for session mode. No paid IPv4 add-on is needed. A direct IPv6 URL cannot automatically reveal the project's pooler hostname, so paste the pooler URI when switching. See [Supabase's connection guide](https://supabase.com/docs/guides/database/connecting-to-postgres).
+
+For Supabase-owned direct and shared pooler endpoints, Data Genie uses the bundled official Supabase database CA with `verify-full`. Other hosts use the system trust store. No certificate download occurs during a connection. This keeps certificate and hostname verification enabled for both connection methods.
+
 ## Connect from a local installation
 
 With Python 3.10+, install the optional connector and start the app:

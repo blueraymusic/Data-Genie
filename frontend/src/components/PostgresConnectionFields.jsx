@@ -51,6 +51,10 @@ export function PostgresConnectionFields({ value, onChange, disabled, submitting
           {visible ? 'Hide URL' : 'Show URL'}
         </button>
       </div>
+      <p className="small muted">
+        IPv4 and IPv6 connections are supported. For Supabase on an IPv4 network, copy the
+        Session pooler URL from Connect; it is included on the free plan.
+      </p>
       <label className="check-label">
         <input
           type="checkbox"
