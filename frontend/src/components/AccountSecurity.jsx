@@ -8,14 +8,10 @@ export function AccountSecurity({
   user,
   passwordEnabled,
   busy,
-  linkBusy,
   error,
   message,
   submit,
-  googleEnabled,
   linkedReturn,
-  connectGoogle,
-  linkError,
   route,
 }) {
   return (
@@ -27,7 +23,7 @@ export function AccountSecurity({
       {passwordEnabled && (
         <AccountPasswordForm
           onSubmit={submit}
-          busy={busy || linkBusy}
+          busy={busy}
           error={error}
           message={message}
         />
@@ -54,40 +50,6 @@ export function AccountSecurity({
             </p>
           )}
         </section>
-      )}
-      {googleEnabled && passwordEnabled && !user.google_linked && (
-        <form
-          className="account-provider account-provider-form"
-          aria-label="Connect Google account"
-          onSubmit={connectGoogle}
-        >
-          <div className="account-provider-heading">
-            <GoogleMark />
-            <h3>Connect Google</h3>
-          </div>
-          <p className="account-setting-help">
-            Add another way to log in. Confirm your current password to connect your Google account.
-          </p>
-          <label>
-            Data Genie password
-            <input
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              maxLength={128}
-              required
-            />
-          </label>
-          <button className="btn google-button" disabled={linkBusy || busy}>
-            <GoogleMark />
-            {linkBusy ? 'Connecting…' : 'Connect Google'}
-          </button>
-          {linkError && (
-            <p className="err" role="alert">
-              {linkError}
-            </p>
-          )}
-        </form>
       )}
       {googleError(route) && (
         <p className="err" role="alert">
