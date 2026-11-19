@@ -35,7 +35,6 @@ beforeEach(() => {
       created_at: 1794355200,
     },
     changePassword: vi.fn().mockResolvedValue('Password updated.'),
-    refresh: vi.fn(),
   });
   appearance.theme = 'light';
   appearance.toggle.mockClear();
@@ -52,15 +51,11 @@ beforeEach(() => {
     'fetch',
     vi.fn((path) =>
       response(
-        path === '/api/auth/providers'
-          ? { google: { enabled: false } }
-          : path === '/api/workspaces'
-            ? {
-                workspaces: [
-                  { workspace_id: 'personal', name: 'Personal workspace', role: 'owner' },
-                ],
-              }
-            : { tokens: [] },
+        path === '/api/workspaces'
+          ? {
+              workspaces: [{ workspace_id: 'personal', name: 'Personal workspace', role: 'owner' }],
+            }
+          : { tokens: [] },
       ),
     ),
   );
