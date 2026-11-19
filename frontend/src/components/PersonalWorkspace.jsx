@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useEnterMotion } from '../hooks/useMotion';
 import { WorkspaceHeader } from './WorkspaceHeader';
 import { WorkspaceTabs } from './WorkspaceTabs';
 
 export function PersonalWorkspace({ user, view, onNavigate, logout, children }) {
+  const content = useRef(null);
+  useEnterMotion(content, view);
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
   async function signOut() {
@@ -30,7 +33,7 @@ export function PersonalWorkspace({ user, view, onNavigate, logout, children }) 
           onLogout={signOut}
           disabled={busy}
         />
-        <main className="content personal-content" id="personalContent" tabIndex="-1">
+        <main className="content personal-content" id="personalContent" tabIndex="-1" ref={content}>
           {error && (
             <p className="err" role="alert">
               {error}

@@ -1,45 +1,52 @@
 import { useState } from 'react';
 import { DatabaseForm } from '../components/DatabaseForm';
 import { SavedDatabases } from '../components/SavedDatabases';
+import { TeamWorkspaceEntry } from '../components/TeamWorkspaceEntry';
+import { Link } from '../lib/router';
+import { databaseAccess } from '../lib/access';
 export default function DatabasesPage({ workbench, onOpened }) {
   const [formVersion, setFormVersion] = useState(0);
+  const access = databaseAccess(workbench.session);
+  const destination = access.role === 'owner' ? access.workspaceName : 'Personal workspace';
   return (
-    <section>
-      <h1>Your databases</h1>
-      <div role="note" aria-label="Current database">
-        <p className="lead">
-          Currently connected to <strong>{workbench.session.database}</strong>. Opening another
-          database starts a new session. Your earlier history stays saved.
+    <section className="database-page">
+      <header className="database-page-heading">
+        <h1>Your databases</h1>
+        <p className="small muted">
+          Looking for a shared database? <Link href="/workspaces">Open team workspaces</Link>.
         </p>
-      </div>
-      <SavedDatabases
-        workbench={workbench}
-        onOpened={onOpened}
-        onReconnect={() => setFormVersion((value) => value + 1)}
-      />
-      <div className="connection-options">
-        <div>
-          <DatabaseForm
-            key={formVersion}
-            initialMode={formVersion ? 'postgresql' : 'create'}
-            busy={workbench.busy || workbench.pending || workbench.workingCommands.size > 0}
-            onOpen={async (payload) => {
-              await workbench.open(payload);
-              onOpened();
-            }}
-          />
-        </div>
-        <div className="drop">
-          <h2>Bring your data</h2>
-          <p>
-            Upload a SQLite file, start an empty SQLite database, or connect a live PostgreSQL
-            database.
+        <div role="note" aria-label="Current database">
+          <p className="lead">
+            You’re using <strong>{workbench.session.database}</strong>.
           </p>
           <p className="small muted">
-            SQLite uploads use a copy you can download. PostgreSQL works on your connected database;
-            enable changes only when you want to confirm edits there.
+            New databases are added to <strong>{destination}</strong>. Your saved conversations stay
+            private.
           </p>
         </div>
+      </header>
+      <div className="database-entry-layout">
+        <div className="database-start-options">
+          <SavedDatabases
+            workbench={workbench}
+            onOpened={onOpened}
+            onReconnect={() => setFormVersion((value) => value + 1)}
+          />
+          <TeamWorkspaceEntry
+            disabled={Boolean(
+              workbench.busy || workbench.pending || workbench.workingCommands?.size,
+            )}
+          />
+        </div>
+        <DatabaseForm
+          key={formVersion}
+          initialMode={formVersion ? 'postgresql' : 'create'}
+          busy={workbench.busy || workbench.pending || workbench.workingCommands.size > 0}
+          onOpen={async (payload) => {
+            const data = await workbench.open(payload);
+            onOpened(data);
+          }}
+        />
       </div>
     </section>
   );

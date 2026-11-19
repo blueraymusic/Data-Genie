@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Link } from '../lib/router';
 import { Icon } from './Icon';
+import { DatabaseAccess } from './DatabaseAccess';
 export function TableRail({
   session,
   selected,
   setSelected,
   onNewTable,
   onNavigate,
+  onClose,
   open,
   disabled,
 }) {
@@ -28,6 +30,11 @@ export function TableRail({
   }
   return (
     <aside className={'side' + (open ? ' open' : '')} id="tableRail">
+      {open && (
+        <button type="button" className="btn rail-close" onClick={onClose}>
+          Close tables
+        </button>
+      )}
       <div className="rail-connection">
         <div className="rail-heading">
           <span>
@@ -51,6 +58,7 @@ export function TableRail({
             {session.schema_name} · {session.read_only ? 'Read-only' : 'Changes need confirmation'}
           </p>
         )}
+        <DatabaseAccess session={session} />
       </div>
       <div className="rail-search">
         <Icon name="search" />
@@ -124,7 +132,7 @@ export function TableRail({
         Browse structure and relationships
       </button>
       <div className="rail-foot">
-        <Link href="/faq">Questions? Read the FAQ</Link>
+        <Link href="/faq">Help &amp; FAQ</Link>
       </div>
     </aside>
   );

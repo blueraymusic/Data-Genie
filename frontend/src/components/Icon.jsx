@@ -2,11 +2,14 @@ export function Icon({ name, className = 'ic', ...props }) {
   const paths = {
     sun: 'M12 2v2M12 20v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
     moon: 'M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z',
+    menu: 'M4 6h16M4 12h16M4 18h16',
     plus: 'M12 5v14M5 12h14',
     check: 'm5 12 4 4L19 6',
     x: 'm6 6 12 12M6 18 18 6',
     copy: 'M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1',
     clock: 'M12 7v5l3 2',
+    pause: 'M9 5v14M15 5v14',
+    play: 'm8 5 11 7-11 7V5Z',
     replay: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5',
     search: 'm16 16 4 4',
     trash: 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4h8v2',
@@ -17,11 +20,15 @@ export function Icon({ name, className = 'ic', ...props }) {
     arrow: 'M5 12h14m-5-5 5 5-5 5',
     send: 'M12 19V5m-6 6 6-6 6 6',
     workspace: 'M8 3v18M8 9h13',
+    report: 'M14 3H5v18h14V8l-5-5ZM14 3v5h5M8 12h8M8 16h6',
+    download: 'M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5',
     account: 'M5 21v-2a7 7 0 0 1 14 0v2',
+    lock: 'M6 10h12v11H6V10Zm2 0V7a4 4 0 0 1 8 0v3M12 14v3',
   };
   return (
     <svg
       className={className}
+      data-icon={name}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"

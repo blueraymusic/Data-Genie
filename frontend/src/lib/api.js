@@ -3,7 +3,10 @@ export const setCsrfToken = (value) => {
   csrfToken = value || '';
 };
 
-export async function api(path, { method = 'GET', body, sessionId, signal } = {}) {
+export async function api(
+  path,
+  { method = 'GET', body, sessionId, signal, responseType = 'json' } = {},
+) {
   const requestToken = csrfToken;
   const headers = {};
   if (csrfToken && method !== 'GET') headers['X-CSRF-Token'] = csrfToken;
@@ -27,15 +30,17 @@ export async function api(path, { method = 'GET', body, sessionId, signal } = {}
     failure.recovery = 'restart_server';
     throw failure;
   }
+  if (signal?.aborted) throw new DOMException('The request was cancelled.', 'AbortError');
   let data;
   try {
-    data = await response.json();
+    data = response.ok && responseType === 'blob' ? await response.blob() : await response.json();
   } catch (error) {
     if (error.name === 'AbortError') throw error;
     throw new Error(
       'The server returned an unreadable response. Check History before retrying a change.',
     );
   }
+  if (signal?.aborted) throw new DOMException('The request was cancelled.', 'AbortError');
   if (!response.ok) {
     if (
       data.auth_required &&

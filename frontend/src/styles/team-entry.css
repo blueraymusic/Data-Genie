@@ -1,0 +1,27 @@
+.workspace-page .database-start-options {
+  min-width: 0;
+}
+.workspace-page .team-workspace-entry {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding-top: 20px;
+  margin-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+.workspace-page .team-entry-copy h2 {
+  margin: 0 0 6px;
+  font-size: 21px;
+}
+.workspace-page .team-entry-copy p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.workspace-page .team-workspace-entry .btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

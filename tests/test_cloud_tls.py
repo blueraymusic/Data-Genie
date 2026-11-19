@@ -123,3 +123,28 @@ class SqlTlsTests(unittest.TestCase):
         self.assertTrue(connect.call_args.kwargs["validate_host"])
         self.assertFalse(connect.call_args.kwargs["enc_login_only"])
         self.assertEqual(connect.call_args.kwargs["cafile"], certifi.where())
+        self.assertEqual(connect.call_args.kwargs["login_timeout"], 6)
+        self.assertTrue(connect.call_args.kwargs["disable_connect_retry"])
+        self.assertEqual(connect.call_args.kwargs["timeout"], 180)
+
+    def test_cloud_connect_uses_one_bounded_driver_attempt_and_keeps_sql_cause(self):
+        from backend import cloud_state
+        # Exercise the pinned driver's retry wrapper without opening a socket or
+        # sleeping, including its TimeoutError wrapping of the final SQL error.
+        error = pytds.OperationalError("private database details")
+        error.msg_no = 42119
+        clock = [0.0]
+
+        def advance(seconds):
+            clock[0] += seconds
+
+        with patch.dict("os.environ", {"GENIE_SQL_HOST": "genie.database.windows.net"}), \
+                patch.object(pytds, "_connect", side_effect=error) as attempt, \
+                patch("pytds.utils.time.time", side_effect=lambda: clock[0]), \
+                patch("pytds.utils.time.sleep", side_effect=advance), \
+                self.assertRaises(TimeoutError) as failure:
+            cloud_state.connect()
+        self.assertEqual(attempt.call_count, 1)
+        self.assertEqual(clock[0], 6)
+        self.assertIs(failure.exception.__cause__, error)
+        self.assertEqual(cloud_state.sql_error_codes(failure.exception), {42119})

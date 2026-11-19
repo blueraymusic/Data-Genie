@@ -4,6 +4,44 @@ export const faqGroups = [
     title: 'Getting started',
     items: [
       {
+        question: 'Do I need to refresh to see changes?',
+        search:
+          'Live automatic updates workspaces databases reports permissions invitations structure sample rows history without refreshing the page.',
+        answer: (
+          <p>
+            Open screens update automatically while this tab is visible, and check again when you
+            return. Database changes, access changes, report sharing, and invitations appear without
+            reloading. Saved query answers remain dated snapshots; run the query again for a fresh
+            answer.
+          </p>
+        ),
+      },
+      {
+        question: 'Can I see my partner editing a report live?',
+        search:
+          'Collaborate coedit live reports typing partner simultaneous changes author owner unpublished draft one second sync reviewed published snapshot.',
+        answer: (
+          <p>
+            Yes. Save a new report once, then its author and workspace owner can open the
+            unpublished draft together. Their typing syncs in about one second, including
+            simultaneous edits. Live working text is separate from the reviewed snapshot: published
+            readers see new text after the owner saves. Existing edit permissions still apply.
+          </p>
+        ),
+      },
+      {
+        question: 'Can Data Genie return a chart?',
+        search:
+          'AI charts monthly sales trends line bar structured chart specification real database results table exact values.',
+        answer: (
+          <p>
+            Yes. Ask for a monthly sales trend or a comparison by category. Data Genie can return a
+            line or bar chart from your actual query results. Switch between Chart and Table to
+            inspect exact values. Invalid or unsafe numeric values stay in a table.
+          </p>
+        ),
+      },
+      {
         question: 'What can I do with Data Genie?',
         search:
           'Ask questions about SQLite or PostgreSQL, find and count records, add or update data, and create or change tables. Data Genie translates your request into SQL and shows the result alongside it. Reads run immediately. Changes wait for your confirmation, and your requests stay in History.',
@@ -22,13 +60,47 @@ export const faqGroups = [
         ),
       },
       {
-        question: 'Do I need to know SQL?',
+        question: 'Can I try Data Genie without an account?',
         search:
-          'No. In Gemini AI mode, start with a request such as \u201cshow all customers from Missouri\u201d. The generated SQL appears beside your words so you can see how the request was interpreted.The Structure tab shows the tables and columns available in your database. Naming them in your request helps make your intent clear.',
+          'Yes. The homepage demo, workspace tour and interactive examples use sample data without an account. Try follow-ups, SQL explanations, sample approvals and history filters. These examples never connect to or change your database. Sign up or log in to use your own SQLite or PostgreSQL database.',
         answer: (
           <>
             <p>
-              No. In Gemini AI mode, start with a request such as “show all customers from
+              Yes. The homepage demo, workspace tour and interactive examples use sample data. Try
+              follow-ups, SQL explanations, approvals and history filters without an account.
+            </p>
+            <p>
+              These examples never connect to or change your database. Sign up or log in when you
+              want to work with your own SQLite or PostgreSQL database.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'How can I contact Data Genie?',
+        search:
+          'Open Contact us to ask a question, report a problem, or share feedback. The form prepares an email draft for you to review and send in your own email app. Copy message is available if you prefer to paste it into webmail. No message is sent automatically. You do not need an account.',
+        answer: (
+          <>
+            <p>
+              Open <a href="/contact">Contact us</a> to ask a question, report a problem, or share
+              feedback. You do not need an account.
+            </p>
+            <p>
+              The form prepares an email draft for you to review and send. Use{' '}
+              <strong>Copy message</strong> if you prefer webmail. No message is sent automatically.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'Do I need to know SQL?',
+        search:
+          'No. In Data Genie AI mode, start with a request such as \u201cshow all customers from Missouri\u201d. The generated SQL appears beside your words so you can see how the request was interpreted. The Structure tab shows the tables and columns available in your database. Naming them in your request helps make your intent clear.',
+        answer: (
+          <>
+            <p>
+              No. In Data Genie AI mode, start with a request such as “show all customers from
               Missouri”. The generated SQL appears beside your words so you can see how the request
               was interpreted.
             </p>
@@ -54,6 +126,142 @@ export const faqGroups = [
               A new SQLite database starts empty unless you select the example notes table. Use{' '}
               <strong>+ New table</strong> beside Tables to add your own table, or describe the
               table you want in the request bar.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'Can I create and share reports?',
+        search:
+          'In Teams open Reports and New report. Write from a blank page, use a template, or draft with Data Genie AI from source notes you supply. Members can edit their own drafts. Owners review and share reports with workspace members and viewers. Viewers see only shared reports, not database rows, chats or SQL. Anyone allowed to read a saved report can Download PDF. Only the creator can Delete an active report while a Member or Owner. Anyone who can view an archived report can delete it, with confirmation. Reports are saved snapshots, not live dashboards.',
+        answer: (
+          <>
+            <p>
+              Open <strong>Teams → Reports → New report</strong>. Write from a blank page, use a
+              template, or draft with Data Genie AI from notes you supply. Members can edit their
+              own drafts; the owner reviews and shares them. Viewers see only shared reports.
+              Reports are saved snapshots, not live dashboards.
+            </p>
+            <p>
+              Anyone who can read a saved report can choose <strong>Download PDF</strong>, including
+              viewers. Only its creator can delete an active report, while they are a Member or
+              Owner. Anyone who can view an archived report can delete it, including reports
+              retained from a deleted author. Deletion is permanent and asks for confirmation.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'Can I attach a PDF or image to a question?',
+        search:
+          'Attach PDF or image in Ask. Up to two PDF PNG JPEG WebP files and 4 MB combined. Sent to the configured AI service with that request only, not saved in History or reused automatically. Generated SQL and summaries can include information from the file. Database permissions and confirmations still apply.',
+        answer: (
+          <p>
+            Choose <strong>Attach PDF or image</strong> in Ask, then type your request. You can
+            attach two PDF, PNG, JPEG, or WebP files up to 4 MB combined. Files go to the configured
+            AI service with that request and are not saved in History or automatically reused. SQL
+            and summaries may include information from them. Permissions and change confirmations
+            still apply.
+          </p>
+        ),
+      },
+      {
+        question: 'How do I revoke someone’s database access?',
+        search:
+          'Teams People and access choose person and database Revoke access. Ends existing database sessions and invalidates their pending confirmations. Removing a member clears grants so rejoining restores no permissions. Shared report snapshots must be unshared separately.',
+        answer: (
+          <p>
+            In <strong>People &amp; access</strong>, choose the person and database, then{' '}
+            <strong>Revoke access</strong>. Existing database sessions end and pending changes
+            cannot be confirmed. Removing a member clears their grants; rejoining does not restore
+            them. Shared report snapshots must be unshared separately.
+          </p>
+        ),
+      },
+      {
+        question: 'Can I share a database with my team?',
+        search:
+          'Choose Create team workspace on Choose your database or Databases, enter a New workspace name and choose Create workspace. No database connection is needed first. The new team opens in Teams; creating it keeps the current database connection and does not move that database. Add a database in Databases, then invite teammates in People & access as Members or Viewers. Members need explicit permission for each database; joining alone does not grant access. Viewers can read only reports shared by the owner and cannot open raw databases. Shared database changes affect the same underlying data, while each person keeps private chats and History.',
+        answer: (
+          <>
+            <p>
+              Choose <strong>Create team workspace</strong> on the database screen, enter a{' '}
+              <strong>New workspace name</strong>, then choose <strong>Create workspace</strong>.
+              You do not need to open a database first. The new team opens in <strong>Teams</strong>
+              ; your current database stays connected and is not moved.
+            </p>
+            <p>
+              Add a database in <strong>Databases</strong>, then use{' '}
+              <strong>People &amp; access</strong> to invite teammates as <strong>Members</strong>{' '}
+              or <strong>Viewers</strong>.
+            </p>
+            <p>
+              Members need permission for each database; joining alone does not grant access.
+              Viewers can read only reports shared by the owner and cannot open raw databases.
+              Confirmed changes affect the same shared data, while each person keeps private chats
+              and History.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'What happens if I delete a team workspace?',
+        search:
+          'Only the owner can delete a team workspace. In Teams choose Delete workspace and type its exact name. The databases return to the owner’s Personal workspace. Memberships, invitations and database grants are removed, and members’ shared sessions end. Database files, external PostgreSQL data and the owner’s private History are preserved. Deleting a workspace does not drop tables or undo changes. The Personal workspace cannot be deleted.',
+        answer: (
+          <>
+            <p>
+              Only the owner can delete a team workspace. In <strong>Teams</strong>, choose{' '}
+              <strong>Delete workspace</strong> and type its exact name. The databases return to the
+              owner’s <strong>Personal workspace</strong>.
+            </p>
+            <p>
+              Sharing ends: memberships, invitations and database grants are removed, and members’
+              shared sessions end. Database files, external PostgreSQL data and the owner’s private
+              History are preserved. Deletion does not drop tables or undo changes. Your Personal
+              workspace cannot be deleted.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'How do workspace invitation codes work?',
+        search:
+          'The workspace owner enters a teammate account email and creates an invitation, then shares the private code or link with that person. Data Genie does not send invitation emails. The recipient signs in or signs up with the invited email, opens Teams, enters the code in their invitation and chooses Join workspace. Invitations expire after seven days. Codes are shown once and replacing an invitation invalidates its old code.',
+        answer: (
+          <>
+            <p>
+              The workspace owner creates an invitation using the teammate’s account email, then
+              shares its private code or link with that person. Data Genie does not send invitation
+              emails.
+            </p>
+            <p>
+              The recipient signs in or creates an account using the invited email, opens{' '}
+              <strong>Teams</strong>, enters the code in their invitation and chooses{' '}
+              <strong>Join workspace</strong>. A private link can fill in the code for them.
+            </p>
+            <p>
+              Invitations expire after seven days. Codes are shown once. Replacing an invitation
+              invalidates its old code, so keep the new code private.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'What if two teammates edit the same database?',
+        search:
+          'Each person has private chats, History and confirmations while using the same shared database. Before applying a confirmed change, Data Genie checks whether the previewed tables or dependencies changed. A stale change is refused; prepare the request again to review current data. The app holds short locks only while checking and applying a change, never while you review it. Large changes can exceed its bounded preview checks and need database transaction tools.',
+        answer: (
+          <>
+            <p>
+              You share the same database, with separate chats, History and confirmations. Before
+              applying a change, Data Genie checks whether its previewed tables or dependencies
+              changed. If they did, the change is refused and you must prepare the request again.
+            </p>
+            <p>
+              Short locks protect the check and update. A lock is not held while you review a
+              confirmation. Operations exceeding the app’s preview limits need your database’s
+              transaction tools.
             </p>
           </>
         ),
@@ -105,13 +313,14 @@ export const faqGroups = [
       {
         question: 'How do I connect PostgreSQL?',
         search:
-          'Connect a local or hosted PostgreSQL database, including standard Supabase and Neon connections. In Databases choose PostgreSQL, paste the connection URL and choose a schema, usually public. Test connection checks access without changing data or saving credentials. Connect PostgreSQL saves the connection for your account. For a local installation, install the optional connector dependencies in the README first. The hosted site includes the connector.',
+          'Connect a local or hosted PostgreSQL database, including standard Supabase and Neon connections. In Databases choose PostgreSQL and paste the connection URL. Schema defaults to public. Expand Connection options to change Schema or add an optional Connection name. Test connection checks access without changing data or saving credentials. Connect PostgreSQL saves the connection for your account. For a local installation, follow the README link to install the optional connector dependencies first. The hosted site includes the connector.',
         answer: (
           <>
             <p>
-              Choose <strong>Databases → PostgreSQL</strong>, paste your connection URL, and choose
-              a schema, usually <code>public</code>. You can connect a local database or a hosted
-              one, including standard PostgreSQL connections from Supabase and Neon.
+              Choose <strong>Databases → PostgreSQL</strong> and paste your connection URL. The
+              schema defaults to <code>public</code>. Expand <strong>Connection options</strong> to
+              change <strong>Schema</strong> or add an optional <strong>Connection name</strong>.
+              You can use standard PostgreSQL connections from Supabase and Neon.
             </p>
             <p>
               A hosted Data Genie installation requires a public PostgreSQL address and verified
@@ -121,8 +330,8 @@ export const faqGroups = [
             <p>
               <strong>Test connection</strong> checks access without changing data or saving the
               credentials. <strong>Connect PostgreSQL</strong> saves the connection for your
-              account. For a local installation, install the optional connector dependencies in the
-              README first. The hosted site includes the connector.
+              account. For a local installation, follow the README link to install the optional
+              connector dependencies first. The hosted site includes the connector.
             </p>
           </>
         ),
@@ -167,17 +376,18 @@ export const faqGroups = [
       {
         question: 'Can I download my PostgreSQL database?',
         search:
-          'PostgreSQL data stays on its server and confirmed changes are saved there directly. Download CSV exports the rows currently loaded in a result, not a full database backup. Full PostgreSQL backups are handled outside Data Genie. Download SQLite file is only available for SQLite databases.',
+          'PostgreSQL confirmed changes are saved on its server. Download from each database card exports all tables as a CSV folder ZIP with schema metadata. Download CSV on query results exports loaded rows. Native PostgreSQL backups require PostgreSQL backup tools. SQLite download and SQLite SQL dump are only for SQLite.',
         answer: (
           <>
             <p>
               PostgreSQL data stays on its server, and confirmed changes are saved there directly.
-              There is no database file to download from Data Genie for this connection.
+              On its database card, choose <strong>Download → CSV folder</strong> to export its
+              tables with schema metadata.
             </p>
             <p>
               <strong>Download CSV</strong> exports the rows currently loaded in a result. Full
-              PostgreSQL backups are handled outside Data Genie.{' '}
-              <strong>Download SQLite file</strong> is only available for SQLite databases.
+              PostgreSQL backups use PostgreSQL backup tools. <strong>Download SQLite file</strong>{' '}
+              is only available for SQLite databases.
             </p>
           </>
         ),
@@ -218,14 +428,55 @@ export const faqGroups = [
       {
         question: 'Is this an MCP connector?',
         search:
-          'The current version connects directly to PostgreSQL using its native database protocol. It does not include an MCP client or server. You do not need an MCP server to connect your PostgreSQL database to Data Genie.',
+          'PostgreSQL connects directly using its native database protocol. Agents can use the hosted MCP endpoint https://data-genie.space/mcp with browser OAuth sign-in and workspace consent, the HTTP API with an agent key, or the optional local stdio bridge.',
         answer: (
           <>
             <p>
-              The current version connects directly to PostgreSQL using its native database
-              protocol. It does not include an MCP client or server.
+              PostgreSQL connects directly using its native database protocol. You do not need an
+              MCP server to connect a database.
             </p>
-            <p>You do not need an MCP server to connect your PostgreSQL database to Data Genie.</p>
+            <p>
+              For a remote MCP connection, enter <code>https://data-genie.space/mcp</code> in a
+              client that supports custom servers with OAuth. Sign in to Data Genie, choose a
+              workspace and allowed actions, then approve the connection. You can revoke it in{' '}
+              <strong>Account → Agents &amp; API</strong>. The local bridge and HTTP API remain
+              available for scripts using agent keys.
+            </p>
+            <p>
+              <a
+                href="https://github.com/blueraymusic/Data-Genie/blob/dev/docs/agents.md"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Read the agent setup guide
+              </a>
+              .
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'What can an agent do with my account?',
+        search:
+          'Agent key scopes permissions expire revoke read databases query prepare change manual confirmation create blank SQLite database private report draft AI report generate viewer shared reports only no publishing invitations permissions.',
+        answer: (
+          <>
+            <p>
+              You choose the actions and one workspace when creating a key. Agents can read
+              permitted data, prepare SQL changes, create blank SQLite databases if you are the
+              owner, and draft reports. Keys cannot override your current role or database
+              permissions.
+            </p>
+            <p>
+              SQL changes wait for your confirmation in the site. Reports stay private drafts until
+              an owner shares them. Agents cannot invite people, grant access, publish reports, or
+              confirm changes through the API. Viewers can read shared reports only.
+            </p>
+            <p>
+              Keys expire and can be revoked in Account. Changing your password revokes your agent
+              keys too. AI drafting sends only the notes explicitly supplied and uses your account’s
+              existing allowance.
+            </p>
           </>
         ),
       },
@@ -269,21 +520,24 @@ export const faqGroups = [
         ),
       },
       {
-        question: 'What does Gemini receive about my database?',
+        question: 'What does Data Genie AI receive about my database?',
         search:
-          'Gemini receives your request, the database structure, and up to eight recent turns from this conversation. Context includes your messages, assistant replies, clarification questions, SQL, execution status, and brief result summaries. Table rows, other conversations, file paths, and profile details are not sent. Values typed into a request are included. New conversation clears the context for future requests.',
+          'Data Genie sends the configured AI service your request, the database structure, and up to eight recent turns from this conversation. Context includes your messages, assistant replies, clarification questions, SQL, execution status, and brief result summaries. Table rows are not sent automatically. Attached files and source notes for AI reports are sent when you submit them. Other conversations, file paths, and profile details are not sent. Values typed into a request are included. New conversation clears the context for future requests.',
         answer: (
           <>
             <p>
-              Gemini receives your request and the database structure: table and column names, data
-              types, and relevant key and constraint information. It also receives up to eight
-              recent turns from this conversation, including your messages, assistant replies,
-              clarification questions, SQL, execution status, and brief result summaries.
+              Data Genie sends the configured AI service your request and the database structure:
+              table and column names, data types, and relevant key and constraint information. It
+              also receives up to eight recent turns from this conversation, including your
+              messages, assistant replies, clarification questions, SQL, execution status, and brief
+              result summaries.
             </p>
             <p>
-              Table rows, other conversations, file paths, and profile details are not sent. Values
-              you type into a request are included. Use New conversation to clear the context for
-              future requests; your saved History stays available.
+              Table rows are not sent automatically. Files attached to Ask and source notes for AI
+              reports are sent when you submit them. Other conversations, file paths, and profile
+              details are not sent. Values you type into a request are included. Use New
+              conversation to clear the context for future requests; your saved History stays
+              available.
             </p>
           </>
         ),
@@ -291,17 +545,19 @@ export const faqGroups = [
       {
         question: 'Can I use Data Genie without AI?',
         search:
-          'Yes. Choose Keywords in Account & preferences. Keywords mode supports specific commands such as \u201ccount customers\u201d and \u201cshow sales where amount > 50\u201d. It does not send the request to an AI provider.Gemini AI mode supports more flexible phrasing. If the AI service is unavailable, you can switch to Keywords; the app does not silently change modes.',
+          'Yes. Open the SQL tab to enter standard SQLite or PostgreSQL statements. Examples cover previewing rows, counts, filters and creating tables. The parser checks statements before running them, and changes need confirmation. Structure has forms for editing tables and columns. Neither SQL nor Structure uses AI. Set your default workspace view in Account & preferences.',
         answer: (
           <>
             <p>
-              Yes. Choose <strong>Keywords</strong> in Account &amp; preferences. Keywords mode
-              supports specific commands such as “count customers” and “show sales where amount &gt;
-              50”. It does not send the request to an AI provider.
+              Yes. Open the <strong>SQL</strong> tab and enter a statement such as{' '}
+              <code>SELECT COUNT(*) FROM customers;</code>. Examples help with common queries and
+              use the syntax for your connected database. The parser checks statements first;
+              changes still wait for confirmation.
             </p>
             <p>
-              Gemini AI mode supports more flexible phrasing. If the AI service is unavailable, you
-              can switch to Keywords; the app does not silently change modes.
+              <strong>Structure</strong> also has forms for editing tables and columns. Neither
+              option uses AI. You can set your default workspace view in{' '}
+              <strong>Account &amp; preferences</strong>.
             </p>
           </>
         ),
@@ -312,6 +568,49 @@ export const faqGroups = [
     id: 'requests-and-changes',
     title: 'Requests & changes',
     items: [
+      {
+        question: 'Can I preview rows while browsing Structure?',
+        search:
+          'Choose Sample rows in Structure. Open previews refresh automatically while visible. Hide sample rows closes preview. Refresh sample rows fetches current data immediately. Copy and CSV follow download permission.',
+        answer: (
+          <>
+            <p>
+              Yes. Choose <strong>Sample rows</strong> on a table in <strong>Structure</strong>. Use{' '}
+              <strong>Hide sample rows</strong> to close the preview. Opening it again reuses the
+              loaded rows; <strong>Refresh sample rows</strong> fetches current data while the
+              preview is open.
+            </p>
+            <p>
+              Open previews update automatically. Changing sessions clears the samples. Copy and CSV
+              controls follow your database’s download permission here too.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'Can I edit tables and columns without typing a request?',
+        search:
+          'Yes. In Structure create a table, rename or delete a table, or add, rename or delete a column or attribute. Choose its type when adding a column. Review the SQL and confirm the change, or choose Don’t run. Read-only connections do not allow editing. Deleting a column removes its values and deleting a table removes its rows. Existing column types and constraints are shown for inspection; the forms do not convert existing data types.',
+        answer: (
+          <>
+            <p>
+              Yes. Open <strong>Structure</strong> to create, rename, or delete a table. Each table
+              also has controls to add a column, rename a column, or delete one. Choose a data type
+              when adding a column.
+            </p>
+            <p>
+              Review the SQL, then confirm or choose <strong>Don’t run</strong>. Read-only
+              connections cannot be edited. Deleting a column removes its values; deleting a table
+              removes its rows. These changes have no automatic undo.
+            </p>
+            <p>
+              Existing types and constraints are shown for inspection. The forms do not convert
+              existing data types; advanced changes can be entered in SQL where your database
+              supports them.
+            </p>
+          </>
+        ),
+      },
       {
         question: 'When does a request actually run?',
         search:
@@ -371,13 +670,13 @@ export const faqGroups = [
       {
         question: 'Can I ask a follow-up without repeating the table name?',
         search:
-          'In AI mode you can continue the current conversation. After show all customers from Missouri, ask which ones are in Iowa. Recent requests and the database structure provide context. Keywords mode supports a narrower set of follow-ups. New conversation clears context for future requests and keeps saved History.',
+          'In Ask you can continue the current conversation. After show all customers from Missouri, ask which ones are in Iowa. Recent requests and the database structure provide context. SQL statements are explicit queries and do not use conversation context. New conversation clears context for future requests and keeps saved History.',
         answer: (
           <>
             <p>
               Yes. In AI mode, try “show all customers from Missouri”, then “which ones are in
-              Iowa”. Recent requests and the database structure provide context. Keywords mode
-              supports a narrower set of follow-ups.
+              Iowa”. Recent requests and the database structure provide context. Statements in the
+              SQL tab are explicit queries and do not use conversation context.
             </p>
             <p>
               Choose <strong>New conversation</strong> to clear context for future requests. Your
@@ -389,7 +688,7 @@ export const faqGroups = [
       {
         question: 'What if my request is not understood?',
         search:
-          'Check the table and column names in Structure, then make your request more specific. For example, \u201cshow customers where state is Missouri\u201d is clearer than \u201cshow people from there\u201d.Keywords mode uses a fixed command grammar, so follow the suggested examples. Use Gemini AI mode when you want to ask more freely.',
+          'Check the table and column names in Structure, then make your request more specific. For example, show customers where state is Missouri is clearer than show people from there. Use SQL to write an explicit statement, or Structure to edit tables and columns with forms. These options do not need AI.',
         answer: (
           <>
             <p>
@@ -398,8 +697,8 @@ export const faqGroups = [
               “show people from there”.
             </p>
             <p>
-              Keywords mode uses a fixed command grammar, so follow the suggested examples. Use
-              Gemini AI mode when you want to ask more freely.
+              For an explicit query, switch to <strong>SQL</strong> and start from one of its
+              examples. To edit tables or columns without a prompt, use <strong>Structure</strong>.
             </p>
           </>
         ),
@@ -411,9 +710,34 @@ export const faqGroups = [
     title: 'History & sessions',
     items: [
       {
+        question: 'How do I navigate a long conversation or history?',
+        search:
+          'Ask and SQL show recent requests in small batches. Show earlier requests opens older cached requests and Jump to latest returns to current work. All saved requests are available in History, with search, operation filters and pages of older or newer results. Choose Search to apply typed words or SQL. Choosing an operation applies immediately and returns to the first page without submitting your search draft. Clear filters beside Search resets search and operation. Emptying the search field removes its applied search immediately. SQL keeps its editor and Run SQL button at the bottom while results scroll above. Pending changes remain visible for review.',
+        answer: (
+          <>
+            <p>
+              Ask and SQL show recent requests in small batches. Choose{' '}
+              <strong>Show earlier requests</strong> or <strong>Jump to latest</strong> to move
+              around. The SQL editor and Run button stay at the bottom while results scroll above.
+            </p>
+            <p>
+              Open <strong>History</strong> for the full saved record. Type your words or SQL and
+              choose <strong>Search</strong>. Choosing an operation applies it immediately and
+              returns to the first page; search text you have not submitted stays in the field.
+            </p>
+            <p>
+              <strong>Clear filters</strong> beside Search resets the search and operation. Emptying
+              the search field removes its applied search immediately. Use the newer and older page
+              controls to move through results. Completed details stay collapsed until opened;
+              pending changes remain available for review.
+            </p>
+          </>
+        ),
+      },
+      {
         question: 'Where is my data stored on the hosted site?',
         search:
-          'The hosted Azure installation stores accounts, history, uploaded SQLite working copies and encrypted PostgreSQL connection settings on the server, with durable state in Azure SQL. Your laptop installation is separate: sign up on the hosted site and upload only the SQLite files you want to move. The small hosted installation supports 64 MiB of total application state and 256 files. SQL pauses when its free allowance is exhausted.',
+          'The hosted Azure installation stores accounts, history, uploaded SQLite working copies and encrypted PostgreSQL connection settings on the server, with durable state in Azure SQL. Your laptop installation is separate: sign up on the hosted site and upload only the SQLite files you want to move. The small hosted installation supports 64 MiB of total application state and 256 files. SQL can pause after inactivity or when its free allowance is exhausted. If the first login takes time, choose Retry connection, then submit the form yourself. Connection retries keep the form details and do not replay a request.',
         answer: (
           <>
             <p>
@@ -428,8 +752,13 @@ export const faqGroups = [
             </p>
             <p>
               This small deployment supports 64 MiB of total application state and 256 files across
-              all accounts. Azure SQL pauses if its free allowance is exhausted. Keep downloaded
-              copies of important SQLite databases.
+              all accounts. Azure SQL can pause after inactivity or if its free allowance is
+              exhausted. Keep downloaded copies of important SQLite databases.
+            </p>
+            <p>
+              The first connection after inactivity may take a moment. If login reports a connection
+              problem, choose <strong>Retry connection</strong>, then submit the form yourself. The
+              check keeps your entered details and does not repeat your request.
             </p>
           </>
         ),
@@ -493,9 +822,129 @@ export const faqGroups = [
         ),
       },
       {
+        question: 'Can I log in with Google?',
+        search:
+          'When enabled on this installation, Continue with Google appears on Log in and Sign up. It supports Google accounts alongside Data Genie passwords. To connect Google to an existing password account, log in first and use Connect Google in Account & preferences. A matching email does not automatically connect accounts. Google-only accounts manage their password with Google. Logging out of Data Genie does not log you out of Google everywhere.',
+        answer: (
+          <>
+            <p>
+              When enabled, <strong>Continue with Google</strong> appears on Log in and Sign up.
+              Email and password login stays available.
+            </p>
+            <p>
+              To add it to an existing account, log in with your Data Genie password, then choose{' '}
+              <strong>Connect Google</strong> in <strong>Account &amp; preferences</strong>. A
+              matching email never connects accounts automatically.
+            </p>
+            <p>
+              Google-only accounts manage their password with Google. Signing out of Data Genie ends
+              your Data Genie login; it does not sign you out of Google everywhere.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'Can I transfer ownership without deleting my account?',
+        search:
+          'Only the owner can transfer a team workspace. Personal workspace ownership cannot transfer. Teams Workspace settings recipient accepts declines cancel seven days separate from account deletion.',
+        answer: (
+          <>
+            <p>
+              Yes, for a team workspace you own. Personal workspaces cannot be transferred. In{' '}
+              <strong>Teams → Workspace settings → Transfer ownership</strong>, enter an existing
+              Data Genie account’s email, type the workspace name, and confirm your password. They
+              do not need to join first. Your account stays active and you remain the owner while
+              the request is pending.
+            </p>
+            <p>
+              The recipient sees the request in <strong>Teams → Ownership requests</strong>. They
+              review the databases and saved connections, then accept or decline. Only acceptance
+              moves ownership and the databases; you then become a Member. You can cancel before
+              acceptance, and requests expire after seven days. Notifications are in Data Genie, not
+              email.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'How do signup verification codes work?',
+        search:
+          'Sign up email code Blueray Inc. six digits five minutes three attempts resend sixty seconds account created only after verification.',
+        answer: (
+          <p>
+            On the hosted site, sign up and enter the six-digit code from Blueray Inc. It expires in
+            five minutes and allows three incorrect attempts. A replacement code invalidates the old
+            one; resends have a one-minute cooldown and rate limits. Your account is created only
+            after verification. Check spam if the message is missing. Existing accounts can still
+            log in. Signup verification does not reset passwords.
+          </p>
+        ),
+      },
+      {
+        question: 'What happens when I delete my account?',
+        search:
+          'Account preferences Sign-in security Delete account separate ownership transfer. Finish transfers in Teams before deleting. Owned database copies credentials private history invitations agent access and pending transfers removed. Reports archive remaining members can delete visible reports. No remaining members workspace cascades. Password email DELETE Google fresh sign in five minutes.',
+        answer: (
+          <>
+            <p>
+              Open <strong>Account &amp; preferences → Delete account</strong> to review the impact.
+              Confirm your email, type <strong>DELETE</strong>, and enter your current password.
+              Google-only accounts require a new sign-in within five minutes.
+            </p>
+            <p>
+              Deletion removes your remaining owned Data Genie database copies, connections, private
+              history, invitations, logins, pending transfer requests, and agent access. To keep a
+              workspace and its databases, complete a separate ownership transfer in Teams first; a
+              pending request does not transfer ownership.
+            </p>
+            <p>
+              Reports remain available to their existing audience, attributed to{' '}
+              <strong>Deleted account</strong>. Teams with remaining members become read-only
+              archives; anyone who can view an archived report can delete it. A workspace without
+              remaining members is deleted with its reports. Private drafts are not made public.
+              External PostgreSQL servers are never dropped by account deletion.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'Can I change my name or profile photo?',
+        search:
+          'Open Account & preferences, General, then Edit profile. Update your name or choose a PNG, JPEG or WebP photo up to 5 MB and Save changes. Photos are cropped and resized on your device before upload and saved with your account. Remove photo returns to initials. Email cannot be changed here because it is used for sign-in and workspace invitations.',
+        answer: (
+          <>
+            <p>
+              Open <strong>Account &amp; preferences → General → Edit profile</strong>. Update your
+              name or choose a PNG, JPEG, or WebP photo up to 5 MB, then choose{' '}
+              <strong>Save changes</strong>.
+            </p>
+            <p>
+              Your photo is cropped to a square and resized on your device before upload. It is
+              stored with your account. Choose <strong>Remove photo</strong> and save to use your
+              initials again. Email stays unchanged because it is used for sign-in and workspace
+              invitations.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'What if I forgot my password?',
+        search:
+          'Forgot password recovery email generic response account presence private fifteen minute single use reset link three login attempts.',
+        answer: (
+          <p>
+            Choose <a href="/forgot-password">Forgot password?</a> on Log in and enter your email.
+            You see the same response for every address. If a password account exists and email
+            delivery is configured, it receives a single-use link valid for 15 minutes. Resetting
+            signs out other logins and revokes agent connections. Google-only accounts recover
+            through Google.
+          </p>
+        ),
+      },
+      {
         question: 'How are my account and password stored?',
         search:
-          'Your name, email, password hash, and login records are stored in this Data Genie installation, separate from the databases you query. Passwords are salted and hashed; the app does not store the original password. Log in to access your own databases and history. You can change your password in Account & preferences. Other browser logins are signed out when you do. Login expires after 30 minutes of inactivity or 12 hours in total. There is no email-based password recovery in this version. History from before accounts were introduced stays on disk and is not automatically assigned by matching an email.',
+          'Accounts names email salted password hashes login records stored separately from queried databases. Three password attempts then temporary fifteen minute lockout. Change password in Account or email recovery. Login expires after thirty minutes idle or twelve hours total.',
         answer: (
           <>
             <p>
@@ -509,9 +958,10 @@ export const faqGroups = [
               you do.
             </p>
             <p>
-              Login expires after 30 minutes of inactivity or 12 hours in total. There is no
-              email-based password recovery in this version. History from before accounts were
-              introduced stays on disk and is not automatically assigned by matching an email.
+              Login expires after 30 minutes of inactivity or 12 hours in total. Three failed
+              password attempts temporarily lock password login for 15 minutes. Use email recovery
+              if needed. History from before accounts were introduced stays on disk and is not
+              automatically assigned by matching an email.
             </p>
           </>
         ),

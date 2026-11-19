@@ -6,6 +6,25 @@ export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
   plugins: [react()],
   build: { outDir: 'dist', emptyOutDir: true },
-  server: { proxy: { '/api': 'http://127.0.0.1:8000', '/static': 'http://127.0.0.1:8000' } },
-  test: { environment: 'jsdom', include: ['src/**/*.test.{js,jsx}'], restoreMocks: true },
+  server: {
+    proxy: Object.fromEntries(
+      [
+        '/api',
+        '/static',
+        '/mcp',
+        '/authorize',
+        '/token',
+        '/register',
+        '/revoke',
+        '/.well-known',
+      ].map((path) => [path, 'http://127.0.0.1:8000']),
+    ),
+  },
+  test: {
+    environment: 'jsdom',
+    include: ['src/**/*.test.{js,jsx}'],
+    restoreMocks: true,
+    // Bound JSDOM concurrency on laptops and small CI runners without relaxing timeouts.
+    maxWorkers: 1,
+  },
 });

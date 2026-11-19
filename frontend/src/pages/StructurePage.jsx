@@ -1,53 +1,125 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { ResultTable } from '../components/ResultTable';
+import { Translation } from '../components/CommandResult';
+import { SchemaChangeDialog } from '../components/SchemaChangeDialog';
+import { Icon } from '../components/Icon';
+import { schemaDialect } from '../lib/schemaSql';
+import { Link } from '../lib/router';
+import '../styles/structure.css';
+import { databaseAccess } from '../lib/access';
+import { useLiveRefresh } from '../hooks/useLiveRefresh';
 const identifierList = (value) => (Array.isArray(value) ? value.join(', ') : value);
-function SchemaTable({ table, sessionId, index }) {
+const isSchemaRequest = (request) =>
+  /^(CREATE|ALTER|DROP)\s+TABLE\b/i.test(request.text?.trim() || '') ||
+  request.commands.some((command) =>
+    ['CREATE', 'ALTER', 'DROP'].includes(
+      command.sql_operation ||
+        command.operation ||
+        command.sql?.trim().split(/\s/)[0]?.toUpperCase(),
+    ),
+  );
+const isPendingRequest = (request) =>
+  request.commands.some((command) => command.requires_confirmation && command.status === 'pending');
+
+function SchemaTable({ table, sessionId, index, disabled, dialect, onChange, canRead, canExport }) {
   const request = useRef(null);
-  const [rows, setRows] = useState(null),
+  const [sample, setSample] = useState(null),
+    [shown, setShown] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
-  useEffect(() => () => request.current?.abort(), [sessionId, table.name]);
-  async function sample() {
+  const rows =
+    canRead && sample?.sessionId === sessionId && sample.tableName === table.name
+      ? sample.rows
+      : null;
+  const sampleId = 'schema-sample-' + index;
+  useEffect(() => {
+    request.current?.abort();
+    setSample(null);
+    setShown(false);
+    setBusy(false);
+    setError('');
+    return () => request.current?.abort();
+  }, [sessionId, table.name, canRead]);
+  useLiveRefresh(
+    async (signal) => {
+      if (busy) return;
+      const data = await api('/api/sample?table=' + encodeURIComponent(table.name), {
+        sessionId,
+        signal,
+      });
+      if (!signal.aborted) setSample({ sessionId, tableName: table.name, rows: data.rows || [] });
+    },
+    { enabled: Boolean(canRead && shown), key: sessionId + ':' + table.name },
+  );
+  async function loadSample() {
+    if (!canRead || busy) return;
     const controller = new AbortController();
     request.current?.abort();
     request.current = controller;
     setBusy(true);
     setError('');
-    setRows(null);
+    setShown(true);
     try {
-      setRows(
-        (
-          await api('/api/sample?table=' + encodeURIComponent(table.name), {
-            sessionId,
-            signal: controller.signal,
-          })
-        ).rows,
-      );
+      const data = await api('/api/sample?table=' + encodeURIComponent(table.name), {
+        sessionId,
+        signal: controller.signal,
+      });
+      if (!controller.signal.aborted)
+        setSample({ sessionId, tableName: table.name, rows: data.rows || [] });
     } catch (error) {
-      if (!controller.signal.aborted) setError(error.message);
+      if (!controller.signal.aborted) {
+        setSample(null);
+        setError(error.message);
+      }
     } finally {
       if (!controller.signal.aborted) setBusy(false);
     }
   }
   return (
     <div className="tbl" id={'schema-table-' + index}>
-      <h3>
-        {table.name}
-        <span className="schema-count">
-          ·{' '}
-          {table.row_count == null
-            ? 'Row count unavailable'
-            : (table.row_count_estimated ? '~ ' : '') +
-              table.row_count.toLocaleString() +
-              (table.row_count === 1 ? ' row' : ' rows')}
-        </span>
-      </h3>
+      <div className="schema-table-heading">
+        <h3 tabIndex="-1">
+          {table.name}
+          <span className="schema-count">
+            {table.row_count == null
+              ? 'Row count unavailable'
+              : (table.row_count_estimated ? '~ ' : '') +
+                table.row_count.toLocaleString() +
+                (table.row_count === 1 ? ' row' : ' rows')}
+          </span>
+        </h3>
+        <div className="schema-actions" role="group" aria-label={'Manage table ' + table.name}>
+          {[
+            ['add-column', 'Add column'],
+            ['rename-table', 'Rename table'],
+            ['delete-table', 'Delete table'],
+          ].map(([action, label]) => (
+            <button
+              key={action}
+              type="button"
+              className={
+                'btn' +
+                (action === 'delete-table'
+                  ? ' quiet schema-delete'
+                  : action === 'rename-table'
+                    ? ' quiet'
+                    : '')
+              }
+              aria-label={label + (action === 'add-column' ? ' to ' : ' ') + table.name}
+              disabled={disabled}
+              onClick={() => onChange({ action, table })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="tw schema-columns">
         <table>
           <thead>
             <tr>
-              {['Column', 'Type', 'Constraints', 'Default'].map((name) => (
+              {['Column', 'Type', 'Constraints', 'Default', 'Actions'].map((name) => (
                 <th scope="col" key={name}>
                   {name}
                 </th>
@@ -76,6 +148,39 @@ function SchemaTable({ table, sessionId, index }) {
                     ))}
                 </td>
                 <td>{column.default ?? '—'}</td>
+                <td>
+                  <div className="schema-column-actions">
+                    <button
+                      className="text-button"
+                      type="button"
+                      disabled={disabled}
+                      aria-label={`Rename column ${column.name} in ${table.name}`}
+                      onClick={() => onChange({ action: 'rename-column', table, column })}
+                    >
+                      Rename
+                    </button>
+                    <button
+                      className="text-button schema-delete"
+                      type="button"
+                      disabled={
+                        disabled ||
+                        table.columns.length <= 1 ||
+                        (dialect === 'sqlite' && column.primary_key)
+                      }
+                      title={
+                        table.columns.length <= 1
+                          ? 'A table needs at least one column.'
+                          : dialect === 'sqlite' && column.primary_key
+                            ? 'SQLite cannot delete a primary key column.'
+                            : undefined
+                      }
+                      aria-label={`Delete column ${column.name} from ${table.name}`}
+                      onClick={() => onChange({ action: 'delete-column', table, column })}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -110,20 +215,91 @@ function SchemaTable({ table, sessionId, index }) {
           ))}
         </div>
       )}
-      <p>
-        <button className="btn" disabled={busy} onClick={sample}>
-          {busy ? 'Loading…' : 'Sample rows'}
+      <div className="schema-sample-action">
+        <button
+          className="btn"
+          disabled={busy || !canRead}
+          aria-expanded={shown && canRead}
+          aria-controls={sampleId}
+          onClick={() => (rows !== null ? setShown((current) => !current) : loadSample())}
+        >
+          {busy ? 'Loading…' : shown && rows !== null ? 'Hide sample rows' : 'Sample rows'}
         </button>
-      </p>
-      {error && <p className="err">{error}</p>}
-      {rows && <ResultTable rows={rows} />}
+        {shown && rows !== null && (
+          <button className="btn quiet" disabled={busy || !canRead} onClick={loadSample}>
+            Refresh sample rows
+          </button>
+        )}
+      </div>
+      {error && (
+        <p className="err" role="alert">
+          {error}
+        </p>
+      )}
+      {shown && canRead && (
+        <div id={sampleId} className="schema-sample-results" aria-busy={busy}>
+          {rows !== null && <ResultTable rows={rows} canExport={canExport} />}
+        </div>
+      )}
     </div>
   );
 }
 export default function StructurePage({ workbench }) {
   const [tables, setTables] = useState(null),
     [error, setError] = useState(''),
-    [revision, setRevision] = useState(0);
+    [revision, setRevision] = useState(0),
+    [change, setChange] = useState(null),
+    [jumpTable, setJumpTable] = useState(''),
+    [openedReview, setOpenedReview] = useState(null);
+  const session = workbench.session;
+  const access = databaseAccess(session);
+  const disabled = Boolean(
+    workbench.busy ||
+    workbench.pending ||
+    workbench.workingCommands?.size ||
+    !access.permissions.structure,
+  );
+  const schemaRequests = (workbench.feed || []).filter(isSchemaRequest);
+  const schemaOutcomes = schemaRequests
+    .flatMap((request) => request.commands)
+    .filter((command) => ['executed', 'declined', 'failed'].includes(command.status))
+    .map((command) => `${command.command_id}:${command.status}`)
+    .join('|');
+  const latestSchema = schemaRequests.at(-1);
+  const reviewRequests = (workbench.feed || []).filter(
+    (request) =>
+      isPendingRequest(request) ||
+      (isSchemaRequest(request) && request.sending) ||
+      (request === latestSchema && ['rejected', 'failed'].includes(request.status)),
+  );
+  const lastCompleted =
+    !reviewRequests.length && latestSchema && ['executed', 'declined'].includes(latestSchema.status)
+      ? latestSchema
+      : null;
+  const review = useRef(null),
+    toolbar = useRef(null);
+  useLiveRefresh(
+    async (signal) => {
+      if (workbench.busy || workbench.workingCommands?.size) return;
+      const data = await api('/api/schema', { sessionId: session.session_id, signal });
+      if (!signal.aborted) {
+        setError('');
+        setTables((previous) =>
+          JSON.stringify(previous) === JSON.stringify(data.tables) ? previous : data.tables,
+        );
+      }
+    },
+    {
+      enabled: access.canRead && !workbench.busy && !workbench.workingCommands?.size,
+      key: JSON.stringify([session.session_id, revision, schemaOutcomes]),
+      events: ['dg-databases-changed'],
+    },
+  );
+  useEffect(() => {
+    setChange(null);
+    setJumpTable('');
+    setOpenedReview(null);
+  }, [session.session_id]);
   useEffect(() => {
     const controller = new AbortController();
     setTables(null);
@@ -139,24 +315,113 @@ export default function StructurePage({ workbench }) {
         }
       });
     return () => controller.abort();
-  }, [workbench.session.session_id, revision]);
+  }, [session.session_id, revision, schemaOutcomes]);
+  function prepare(sql) {
+    if (disabled) return;
+    setChange(null);
+    workbench.submit(sql, true);
+    if (review.current) {
+      const height = toolbar.current?.getBoundingClientRect().height;
+      if (height) review.current.style.scrollMarginTop = `${Math.ceil(height) + 16}px`;
+    }
+    review.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
+  }
   return (
-    <section>
+    <section className="structure-page">
       <header className="page-heading">
         <div>
           <h1>Structure</h1>
-          <p className="lead">The tables, columns, and links behind your data.</p>
+          <p className="lead">Browse your tables and make changes to their columns.</p>
         </div>
-        <button
-          className="btn"
-          onClick={() => {
-            setRevision((value) => value + 1);
-            setError('');
-          }}
-        >
-          Refresh structure
-        </button>
       </header>
+      <div className="schema-toolbar" ref={toolbar} role="group" aria-label="Structure tools">
+        <label>
+          Jump to table
+          <select
+            value={tables?.some((table) => table.name === jumpTable) ? jumpTable : ''}
+            disabled={!tables?.length}
+            onChange={(event) => {
+              const name = event.target.value;
+              setJumpTable(name);
+              const index = tables.findIndex((table) => table.name === name);
+              const target = document.getElementById('schema-table-' + index);
+              target?.scrollIntoView({ behavior: 'auto', block: 'start' });
+              target?.querySelector('h3')?.focus({ preventScroll: true });
+            }}
+          >
+            <option value="">Choose a table</option>
+            {(tables || []).map((table) => (
+              <option key={table.name}>{table.name}</option>
+            ))}
+          </select>
+        </label>
+        <div className="schema-actions">
+          <button
+            className="btn pri"
+            type="button"
+            disabled={disabled || tables === null || Boolean(error)}
+            onClick={() => setChange({ action: 'create-table' })}
+          >
+            <Icon name="plus" />
+            Create table
+          </button>
+          <button
+            className="btn"
+            disabled={tables === null}
+            onClick={() => {
+              setRevision((value) => value + 1);
+              setError('');
+            }}
+          >
+            <Icon name="replay" />
+            Refresh structure
+          </button>
+        </div>
+      </div>
+      {!databaseAccess(session).permissions.structure ? (
+        <p className="schema-edit-note muted">
+          Your current database access does not allow changes to tables or columns.
+        </p>
+      ) : (
+        <p className="schema-edit-note muted">
+          Create tables or edit columns here. Every change is reviewed and confirmed before it runs.
+        </p>
+      )}
+      {workbench.pending && (
+        <p className="schema-edit-note muted" role="status">
+          Confirm or decline the pending change below before preparing another.
+        </p>
+      )}
+      <div className="schema-review" ref={review}>
+        {reviewRequests.length > 0 && (
+          <section aria-label="Structure change review" aria-live="polite">
+            <h2>Review changes</h2>
+            {reviewRequests.map((request) => (
+              <Translation key={request.request_id} request={request} workbench={workbench} />
+            ))}
+          </section>
+        )}
+        {lastCompleted && (
+          <details
+            className="schema-last-change"
+            key={lastCompleted.request_id}
+            open={openedReview === lastCompleted.request_id}
+            onToggle={(event) =>
+              setOpenedReview(event.currentTarget.open ? lastCompleted.request_id : null)
+            }
+          >
+            <summary>Last structure change · {lastCompleted.status} · View details</summary>
+            {openedReview === lastCompleted.request_id && (
+              <Translation request={lastCompleted} workbench={workbench} />
+            )}
+          </details>
+        )}
+        {schemaRequests.length > 0 && (
+          <p className="schema-history-link">
+            <Link href="/history">All saved changes in History</Link>
+          </p>
+        )}
+      </div>
       {error && (
         <p className="err" role="alert">
           {error}
@@ -174,10 +439,25 @@ export default function StructurePage({ workbench }) {
               index={index}
               key={table.name}
               sessionId={workbench.session.session_id}
+              disabled={disabled}
+              dialect={schemaDialect(session)}
+              canRead={access.canRead}
+              canExport={access.permissions.export}
+              onChange={setChange}
             />
           ))
         )}
       </div>
+      {change && (
+        <SchemaChangeDialog
+          change={change}
+          tables={tables || []}
+          session={session}
+          disabled={disabled}
+          onReview={prepare}
+          onClose={() => setChange(null)}
+        />
+      )}
     </section>
   );
 }

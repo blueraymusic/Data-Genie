@@ -1,6 +1,6 @@
 # App audit — October 28, 2026
 
-This is a historical audit of the local application on October 28. Test totals and exclusions below describe that audit, not the current hosted release. For current setup, use the [README](../README.md), [Azure hosting guide](azure-free-hosting.md), and [hosted FAQ](https://data-genie-blueray321.azurewebsites.net/faq). The public app is [Data Genie](https://data-genie-blueray321.azurewebsites.net/).
+This is a historical audit of the local application on October 28. Test totals and exclusions below describe that audit, not the current hosted release. For current setup, use the [README](../README.md), [Azure hosting guide](azure-free-hosting.md), and [hosted FAQ](https://data-genie.space/faq). The public app is [Data Genie](https://data-genie.space/).
 
 Reviewed the React pages, account and session flows, database switching, SQL execution, history, results, exports, startup scripts, and public help text. Checks use isolated data rather than the user's databases.
 
@@ -25,4 +25,4 @@ Reviewed the React pages, account and session flows, database switching, SQL exe
 
 215 backend tests and 45 frontend tests pass, including account, SQL confirmation, conversation, pagination, and real PostgreSQL integration checks. The production frontend build passes. The npm advisory scan reported no known vulnerabilities in production or development packages.
 
-Browser checks cover desktop and a 390-pixel mobile layout with a temporary account and sample databases. History remains readable after its source file is removed; Account opens without a database; incomplete input is rejected; valid queries run; mobile navigation and forms stay within the viewport. Live Gemini API calls and hosted database accounts are outside this verification; provider responses are covered through fixtures and the PostgreSQL adapter is exercised against a disposable local server.
+Browser checks cover desktop and a 390-pixel mobile layout with a temporary account and sample databases. History remains readable after its source file is removed; Account opens without a database; incomplete input is rejected; valid queries run; mobile navigation and forms stay within the viewport. Live AI-service calls and hosted database accounts are outside this verification; provider responses are covered through fixtures and the PostgreSQL adapter is exercised against a disposable local server.

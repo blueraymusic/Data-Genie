@@ -193,10 +193,16 @@ class ConversationTests(unittest.TestCase):
         self.assertEqual(context['filters'], ['state: Iowa'])
 
     def test_retryable_planner_error_offers_the_original_request_without_commands(self):
-        with patch.object(app.gemini_provider, 'generate_plans', side_effect=app.gemini_provider.GeminiError('Gemini could not be reached right now.', retryable=True)):
-            result = self.ask('show the latest customers', interpreter='gemini')
-        self.assertEqual(result['choices'], [{'label':'Try again','request':'show the latest customers'}])
-        self.assertEqual(app.get_repository().get_request(result['request_id'])['commands'], [])
+        for prefix in ('Data Genie AI', 'Gemini'):
+            with self.subTest(prefix=prefix), patch.object(app.gemini_provider, 'generate_plans', side_effect=app.gemini_provider.GeminiError(prefix + ' could not be reached right now.', retryable=True)):
+                result = self.ask('show the latest customers', interpreter='gemini')
+            self.assertEqual(result['choices'], [{'label':'Try again','request':'show the latest customers'}])
+            self.assertEqual(app.get_repository().get_request(result['request_id'])['commands'], [])
+            with patch.object(app.gemini_provider, 'generate_plans') as generate:
+                numeric = self.ask('5', interpreter='gemini')
+            self.assertFalse(numeric['matched'])
+            self.assertIn('Describe what you want', numeric['message'])
+            generate.assert_not_called()
 
     def test_sample_data_intent_survives_clarifications_reload_and_numeric_reply(self):
         choices = [{'label':'5 rows','request':'5'}, {'label':'10 rows','request':'10'}]

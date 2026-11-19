@@ -3,7 +3,7 @@ import ipaddress
 import socket
 
 
-def public_address(host, port):
+def public_addresses(host, port):
     try:
         literal = ipaddress.ip_address(host)
     except ValueError:
@@ -17,4 +17,8 @@ def public_address(host, port):
     if not addresses or any(not ipaddress.ip_address(address).is_global for address in addresses):
         raise ValueError("Hosted Data Genie cannot connect to private or internal network addresses.")
     # Pin the checked address so a second DNS lookup cannot redirect to a private IP.
-    return addresses[0]
+    return list(dict.fromkeys(addresses))
+
+
+def public_address(host, port):
+    return public_addresses(host, port)[0]

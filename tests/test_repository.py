@@ -328,6 +328,26 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(len(self.repository.history(session["session_id"], operation="DELETE")), 1)
         self.assertEqual(len(self.repository.history(session["session_id"], operation="SELECT")), 1)
 
+    def test_history_revision_tracks_metadata_and_completion_without_loading_payloads(self):
+        session = self.session()
+        session_id = session['session_id']
+        initial = self.repository.history_revision(session_id)
+        request_id, command = self.command(session)
+        pending = self.repository.history_revision(session_id)
+        self.assertNotEqual(initial, pending)
+        self.assertEqual(pending, self.repository.history_revision(session_id))
+        self.repository.claim_command(session_id, command['command_id'])
+        running = self.repository.history_revision(session_id)
+        self.assertNotEqual(pending, running)
+        self.repository.finish_command(command['command_id'], {'rows': [{'value': 'private large payload' * 1000}]})
+        executed = self.repository.history_revision(session_id)
+        self.assertNotEqual(running, executed)
+        self.assertNotIn('private', executed)
+        self.assertLess(len(executed), 100)
+        other = self.session('other@example.com')
+        self.command(other)
+        self.assertEqual(executed, self.repository.history_revision(session_id))
+
     def test_subclasses_and_target_validation_are_transactional(self):
         session = self.session()
         request_id = self.repository.create_request(session["session_id"], "show sales")

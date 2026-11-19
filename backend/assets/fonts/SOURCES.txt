@@ -1,0 +1,16 @@
+PDF fonts are redistributed under the SIL Open Font License 1.1.
+See OFL.txt and NotoSansCJK-OFL.txt for license terms.
+
+NotoSans-Regular.ttf, NotoSans-Bold.ttf, NotoSansSymbols2-Regular.ttf:
+https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf
+Copyright 2018 The Noto Project Authors.
+
+NotoSansCJK-Regular.ttf:
+https://github.com/notofonts/noto-cjk/blob/main/Sans/Variable/TTF/NotoSansCJKsc-VF.ttf
+Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+Static weight 400 instance prepared with fontTools 4.68.0.
+The app uses the committed TrueType file; fontTools is not a runtime dependency.
+
+The fonts provide Latin, Greek, Cyrillic, common symbols, and Chinese,
+Japanese, and Korean coverage. PDF export explicitly rejects characters with
+no glyph in these fonts instead of silently replacing them with missing boxes.

@@ -1,26 +1,57 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Translation } from '../components/CommandResult';
 import { quoteIdentifier } from '../lib/api';
+import { Link } from '../lib/router';
 import { requestProblem } from '../lib/requestValidation';
 import { Icon } from '../components/Icon';
-export default function AskPage({ workbench, selected, mode, draft, setDraft, onNewTable }) {
+import { useRequestWindow } from '../hooks/useRequestWindow';
+import { RequestWindowControls } from '../components/RequestWindowControls';
+import { databaseAccess } from '../lib/access';
+import { useAutosizeTextarea } from '../hooks/useAutosizeTextarea';
+import { useFileDrop } from '../hooks/useFileDrop';
+export default function AskPage({ workbench, selected, draft, setDraft, onNewTable }) {
   const textarea = useRef(null),
     feed = useRef(null),
-    wasBlocked = useRef(false);
-  const [validation, setValidation] = useState('');
+    wasBlocked = useRef(false),
+    lastJump = useRef(0),
+    fileRevision = useRef(0);
+  const [validation, setValidation] = useState(''),
+    [attachments, setAttachments] = useState([]),
+    [readingFiles, setReadingFiles] = useState(false);
+  useLayoutEffect(() => {
+    fileRevision.current++;
+    setAttachments([]);
+    setReadingFiles(false);
+    return () => {
+      fileRevision.current++;
+    };
+  }, [workbench.session.session_id]);
+  const requestWindow = useRequestWindow(workbench.feed, workbench.session.session_id);
+  const aiAvailable = Boolean(workbench.session.ai?.enabled);
+  const canChangeStructure = databaseAccess(workbench.session).permissions.structure;
+  const blocked =
+    !aiAvailable ||
+    readingFiles ||
+    !databaseAccess(workbench.session).canRead ||
+    workbench.busy ||
+    workbench.pending ||
+    workbench.workingCommands?.size > 0;
+  const fileDrop = useFileDrop({ disabled: blocked, onFiles: readFiles });
   const context = workbench.session.conversation_context;
   const contextTables = context?.tables || [];
   const changedTable = Boolean(
     selected && contextTables.length && !contextTables.includes(selected),
   );
+  useAutosizeTextarea(textarea, draft, workbench.session.session_id);
   useLayoutEffect(() => {
-    if (textarea.current) {
-      textarea.current.style.height = 'auto';
-      textarea.current.style.height = Math.min(textarea.current.scrollHeight, 150) + 'px';
-    }
-  }, [draft]);
-  useLayoutEffect(() => {
-    const latest = feed.current?.lastElementChild;
+    if (requestWindow.viewingEarlier) return;
+    const jumping = lastJump.current !== requestWindow.jumpVersion;
+    lastJump.current = requestWindow.jumpVersion;
+    const latest =
+      (!jumping &&
+        workbench.pending &&
+        feed.current?.querySelector('.confirm')?.closest('.exchange')) ||
+      feed.current?.lastElementChild;
     if (!workbench.feed.length || !latest) return;
     latest.scrollIntoView({ block: 'start', behavior: 'auto' });
     const container = feed.current.closest('.content'),
@@ -29,12 +60,20 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
       const overlap = latest.getBoundingClientRect().bottom - composer.getBoundingClientRect().top;
       if (overlap > 0) container.scrollTo({ top: container.scrollTop + overlap, behavior: 'auto' });
     }
-  }, [workbench.feed.length, workbench.busy]);
+  }, [
+    workbench.session.session_id,
+    requestWindow.latestRequestId,
+    requestWindow.viewingEarlier,
+    requestWindow.jumpVersion,
+    workbench.busy,
+    workbench.pending,
+    workbench.workingCommands?.size,
+  ]);
   useLayoutEffect(() => {
     const blocked = Boolean(workbench.busy || workbench.pending);
     if (wasBlocked.current && !blocked) textarea.current?.focus({ preventScroll: true });
     if (workbench.pending && !workbench.busy)
-      feed.current?.lastElementChild?.querySelector('.confirm')?.focus({ preventScroll: true });
+      feed.current?.querySelector('.confirm')?.focus({ preventScroll: true });
     wasBlocked.current = blocked;
   }, [workbench.busy, workbench.pending]);
   const examples = selected
@@ -43,12 +82,12 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
         `count ${quoteIdentifier(selected)}`,
         `show columns from ${quoteIdentifier(selected)}`,
       ]
-    : workbench.session.read_only
+    : !canChangeStructure
       ? ['show the structure of the database']
       : ['show the structure of the database', 'create a table notes with a body'];
   async function ask(event) {
     event.preventDefault();
-    if (!draft.trim() || workbench.busy || workbench.pending) return;
+    if (!draft.trim() || blocked) return;
     const text = draft.trim();
     const previous = workbench.feed.at(-1);
     const answering = Boolean(
@@ -58,7 +97,7 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
           previous.intent ||
           (previous.error &&
             previous.status === 'rejected' &&
-            !previous.error.startsWith('Gemini')))),
+            !['Data Genie AI', 'Gemini'].some((prefix) => previous.error.startsWith(prefix))))),
     );
     const problem = requestProblem(text, workbench.feed.length > 0, answering);
     setValidation(problem);
@@ -67,26 +106,91 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
       return;
     }
     setDraft('');
-    await workbench.submit(text, false, mode, selected);
+    let result;
+    if (attachments.length)
+      result = await workbench.submit(
+        text,
+        false,
+        'gemini',
+        selected,
+        attachments.map(({ mime_type, data }) => ({ mime_type, data })),
+      );
+    else result = await workbench.submit(text, false, 'gemini', selected);
+    if (result && result.matched !== false) setAttachments([]);
+  }
+  async function readFiles(files) {
+    if (blocked || !files.length) return;
+    const revision = fileRevision.current;
+    if (
+      files.length + attachments.length > 2 ||
+      files.reduce(
+        (sum, file) => sum + file.size,
+        attachments.reduce((sum, file) => sum + file.size, 0),
+      ) >
+        4 * 1024 * 1024
+    ) {
+      setValidation('Attach up to two files, 4 MB combined.');
+      return;
+    }
+    setReadingFiles(true);
+    try {
+      if (
+        files.some(
+          (file) =>
+            !['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type),
+        )
+      )
+        throw new Error('Use PDF, PNG, JPEG or WebP files.');
+      const loaded = await Promise.all(
+        files.map(
+          (file) =>
+            new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onerror = () => reject(new Error('Could not read the attachment.'));
+              reader.onload = () =>
+                resolve({
+                  name: file.name,
+                  size: file.size,
+                  mime_type: file.type,
+                  data: String(reader.result).split(',')[1],
+                });
+              reader.readAsDataURL(file);
+            }),
+        ),
+      );
+      if (revision !== fileRevision.current) return;
+      setAttachments((current) => [...current, ...loaded]);
+      setValidation('');
+    } catch (error) {
+      if (revision === fileRevision.current) setValidation(error.message);
+    } finally {
+      if (revision === fileRevision.current) setReadingFiles(false);
+    }
   }
   return (
     <section id="v-ask" className={workbench.feed.length ? 'has-requests' : undefined}>
       <div className="workspace-intro">
-        <h1>Ask in plain English.</h1>
+        <h1>Ask your database.</h1>
         <p className="lead">
-          Your words on the left. The SQL on the right. The result, on the record.
+          Ask a question, see the SQL, and work with the answer. You can follow up here.
         </p>
+        {!aiAvailable && (
+          <p className="status-note" role="status">
+            Data Genie AI is unavailable. <Link href="/app?view=sql">Open SQL</Link> to run
+            statements without an AI service.
+          </p>
+        )}
         {!workbench.session.tables.length && (
           <p className="empty-inline">
-            {workbench.session.read_only ? (
-              'This schema has no readable tables. Choose another schema, or add a connection with changes enabled.'
+            {!canChangeStructure ? (
+              'This database has no tables yet. A workspace owner can add one or give you permission to change its structure.'
             ) : (
               <>
                 This database is empty.{' '}
                 <button type="button" className="text-button" onClick={onNewTable}>
                   Create your first table
                 </button>
-                , or describe the table you need below.
+                {aiAvailable ? ', or describe the table you need below.' : '.'}
               </>
             )}
           </p>
@@ -97,18 +201,13 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
               type="button"
               key={example}
               aria-label={example}
-              disabled={workbench.busy || workbench.pending}
+              disabled={blocked}
               onClick={() => {
                 setDraft(example);
                 setValidation('');
                 textarea.current?.focus();
               }}
             >
-              <Icon
-                name={
-                  selected ? ['table', 'layers', 'database'][index] : ['database', 'plus'][index]
-                }
-              />
               <span>
                 <strong>
                   {selected
@@ -122,21 +221,30 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
           ))}
         </div>
       </div>
+      <RequestWindowControls window={requestWindow} feedId="feed" />
       <div id="feed" ref={feed} aria-live="polite">
-        {workbench.feed.map((request) => (
+        {requestWindow.requests.map((request) => (
           <Translation
             key={request.request_id}
             request={request}
             workbench={workbench}
-            onUseSuggestion={(suggestion) => {
-              setDraft(suggestion);
-              setValidation('');
-              textarea.current?.focus();
-            }}
+            compactResult={request.request_id !== requestWindow.latestRequestId}
+            onUseSuggestion={
+              aiAvailable
+                ? (suggestion) => {
+                    setDraft(suggestion);
+                    setValidation('');
+                    textarea.current?.focus();
+                  }
+                : undefined
+            }
           />
         ))}
       </div>
-      <div className="composer">
+      <div
+        className={'composer' + (fileDrop.active ? ' is-file-drop-target' : '')}
+        {...fileDrop.handlers}
+      >
         {workbench.session.pending_intent && (
           <p className="pending-intent" title={workbench.session.pending_intent}>
             <strong>Working on:</strong> {workbench.session.pending_intent}
@@ -162,29 +270,72 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
               )}
             </span>
           </div>
-          {workbench.feed.length > 0 && (
-            <button
-              type="button"
-              className="text-button"
-              disabled={workbench.busy || workbench.pending}
-              onClick={async () => {
-                if (await workbench.newConversation()) {
-                  setDraft('');
-                  setValidation('');
-                  textarea.current?.focus();
-                }
-              }}
-            >
-              New conversation
-            </button>
-          )}
+          <div className="conversation-actions">
+            {requestWindow.total > 1 && (
+              <button
+                type="button"
+                className="text-button"
+                aria-controls="feed"
+                onClick={requestWindow.jumpToLatest}
+              >
+                Jump to latest
+              </button>
+            )}
+            {workbench.feed.length > 0 && (
+              <button
+                type="button"
+                className="text-button"
+                disabled={blocked}
+                onClick={async () => {
+                  if (await workbench.newConversation()) {
+                    setDraft('');
+                    setValidation('');
+                    textarea.current?.focus();
+                  }
+                }}
+              >
+                New conversation
+              </button>
+            )}
+          </div>
         </div>
         <div className="composer-tools">
+          <label className="context-upload">
+            {readingFiles ? 'Reading files…' : 'Attach PDF or image'}
+            <input
+              type="file"
+              accept="application/pdf,image/png,image/jpeg,image/webp"
+              multiple
+              disabled={blocked}
+              onChange={(event) => {
+                const files = [...event.target.files];
+                event.target.value = '';
+                readFiles(files);
+              }}
+            />
+          </label>
           <label className="composer-label" htmlFor="request-input">
             {workbench.feed.length ? 'Follow up or ask a new question' : 'Your next request'}
           </label>
-          <span>Changes always wait for your OK.</span>
         </div>
+        {attachments.length > 0 && (
+          <div className="context-files">
+            <span className="small muted">
+              Sent to Data Genie AI for this request only; not saved.
+            </span>
+            {attachments.map((file, index) => (
+              <button
+                type="button"
+                className="btn quiet"
+                key={index}
+                disabled={blocked}
+                onClick={() => setAttachments((current) => current.filter((_, i) => i !== index))}
+              >
+                Remove {file.name}
+              </button>
+            ))}
+          </div>
+        )}
         <form className="ask" onSubmit={ask}>
           <textarea
             id="request-input"
@@ -195,16 +346,18 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
               setDraft(event.target.value);
               setValidation('');
             }}
-            disabled={workbench.busy || workbench.pending}
+            disabled={blocked}
             aria-label="Ask in plain English"
             aria-invalid={Boolean(validation)}
             aria-describedby={validation ? 'request-validation' : 'composer-hint'}
             placeholder={
-              workbench.pending
-                ? 'Review the pending change above to continue.'
-                : workbench.feed.length
-                  ? 'Ask a follow-up…'
-                  : 'Ask in plain English…'
+              !aiAvailable
+                ? 'Data Genie AI is unavailable. Open the SQL tab to continue.'
+                : workbench.pending
+                  ? 'Review the pending change above to continue.'
+                  : workbench.feed.length
+                    ? 'Ask a follow-up…'
+                    : 'Ask in plain English…'
             }
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -213,10 +366,7 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
               }
             }}
           />
-          <button
-            className="btn pri"
-            disabled={workbench.busy || workbench.pending || !draft.trim()}
-          >
+          <button className="btn pri" disabled={blocked || !draft.trim()}>
             {workbench.busy ? 'Writing…' : 'Ask'}
             {!workbench.busy && <Icon name="send" />}
           </button>
@@ -227,7 +377,9 @@ export default function AskPage({ workbench, selected, mode, draft, setDraft, on
           </p>
         )}
         <p className="composer-hint" id="composer-hint">
-          Enter to ask · Shift + Enter for a new line · Changes wait for your OK.
+          {aiAvailable
+            ? 'Enter to ask · Shift + Enter for a new line · Drop PDFs or images here · Changes wait for your OK.'
+            : 'SQL works without AI. Choose the SQL tab to write a statement.'}
         </p>
       </div>
     </section>

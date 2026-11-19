@@ -139,7 +139,7 @@ def statement_details(connection, sql):
     }
 
 
-def execute(connection, sql, operation):
+def execute(connection, sql, operation, commit=True):
     """Bound display results, but finish RETURNING cursors before committing."""
     cursor = connection.execute(sql)
     rows = []
@@ -153,6 +153,6 @@ def execute(connection, sql, operation):
                 pass
     changes = (cursor.rowcount if cursor.rowcount >= 0 else connection.total_changes) if operation == "write" else 0
     cursor.close()
-    if operation == "write":
+    if operation == "write" and commit:
         connection.commit()
     return {"rows": rows, "changes": changes, "executed_sql": sql, "sql": sql, "truncated": truncated}

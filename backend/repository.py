@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     last_name TEXT NOT NULL,
     email TEXT NOT NULL COLLATE NOCASE UNIQUE,
     password_hash TEXT NOT NULL,
+    profile_photo TEXT,
     created_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS browser_logins (
@@ -39,10 +40,51 @@ CREATE TABLE IF NOT EXISTS browser_logins (
     last_seen INTEGER NOT NULL,
     expires_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS external_identities (
+    provider TEXT NOT NULL CHECK(provider='microsoft'),
+    issuer TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    account_id INTEGER NOT NULL REFERENCES accounts(account_id),
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY(provider,issuer,subject),
+    UNIQUE(account_id,provider)
+);
+CREATE TABLE IF NOT EXISTS microsoft_auth_flows (
+    browser_hash TEXT PRIMARY KEY,
+    state_hash TEXT,
+    payload_json TEXT NOT NULL,
+    intent TEXT NOT NULL CHECK(intent IN ('signin','link_grant','link')),
+    account_id INTEGER REFERENCES accounts(account_id),
+    login_hash TEXT,
+    expires_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS google_identities (
+    provider TEXT NOT NULL CHECK(provider='google'),
+    issuer TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    account_id INTEGER NOT NULL REFERENCES accounts(account_id),
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY(provider,issuer,subject),
+    UNIQUE(account_id,provider)
+);
+CREATE TABLE IF NOT EXISTS google_auth_flows (
+    browser_hash TEXT PRIMARY KEY,
+    state_hash TEXT,
+    payload_json TEXT NOT NULL,
+    intent TEXT NOT NULL CHECK(intent IN ('signin','link_grant','link')),
+    account_id INTEGER REFERENCES accounts(account_id),
+    login_hash TEXT,
+    expires_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS login_attempts (
     attempt_key TEXT PRIMARY KEY,
     started_at INTEGER NOT NULL,
     failures INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS auth_rate_limits (
+    bucket_key TEXT PRIMARY KEY,
+    started_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
@@ -69,6 +111,179 @@ CREATE TABLE IF NOT EXISTS sessions (
     database_id INTEGER NOT NULL REFERENCES databases(database_id),
     started_at TEXT NOT NULL,
     ended_at TEXT
+);
+CREATE TABLE IF NOT EXISTS workspaces (
+    workspace_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK(kind IN ('personal','team')),
+    owner_account_id INTEGER NOT NULL REFERENCES accounts(account_id),
+    created_at INTEGER NOT NULL,
+    archived_at INTEGER
+);
+CREATE UNIQUE INDEX IF NOT EXISTS workspace_personal_owner
+    ON workspaces(owner_account_id) WHERE kind='personal';
+CREATE TABLE IF NOT EXISTS workspace_members (
+    workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+    account_id INTEGER NOT NULL REFERENCES accounts(account_id),
+    role TEXT NOT NULL CHECK(role IN ('owner','member','viewer')),
+    joined_at INTEGER NOT NULL,
+    PRIMARY KEY(workspace_id,account_id)
+);
+CREATE INDEX IF NOT EXISTS workspace_member_account ON workspace_members(account_id,workspace_id);
+CREATE TABLE IF NOT EXISTS workspace_databases (
+    database_id INTEGER PRIMARY KEY REFERENCES databases(database_id),
+    workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
+    owner_account_id INTEGER NOT NULL REFERENCES accounts(account_id),
+    attached_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS workspace_database_workspace ON workspace_databases(workspace_id,database_id);
+CREATE TABLE IF NOT EXISTS workspace_grants (
+    workspace_id TEXT NOT NULL,
+    account_id INTEGER NOT NULL,
+    database_id INTEGER NOT NULL REFERENCES workspace_databases(database_id) ON DELETE CASCADE,
+    can_read INTEGER NOT NULL DEFAULT 0 CHECK(can_read IN (0,1)),
+    can_write INTEGER NOT NULL DEFAULT 0 CHECK(can_write IN (0,1)),
+    can_delete INTEGER NOT NULL DEFAULT 0 CHECK(can_delete IN (0,1)),
+    can_structure INTEGER NOT NULL DEFAULT 0 CHECK(can_structure IN (0,1)),
+    can_export INTEGER NOT NULL DEFAULT 0 CHECK(can_export IN (0,1)),
+    PRIMARY KEY(workspace_id,account_id,database_id),
+    FOREIGN KEY(workspace_id,account_id) REFERENCES workspace_members(workspace_id,account_id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS workspace_invitations (
+    invitation_id TEXT PRIMARY KEY,
+    token_hash TEXT NOT NULL,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+    email TEXT NOT NULL COLLATE NOCASE,
+    role TEXT NOT NULL CHECK(role IN ('member','viewer')),
+    invited_by INTEGER NOT NULL REFERENCES accounts(account_id),
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    accepted_at INTEGER,
+    revoked_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS workspace_invitation_email ON workspace_invitations(email,expires_at);
+CREATE TABLE IF NOT EXISTS report_ai_budgets (
+    account_id INTEGER PRIMARY KEY REFERENCES accounts(account_id) ON DELETE CASCADE,
+    started_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS account_file_deletions (
+    path TEXT PRIMARY KEY
+);
+CREATE TABLE IF NOT EXISTS ownership_transfers (
+    transfer_id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+    workspace_name TEXT NOT NULL,
+    sender_account_id INTEGER NOT NULL REFERENCES accounts(account_id) ON DELETE CASCADE,
+    recipient_account_id INTEGER NOT NULL REFERENCES accounts(account_id) ON DELETE CASCADE,
+    status TEXT NOT NULL CHECK(status IN ('pending','accepted','declined','cancelled')),
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    decided_at INTEGER
+);
+CREATE TABLE IF NOT EXISTS signup_verifications (
+    challenge_hash TEXT PRIMARY KEY,
+    code_hash TEXT NOT NULL,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS password_resets (
+    token_hash TEXT PRIMARY KEY,
+    account_id INTEGER NOT NULL UNIQUE REFERENCES accounts(account_id) ON DELETE CASCADE,
+    expires_at INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ownership_transfer_pending ON ownership_transfers(workspace_id) WHERE status='pending';
+CREATE TABLE IF NOT EXISTS workspace_reports (
+    report_id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+    author_id INTEGER NOT NULL REFERENCES accounts(account_id),
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    published INTEGER NOT NULL DEFAULT 0 CHECK(published IN (0,1)),
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    version INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS report_collaboration (
+    report_id TEXT PRIMARY KEY REFERENCES workspace_reports(report_id) ON DELETE CASCADE,
+    base_version INTEGER NOT NULL,
+    revision INTEGER NOT NULL DEFAULT 0,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS report_edit_operations (
+    report_id TEXT NOT NULL REFERENCES report_collaboration(report_id) ON DELETE CASCADE,
+    revision INTEGER NOT NULL,
+    operation_id TEXT NOT NULL,
+    field TEXT NOT NULL CHECK(field IN ('title','body')),
+    operation_json TEXT NOT NULL,
+    old_length INTEGER NOT NULL,
+    PRIMARY KEY(report_id,revision),
+    UNIQUE(report_id,operation_id)
+);
+CREATE TABLE IF NOT EXISTS report_live_editors (
+    report_id TEXT NOT NULL REFERENCES report_collaboration(report_id) ON DELETE CASCADE,
+    client_id TEXT NOT NULL,
+    account_id INTEGER NOT NULL REFERENCES accounts(account_id) ON DELETE CASCADE,
+    last_seen INTEGER NOT NULL,
+    PRIMARY KEY(report_id,client_id)
+);
+CREATE TABLE IF NOT EXISTS agent_tokens (
+    token_id TEXT PRIMARY KEY,
+    token_hash TEXT NOT NULL UNIQUE,
+    account_id INTEGER NOT NULL REFERENCES accounts(account_id),
+    workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    scopes_json TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    last_used INTEGER,
+    revoked_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS agent_token_account ON agent_tokens(account_id);
+CREATE TABLE IF NOT EXISTS oauth_clients (
+    client_id TEXT PRIMARY KEY,
+    encrypted_json TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_flows (
+    flow_hash TEXT PRIMARY KEY,
+    client_id TEXT NOT NULL REFERENCES oauth_clients(client_id),
+    params_json TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_codes (
+    code_hash TEXT PRIMARY KEY,
+    token_id TEXT NOT NULL REFERENCES agent_tokens(token_id) ON DELETE CASCADE,
+    client_id TEXT NOT NULL REFERENCES oauth_clients(client_id),
+    params_json TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_tokens (
+    token_hash TEXT PRIMARY KEY,
+    kind TEXT NOT NULL CHECK(kind IN ('access','refresh')),
+    token_id TEXT NOT NULL REFERENCES agent_tokens(token_id) ON DELETE CASCADE,
+    client_id TEXT NOT NULL REFERENCES oauth_clients(client_id),
+    scopes_json TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS agent_sessions (
+    token_id TEXT NOT NULL REFERENCES agent_tokens(token_id) ON DELETE CASCADE,
+    database_id INTEGER NOT NULL REFERENCES databases(database_id),
+    session_id TEXT NOT NULL REFERENCES sessions(session_id),
+    PRIMARY KEY(token_id,database_id)
+);
+CREATE TABLE IF NOT EXISTS agent_action_results (
+    token_id TEXT NOT NULL REFERENCES agent_tokens(token_id) ON DELETE CASCADE,
+    request_key TEXT NOT NULL,
+    input_hash TEXT NOT NULL,
+    result_json TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY(token_id,request_key)
 );
 CREATE TABLE IF NOT EXISTS schema_tables (
     table_id INTEGER PRIMARY KEY,
@@ -127,6 +342,7 @@ CREATE TABLE IF NOT EXISTS sql_commands (
     request_id INTEGER NOT NULL REFERENCES requests(request_id),
     sql_text TEXT NOT NULL,
     summary TEXT NOT NULL DEFAULT '',
+    presentation_json TEXT,
     kind TEXT NOT NULL CHECK(kind IN ('DDL','DML','SELECT')),
     operation TEXT NOT NULL,
     requires_confirmation INTEGER NOT NULL CHECK(requires_confirmation IN (0,1)),
@@ -284,16 +500,26 @@ class Repository:
             connection = self._open()
             try:
                 connection.executescript(SCHEMA)
+                if "profile_photo" not in {row[1] for row in connection.execute("PRAGMA table_info(accounts)")}:
+                    connection.execute("ALTER TABLE accounts ADD COLUMN profile_photo TEXT")
+                if "archived_at" not in {row[1] for row in connection.execute("PRAGMA table_info(workspaces)")}:
+                    connection.execute("ALTER TABLE workspaces ADD COLUMN archived_at INTEGER")
                 if "account_id" not in {row[1] for row in connection.execute("PRAGMA table_info(sessions)")}:
                     connection.execute("ALTER TABLE sessions ADD COLUMN account_id INTEGER REFERENCES accounts(account_id)")
                 if "conversation_after" not in {row[1] for row in connection.execute("PRAGMA table_info(sessions)")}:
                     connection.execute("ALTER TABLE sessions ADD COLUMN conversation_after INTEGER NOT NULL DEFAULT 0")
                 if "summary" not in {row[1] for row in connection.execute("PRAGMA table_info(sql_commands)")}:
                     connection.execute("ALTER TABLE sql_commands ADD COLUMN summary TEXT NOT NULL DEFAULT ''")
+                if "presentation_json" not in {row[1] for row in connection.execute("PRAGMA table_info(sql_commands)")}:
+                    connection.execute("ALTER TABLE sql_commands ADD COLUMN presentation_json TEXT")
                 if "clarification_json" not in {row[1] for row in connection.execute("PRAGMA table_info(requests)")}:
                     connection.execute("ALTER TABLE requests ADD COLUMN clarification_json TEXT")
                 if "connection_id" not in {row[1] for row in connection.execute("PRAGMA table_info(databases)")}:
                     connection.execute("ALTER TABLE databases ADD COLUMN connection_id TEXT")
+                if "token_hash" not in {row[1] for row in connection.execute("PRAGMA table_info(workspace_invitations)")}:
+                    # Pre-token invitations cannot be accepted; owners issue a
+                    # fresh invite rather than promoting an email claim.
+                    connection.execute("ALTER TABLE workspace_invitations ADD COLUMN token_hash TEXT")
                 connection.execute("CREATE INDEX IF NOT EXISTS sessions_account ON sessions(account_id,started_at)")
                 connection.commit()
                 self.path.chmod(0o600)
@@ -342,7 +568,8 @@ class Repository:
 
     def start_session(self, first_name, last_name, email, path, name, account_id=None):
         first_name, last_name, email = (str(value or "").strip() for value in (first_name, last_name, email))
-        if not first_name or not last_name or not email or "@" not in email:
+        if (not email or "@" not in email
+                or (account_id is None and (not first_name or not last_name))):
             raise RepositoryError("First name, last name, and a valid email are required.")
         email = email.lower()
         database_path = str(Path(path).expanduser().resolve())
@@ -635,7 +862,7 @@ class Repository:
             row = connection.execute("SELECT * FROM requests WHERE session_id=? AND request_id>? ORDER BY request_id DESC LIMIT 1", (session_id, session["conversation_after"])).fetchone()
             return self._request_record(row).get("intent", "") if row else ""
 
-    def add_command(self, request_id, sql, kind, requires_confirmation, targets=(), operation=None, has_aggregation=False, summary=""):
+    def add_command(self, request_id, sql, kind, requires_confirmation, targets=(), operation=None, has_aggregation=False, summary="", presentation=None):
         kind = str(kind).upper().replace("_COMMAND", "")
         if kind not in {"DDL", "DML", "SELECT"}:
             raise RepositoryError("Command kind must be DDL, DML, or SELECT.")
@@ -663,9 +890,10 @@ class Repository:
                 for event in [_table_lifecycle(item["sql_text"])] if event]
             current_lifecycle = _table_lifecycle(sql)
             command_id = connection.execute("""
-                INSERT INTO sql_commands(request_id,sql_text,summary,kind,operation,requires_confirmation,confirmation_token,created_at)
-                VALUES(?,?,?,?,?,?,?,?)
-            """, (request_id, sql, str(summary or "")[:500], kind, operation, int(requires_confirmation), token, _now())).lastrowid
+                INSERT INTO sql_commands(request_id,sql_text,summary,presentation_json,kind,operation,requires_confirmation,confirmation_token,created_at)
+                VALUES(?,?,?,?,?,?,?,?,?)
+            """, (request_id, sql, str(summary or "")[:500], json.dumps(presentation, ensure_ascii=False, allow_nan=False) if presentation else None,
+                  kind, operation, int(requires_confirmation), token, _now())).lastrowid
             if kind == "DDL":
                 connection.execute("INSERT INTO ddl_commands VALUES(?,?)", (command_id, operation))
             elif kind == "DML":
@@ -701,6 +929,8 @@ class Repository:
         if row is None or (session_id is not None and row["session_id"] != session_id):
             raise RepositoryError("Unknown command for this session.")
         result = dict(row)
+        presentation = json.loads(result.pop("presentation_json", None) or "{}")
+        result.update({key: presentation[key] for key in ("visualization", "chart") if key in presentation})
         result["sql"] = result.pop("sql_text")
         result["requires_confirmation"] = bool(result["requires_confirmation"])
         result["targets"] = [dict(target) for target in connection.execute("SELECT table_id,table_name,access_type FROM command_targets WHERE command_id=? ORDER BY table_name,access_type", (command_id,))]
@@ -825,17 +1055,65 @@ class Repository:
             self._update_request(connection, command["request_id"])
             return self._command(connection, command_id)
 
-    def history(self, session_id, search="", operation=None):
+    @staticmethod
+    def _history_filter(session_id, search="", operation=None, request_id=None, pending_only=False):
+        clauses, params = ["r.session_id=?"], [session_id]
+        if search:
+            clauses.append("(instr(lower(r.request_text),lower(?))>0 OR EXISTS(SELECT 1 FROM sql_commands c WHERE c.request_id=r.request_id AND instr(lower(c.sql_text),lower(?))>0))")
+            params.extend((str(search), str(search)))
+        if operation:
+            clauses.append("EXISTS(SELECT 1 FROM sql_commands c WHERE c.request_id=r.request_id AND (c.operation=? OR c.kind=?))")
+            params.extend((str(operation).upper(), str(operation).upper()))
+        if request_id is not None:
+            if isinstance(request_id, bool) or not isinstance(request_id, int) or not 1 <= request_id <= 9223372036854775807:
+                raise RepositoryError("Choose a valid history request.")
+            clauses.append("r.request_id=?")
+            params.append(request_id)
+        if pending_only:
+            clauses.append("EXISTS(SELECT 1 FROM sql_commands c WHERE c.request_id=r.request_id AND c.status IN ('pending','running'))")
+        return " AND ".join(clauses), params
+
+    def history_count(self, session_id, search="", operation=None, request_id=None):
+        where, params = self._history_filter(session_id, search, operation, request_id)
         with self._connection() as connection:
             self._session(connection, session_id)
-            clauses, params = ["r.session_id=?"], [session_id]
-            if search:
-                clauses.append("(instr(lower(r.request_text),lower(?))>0 OR EXISTS(SELECT 1 FROM sql_commands c WHERE c.request_id=r.request_id AND instr(lower(c.sql_text),lower(?))>0))")
-                params.extend((str(search), str(search)))
-            if operation:
-                clauses.append("EXISTS(SELECT 1 FROM sql_commands c WHERE c.request_id=r.request_id AND (c.operation=? OR c.kind=?))")
-                params.extend((str(operation).upper(), str(operation).upper()))
-            rows = connection.execute("SELECT r.* FROM requests r WHERE " + " AND ".join(clauses) + " ORDER BY r.request_id DESC", params).fetchall()
+            return connection.execute("SELECT COUNT(*) FROM requests r WHERE " + where, params).fetchone()[0]
+
+    def history_revision(self, session_id):
+        """Fingerprint history metadata without reading saved result payloads.
+
+        Indexed request/command joins keep result rows and large payload JSON out
+        of the status poll. Command outcomes are immutable after completion, so
+        counts by lifecycle state plus IDs detect new work and its completion.
+        """
+        with self._connection() as connection:
+            requests = connection.execute('''SELECT COUNT(*),COALESCE(MAX(request_id),0),
+                COALESCE(SUM(status='pending'),0),COALESCE(SUM(status='confirmed'),0),
+                COALESCE(SUM(status='declined'),0),COALESCE(SUM(status='executed'),0),
+                COALESCE(SUM(status='rejected'),0) FROM requests WHERE session_id=?''', (session_id,)).fetchone()
+            commands = connection.execute('''SELECT COUNT(*),COALESCE(MAX(c.command_id),0),
+                COALESCE(SUM(c.status='pending'),0),COALESCE(SUM(c.status='running'),0),
+                COALESCE(SUM(c.status='declined'),0),COALESCE(SUM(c.status='executed'),0),
+                COALESCE(SUM(c.status='failed'),0),COALESCE(MAX(v.result_id),0)
+                FROM requests r JOIN sql_commands c USING(request_id)
+                LEFT JOIN results v USING(command_id) WHERE r.session_id=?''', (session_id,)).fetchone()
+        return ':'.join(str(value) for value in (*requests, *commands))
+
+    def history(self, session_id, search="", operation=None, limit=None, offset=0, request_id=None, pending_only=False):
+        if limit is not None and (isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 100):
+            raise RepositoryError("Choose a history page size between 1 and 100.")
+        if isinstance(offset, bool) or not isinstance(offset, int) or not 0 <= offset <= 1000000:
+            raise RepositoryError("Choose a valid history offset.")
+        if limit is None and offset:
+            raise RepositoryError("Choose a history page size when using an offset.")
+        where, params = self._history_filter(session_id, search, operation, request_id, pending_only)
+        with self._connection() as connection:
+            self._session(connection, session_id)
+            sql = "SELECT r.* FROM requests r WHERE " + where + " ORDER BY r.request_id DESC"
+            if limit is not None:
+                sql += " LIMIT ? OFFSET ?"
+                params.extend((limit, offset))
+            rows = connection.execute(sql, params).fetchall()
             result = []
             for row in rows:
                 request = self._request_record(row)

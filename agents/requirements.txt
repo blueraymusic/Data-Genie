@@ -1,0 +1,2 @@
+# Local stdio bridge dependencies. Hosted MCP is configured in azure/requirements.txt.
+mcp==2.3.0

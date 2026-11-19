@@ -1,98 +1,51 @@
 # Data Genie
 
-Ask your database questions in plain English. Use a SQLite file or connect PostgreSQL, see the SQL and results, then ask a follow-up. Reads run immediately; changes always wait for your confirmation.
+Give people and agents scoped access to your databases, with human review before changes run. Ask in plain English, inspect SQL and charts, and follow up. Use SQLite or connect PostgreSQL.
 
-[Open Data Genie](https://data-genie-blueray321.azurewebsites.net/) · [Log in](https://data-genie-blueray321.azurewebsites.net/signin) · [Sign up](https://data-genie-blueray321.azurewebsites.net/signup) · [FAQ](https://data-genie-blueray321.azurewebsites.net/faq)
+[Open Data Genie](https://data-genie.space/) · [Log in](https://data-genie.space/signin) · [Sign up](https://data-genie.space/signup) · [FAQ](https://data-genie.space/faq)
 
-![Data Genie homepage in light mode](docs/images/homepage.jpg)
+![Data Genie homepage](docs/images/homepage.jpg)
 
-## The workspace
+## What you can do
 
-- Upload a SQLite file, connect PostgreSQL, create an empty database, or explore the sample.
-- Ask questions using Gemini or use Keywords mode without an API key.
-- Browse tables and columns, and review SQL before confirming changes.
-- Sort, copy, or export results as CSV, and revisit saved requests in History.
-- Open Account and saved History even when no database is connected.
+- Ask questions or run SQL directly.
+- Manage tables and columns with a preview before changes.
+- Work with a team, grant database access, and transfer a team workspace you own with recipient approval. Personal workspaces cannot be transferred.
+- Verify new hosted accounts with a five-minute email code (three attempts).
+- Coedit report drafts live, share reviewed findings, and download PDFs.
+- Connect an agent through MCP or the HTTP API.
+- See workspace, database, access, and report updates without refreshing.
+- Export each database's current state, move it between workspaces you own, or remove it.
 
-![Workspace showing a request, its SQL translation, and matching customers](docs/images/workspace.jpg)
+## Start locally
 
-Built with React, Vite, Python, and SQLite. Screenshots use sample data.
-
-## Folders
-
-```text
-frontend/   React pages, components, styles, and Vite configuration
-backend/    Python services, database connectors, and server
-azure/      Terraform, deployment pipeline, and cloud requirements
-tests/      Python tests; React tests live beside the frontend
-scripts/    Local startup, demo data, and deployment helpers
-docs/       Guides, design notes, and screenshots
-backup/     Private local recovery copies, excluded from Git
-db/         Local accounts, history, and working databases, excluded from Git
-```
-
-## Run locally
-
-You'll need Python 3.9+ and Node.js 22.12+.
+Use Node.js 22.12+ and Python 3.11+ for the full application.
 
 ```bash
 git clone --branch dev https://github.com/blueraymusic/Data-Genie.git
 cd Data-Genie
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
 npm install
 npm run build
 npm start
 ```
 
-For local development, open the address printed by `npm start`, sign up, and choose a database.
+Open the address printed by the server and create an account. Hosted and local accounts are separate. For live frontend updates, keep the server running and run `npm run dev` in another terminal.
 
-`npm start` uses the project's `.venv` when available, so PostgreSQL runs with the connector packages installed there. `npm run dev` starts the frontend only; keep the server running too.
+## Find your guide
 
-If port 8000 is busy, run `npm start -- 8001`.
+| Part | Guide |
+| --- | --- |
+| Using the app, teams, and reports | [User documentation](docs/README.md) |
+| Account creation and password recovery | [Account walkthrough](docs/account-lifecycle.md) |
+| React UI and local development | [Frontend](frontend/README.md) |
+| Python services and HTTP API | [Backend](backend/README.md) |
+| Hosted MCP, OAuth, and the local bridge | [Agent connections](agents/README.md) |
+| Terraform, deployment, and hosting | [Azure](azure/README.md) |
+| Running checks | [Tests](tests/README.md) |
+| Credentials and reporting vulnerabilities | [Security](SECURITY.md) |
 
-For live frontend updates, leave the Python server running and start Vite in another terminal:
+Browser-based MCP clients use `https://data-genie.space/mcp`, then sign in and choose a workspace and permissions. Scripts can use workspace-scoped API keys. See the [connection steps](docs/agents.md).
 
-```bash
-npm run dev
-```
-
-Open the URL Vite prints. It forwards API requests to the Python server.
-
-## Optional Gemini setup
-
-Copy `.env.example` to `.env` and add your `GEMINI_API_KEY`. The model is configured with `GEMINI_MODEL` in the same file. Without a key, choose Keywords in Account & preferences.
-
-Gemini receives the database structure and recent conversation context, including request text, SQL, and clarifications. Result rows are not sent to the model.
-
-## Connect PostgreSQL
-
-With Python 3.10+, install the optional connector in a virtual environment:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements-postgres.txt
-npm start
-```
-
-Restart the server with that environment, then choose **Databases → PostgreSQL**. Paste your connection URL, choose a schema, and test it. Connections start read-only. Enable **Allow changes after I confirm them** to review and confirm edits to the live database. Connection settings are encrypted in the Data Genie installation.
-
-Confirmed edits are saved in PostgreSQL directly; no download or upload is needed. CSV downloads are copies of result rows. This is a direct PostgreSQL connector; an MCP client or server is not included yet.
-
-See the [FAQ](https://data-genie-blueray321.azurewebsites.net/faq) for common questions, or [database connections](docs/database-connections.md) for setup and testing.
-
-For a local test database, run `.venv/bin/python scripts/postgres_demo.py start`. It creates sample customers, products, and orders on port 55432. The connection URL is saved privately in `db/postgres-demo/connection.txt`.
-
-## Host on Azure
-
-[Open the hosted app](https://data-genie-blueray321.azurewebsites.net/). Create a hosted account; desktop accounts stay separate.
-
-The [Azure deployment guide](docs/azure-free-hosting.md) covers the Terraform variables, Azure DevOps pipeline, and storage limits. Hosting supports free F1 or one budgeted Linux B1 instance using student credit. Azure SQL stays on its free offer and pauses at its limits. Existing local accounts and databases are not uploaded automatically.
-
-## Checks
-
-```bash
-npm test
-python3 -B -m unittest
-```
-
-Accounts and history stay with the Data Genie installation, with hashed passwords. Local databases and API keys are excluded from Git. See [SECURITY.md](SECURITY.md) for security details.
+Built with React, Vite, Python, and SQLite. Local databases, accounts, and secrets are excluded from Git.
