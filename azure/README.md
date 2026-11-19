@@ -15,6 +15,14 @@ The approved fixed SQL option is **Basic, 5 DTUs, 2 GiB**, bringing Linux B1 plu
 
 The pipeline runs manually and fetches GitHub's `dev` branch. Use the reviewed `appServiceSku=B1` parameter for the current deployment. Terraform manages infrastructure; the pipeline deploys code.
 
+## Direct PostgreSQL and pooled connections
+
+Linux App Service disables outbound IPv6 by default. Terraform sets `WEBSITE_NETWORK_LINUX_OUTBOUND_DISABLE_IPV6=false` on the existing app so it can reach both IPv6 database endpoints (including Supabase direct connections) and IPv4 endpoints (including Supabase's free shared Session pooler). This is an App Service outbound IPv6 preview feature available on the existing tier; it does not provision a paid Supabase IPv4 add-on, change hosting tiers, or add network resources. See [Microsoft's outbound IPv6 instructions](https://techcommunity.microsoft.com/blog/appsonazureblog/announcing-app-service-outbound-ipv6-support-in-public-preview/4423368).
+
+For an existing app, apply the setting through Terraform or set that exact application setting in Azure's **Environment variables**, then apply the change. Azure restarts the app when application settings change. Test both direct and Session pooler URLs through Data Genie's **Test connection** afterward. An inbound `ipMode` change alone does not enable outbound IPv6. App Service's preview does not support IPv6 through a VNet with Route All; do not disable existing network isolation to work around that limitation.
+
+The opt-in does not guarantee a working IPv6 route on every host. During verification on 2026-11-18, the live France Central B1 app accepted the setting, but its restarted container still returned `Network is unreachable` when opening TCP to the Supabase direct IPv6 endpoint. The hosted Session pooler test succeeded. Direct connectivity remains unverified until Azure provides a usable outbound route; investigate that platform routing issue before declaring direct connections operational. The connection form's test is read-only and does not save credentials or change connection permissions.
+
 Read the [deployment guide](../docs/azure-free-hosting.md) for variables, identity setup, storage durability, firewall checks, and rollback considerations. Do not commit cloud credentials or automatically upload local accounts and databases.
 
 After deployment, run:

@@ -36,6 +36,21 @@ class ConnectionSupportTests(unittest.TestCase):
 
 
 class ConnectionConfigTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec('psycopg'), 'PostgreSQL driver is not installed')
+    def test_supabase_direct_routing_failure_explains_free_pooler_without_leaking_credentials(self):
+        import psycopg
+        config = connection_config({'connection_url': 'postgresql://postgres:private-fixture@db.project.supabase.co/postgres'})
+        for reason in ('Network is unreachable', 'No route to host', 'Cannot assign requested address'):
+            with self.subTest(reason=reason), \
+                    patch('backend.connections.postgres.settings.public_url', return_value=''), \
+                    patch('psycopg.connect', side_effect=psycopg.OperationalError(reason + ' private-fixture')):
+                with self.assertRaises(ConnectionFailure) as raised:
+                    with PostgresConnector(config).connection():
+                        self.fail('An unreachable endpoint must not open a connection')
+                self.assertEqual(raised.exception.code, 'postgres_ipv6_unavailable')
+                self.assertIn('free Session pooler', str(raised.exception))
+                self.assertNotIn('private-fixture', str(raised.exception))
+
     def test_supabase_certificate_trust_is_scoped_to_database_endpoints(self):
         for host in ('db.project.supabase.co', 'aws-1-us-west-2.pooler.supabase.com'):
             cert = Path(_root_certificate(host))

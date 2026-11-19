@@ -37,6 +37,10 @@ mock_provider "random" {}
 run "free_only_plan" {
   command = plan
   assert {
+    condition     = azurerm_linux_web_app.app.app_settings["WEBSITE_NETWORK_LINUX_OUTBOUND_DISABLE_IPV6"] == "false"
+    error_message = "The app must allow outbound IPv6 for direct PostgreSQL connections as well as IPv4 poolers."
+  }
+  assert {
     condition     = azurerm_service_plan.hosting.sku_name == "F1"
     error_message = "The default hosting tier must remain free."
   }

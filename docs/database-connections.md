@@ -16,6 +16,8 @@ The hosted site already includes the connector. It needs a public PostgreSQL hos
 
 Data Genie accepts IPv4 and IPv6 PostgreSQL endpoints. Hosted connections try all resolved public addresses, retaining hostname and certificate verification. The server's network must support the selected endpoint's IP version.
 
+On Azure Linux App Service, enable outbound IPv6 with `WEBSITE_NETWORK_LINUX_OUTBOUND_DISABLE_IPV6=false` and restart the app. The repository's Terraform includes this setting. See [Azure connection configuration](../azure/README.md#direct-postgresql-and-pooled-connections). This enables the direct IPv6 route alongside IPv4 poolers; it does not change a saved connection's read-only setting.
+
 Supabase's free plan includes a direct IPv6 endpoint and a shared IPv4 Session pooler. On IPv4 networks, choose **Connect → Session pooler** in Supabase and copy the exact URI: the pooler hostname differs from the direct hostname, and the username becomes `postgres.<project-ref>`. Use port `5432` for session mode. No paid IPv4 add-on is needed. A direct IPv6 URL cannot automatically reveal the project's pooler hostname, so paste the pooler URI when switching. See [Supabase's connection guide](https://supabase.com/docs/guides/database/connecting-to-postgres).
 
 For Supabase-owned direct and shared pooler endpoints, Data Genie uses the bundled official Supabase database CA with `verify-full`. Other hosts use the system trust store. No certificate download occurs during a connection. This keeps certificate and hostname verification enabled for both connection methods.

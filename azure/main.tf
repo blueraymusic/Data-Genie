@@ -109,22 +109,25 @@ resource "azurerm_linux_web_app" "app" {
     application_stack { python_version = "3.12" }
   }
   app_settings = {
-    SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
-    GENIE_CLOUD_STATE              = "azure_sql"
-    GENIE_DATA_DIR                 = "/tmp/data-genie"
-    GENIE_CONNECTION_KEY           = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["connection-key"].versionless_id})"
-    GENIE_SQL_HOST                 = azurerm_mssql_server.state.fully_qualified_domain_name
-    GENIE_SQL_DATABASE             = azapi_resource.free_state.name
-    GENIE_SQL_USER                 = azurerm_mssql_server.state.administrator_login
-    GENIE_SQL_PASSWORD             = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["sql-password"].versionless_id})"
-    GEMINI_API_KEY                 = var.gemini_api_key != "" ? "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["ai-key"].versionless_id})" : ""
-    GEMINI_MODEL                   = var.gemini_model
-    GENIE_PUBLIC_URL               = var.public_url
-    GENIE_GOOGLE_CLIENT_ID         = var.google_client_id
-    GENIE_GOOGLE_CLIENT_SECRET     = var.google_client_secret != "" ? "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["google-secret"].versionless_id})" : ""
-    GENIE_GOOGLE_REDIRECT_URI      = var.google_redirect_uri
-    BREVO_API_KEY                  = var.brevo_api_key != "" ? "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["brevo-key"].versionless_id})" : ""
-    BREVO_SENDER_EMAIL             = var.brevo_sender_email
+    # Linux App Service disables outbound IPv6 by default. Supabase direct
+    # PostgreSQL endpoints require it; IPv4 pooler endpoints remain supported.
+    WEBSITE_NETWORK_LINUX_OUTBOUND_DISABLE_IPV6 = "false"
+    SCM_DO_BUILD_DURING_DEPLOYMENT              = "true"
+    GENIE_CLOUD_STATE                           = "azure_sql"
+    GENIE_DATA_DIR                              = "/tmp/data-genie"
+    GENIE_CONNECTION_KEY                        = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["connection-key"].versionless_id})"
+    GENIE_SQL_HOST                              = azurerm_mssql_server.state.fully_qualified_domain_name
+    GENIE_SQL_DATABASE                          = azapi_resource.free_state.name
+    GENIE_SQL_USER                              = azurerm_mssql_server.state.administrator_login
+    GENIE_SQL_PASSWORD                          = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["sql-password"].versionless_id})"
+    GEMINI_API_KEY                              = var.gemini_api_key != "" ? "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["ai-key"].versionless_id})" : ""
+    GEMINI_MODEL                                = var.gemini_model
+    GENIE_PUBLIC_URL                            = var.public_url
+    GENIE_GOOGLE_CLIENT_ID                      = var.google_client_id
+    GENIE_GOOGLE_CLIENT_SECRET                  = var.google_client_secret != "" ? "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["google-secret"].versionless_id})" : ""
+    GENIE_GOOGLE_REDIRECT_URI                   = var.google_redirect_uri
+    BREVO_API_KEY                               = var.brevo_api_key != "" ? "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault_secret.app["brevo-key"].versionless_id})" : ""
+    BREVO_SENDER_EMAIL                          = var.brevo_sender_email
   }
   tags = local.tags
 }

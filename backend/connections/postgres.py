@@ -170,6 +170,15 @@ class PostgresConnector:
                 yield connection
         except psycopg.Error as exc:
             code = exc.sqlstate or ""
+            if (not code and re.fullmatch(r"db\.[a-z0-9]+\.supabase\.co", self.config["host"].lower())
+                    and any(reason in str(exc).lower() for reason in
+                            ("network is unreachable", "no route to host", "cannot assign requested address"))):
+                raise ConnectionFailure(
+                    "Data Genie's server cannot reach this Supabase direct endpoint over IPv6. "
+                    "Use the free Session pooler URL from Supabase Connect, or restore outbound IPv6 routing "
+                    "on the Data Genie host. Your saved connection has not been removed.",
+                    "postgres_ipv6_unavailable",
+                ) from None
             if code in {"28P01", "28000", "3D000"}:
                 message = ("PostgreSQL rejected the saved login details. Enter the connection details again."
                            if code != "3D000" else "The saved PostgreSQL database no longer exists. Check its connection details.")
