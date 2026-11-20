@@ -1,19 +1,8 @@
-import { GoogleMark, googleError } from './GoogleSignIn';
 import { AccountPasswordForm } from './AccountPasswordForm';
-import { Icon } from './Icon';
 import { DeleteAccount } from './DeleteAccount';
 import { Link } from '../lib/router';
 
-export function AccountSecurity({
-  user,
-  passwordEnabled,
-  busy,
-  error,
-  message,
-  submit,
-  linkedReturn,
-  route,
-}) {
+export function AccountSecurity({ user, passwordEnabled, busy, error, message, submit }) {
   return (
     <>
       <header className="account-panel-heading">
@@ -21,12 +10,7 @@ export function AccountSecurity({
         <p>Keep your account access in your hands.</p>
       </header>
       {passwordEnabled && (
-        <AccountPasswordForm
-          onSubmit={submit}
-          busy={busy}
-          error={error}
-          message={message}
-        />
+        <AccountPasswordForm onSubmit={submit} busy={busy} error={error} message={message} />
       )}
       <section className="account-danger-row" aria-label="Transfer ownership">
         <div>

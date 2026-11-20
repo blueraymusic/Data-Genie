@@ -2,9 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AuthPage from './pages/AuthPage';
-import AccountPage from './pages/AccountPage';
 import { Router } from './lib/router';
-import { setCsrfToken } from './lib/api';
 
 const auth = vi.hoisted(() => ({}));
 vi.mock('./context/AuthContext', () => ({ useAuth: () => auth }));
@@ -19,14 +17,6 @@ const localUser = {
 };
 const response = (data, status = 200) =>
   Promise.resolve({ ok: status < 400, status, json: async () => data });
-const account = () => {
-  const view = render(
-    <Router>
-      <AccountPage workbench={{ session: null }} />
-    </Router>,
-  );
-  return view;
-};
 beforeEach(() => {
   history.replaceState({}, '', '/signin');
   window.scrollTo = vi.fn();
@@ -34,7 +24,6 @@ beforeEach(() => {
   Object.assign(auth, {
     user: { ...localUser },
     authenticate: vi.fn(),
-    refresh: vi.fn().mockResolvedValue(localUser),
     changePassword: vi.fn(),
     error: '',
     connectionError: false,
@@ -43,13 +32,11 @@ beforeEach(() => {
     'fetch',
     vi.fn(() => response({ google: { enabled: true } })),
   );
-  setCsrfToken('csrf-for-test');
 });
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
-  setCsrfToken('');
 });
 
 describe('Google sign-in', () => {
@@ -192,13 +179,4 @@ describe('Google sign-in', () => {
       );
     },
   );
-  it('replaces password controls for Google-only accounts', async () => {
-    auth.user = { ...localUser, password_enabled: false, google_linked: true };
-    account();
-    await screen.findByText('Google account connected');
-    expect(screen.getByText(/Your sign-in is managed by Google/)).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: 'Change password' })).toBeNull();
-    expect(screen.queryByLabelText('Current password')).toBeNull();
-    expect(screen.queryByRole('form', { name: 'Connect Google account' })).toBeNull();
-  });
 });

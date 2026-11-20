@@ -1,7 +1,7 @@
 import { lazy, Suspense, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Link, useRouter } from '../lib/router';
+import { Link } from '../lib/router';
 import { AccountGeneral } from '../components/AccountGeneral';
 import { AccountSecurity } from '../components/AccountSecurity';
 import { Icon } from '../components/Icon';
@@ -12,7 +12,6 @@ const AgentAccess = lazy(() =>
 export default function AccountPage({ workbench, mode, setMode }) {
   const { user, changePassword } = useAuth(),
     { theme, toggle } = useTheme();
-  const { route } = useRouter();
   const passwordEnabled = user.password_enabled !== false;
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState(''),
@@ -76,7 +75,6 @@ export default function AccountPage({ workbench, mode, setMode }) {
               error,
               message,
               submit,
-              route,
             }}
           />
         </section>
