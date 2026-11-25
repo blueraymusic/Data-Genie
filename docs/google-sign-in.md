@@ -1,6 +1,6 @@
 # Google sign-in
 
-Data Genie can offer **Continue with Google** alongside email and password. It uses Google's OpenID Connect authorization-code flow on the existing Python server. This setup does not enable Google Cloud Billing, Firebase Authentication, Identity Platform, or any paid Google API. Existing Azure hosting and Key Vault metering remain unchanged.
+The hosted signup and login pages offer **Continue with Google** alongside email and password. Self-hosted installations can enable it with server-side OAuth configuration. It uses Google's OpenID Connect authorization-code flow on the existing Python server. This setup does not enable Google Cloud Billing, Firebase Authentication, Identity Platform, or any paid Google API. Existing Azure hosting and Key Vault metering remain unchanged.
 
 ## Create the OAuth client
 
@@ -42,13 +42,13 @@ Microsoft sign-in is retired. Its old Terraform inputs and historical `microsoft
 
 A Google identity is matched by its signed issuer and stable subject, never automatically by an email match. New Google accounts require a verified Gmail address or a verified managed Google Workspace address. A third-party email merely registered as a Google Account does not satisfy that new-account rule. Disposable-domain and optional organization-allowlist rules also apply to new accounts.
 
-If an existing Data Genie account has the same email, sign in with its password first and use **Account → Sign-in & security → Link Google**. Linking requires current-password confirmation and a fresh Google redirect. Google-only accounts do not receive a generated local password. An existing linked identity continues to open the same Data Genie account even if its Google email later changes. Signing out of Data Genie ends its own browser session, not every Google session.
+If Data Genie already has a password account with the same email, continue signing in with its password. The Account page has no Google linking control. Previously linked Google identities continue to open the same account, even if the Google email changes. Google-only accounts sign in through Google. Signing out ends the Data Genie browser session.
 
 ## Verify locally and after deployment
 
 Use a separate development Web client when possible. Register `http://localhost:8000/api/auth/google/callback` exactly and set the three `GENIE_GOOGLE_` values privately in `.env`. Open the same `localhost` origin. The Python server handles the callback; a frontend-only Vite server cannot exchange the authorization code. If a different port is used, register and configure that exact callback.
 
-Before public rollout, complete a real Google redirect and callback with a test account. Verify first signup, logout and repeat login, account linking, cancellation, rejected/unverified email, and an email collision with an existing password account. Confirm password login still works, the same saved workspace returns, and no Google access/ID tokens appear in browser storage or app logs. Automated boundary tests do not replace this real provider test.
+Before public rollout, complete a real Google redirect and callback with a test account. Verify first signup, logout and repeat login, cancellation, rejected or unverified email, and an email collision with an existing password account. Confirm password login still works, the same saved workspace returns, and no Google access/ID tokens appear in browser storage or app logs. Automated boundary tests do not replace this real provider test.
 
 ## References
 

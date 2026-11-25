@@ -1,14 +1,14 @@
 # Storage plan within approximately US$15/month
 
-**Later decision, 17 November:** the user approved an approximately $20/month total budget funded by existing student credit, including permanently leaving the SQL free offer for fixed Basic SQL (5 DTUs / 2 GiB). The Blob design below remains an alternative proposal, not an implemented migration. The reviewed SQL configuration is now available through `sql_state_tier=basic`; set that variable before the next HCP Terraform plan. A serverless `BillOverUsage` opt-in cannot be switched back to monthly-limit AutoPause and must not be treated as a reversible recovery toggle.
+**Historical proposal.** Production now persists application state in fixed Basic Azure SQL (5 DTUs and 2 GiB). The Blob design below was considered before that decision and remains unimplemented. See the [current Azure hosting guide](azure-free-hosting.md).
 
 Status: proposal only. No storage resource, billing setting, access grant or production data has been changed by this plan. Prices checked on 16 November 2026 for France Central, in USD, before taxes.
 
-## Current release and blocker
+## Incident context on 16 November 2026
 
-Application commit `0680a03` was pushed to GitHub `dev` and published by [Azure run 37](https://dev.azure.com/as4dc/blueray/_build/results?buildId=37). Its remaining readiness retries were canceled after publication with the user's approval. The public origin serves its exact JavaScript/CSS, `/healthz` responds successfully, and the sign-in-provider endpoint works. This does **not** establish that accounts and workspaces are healthy: the cloud-backed session check times out.
+During the incident, the public site served the deployment's assets and responded to `/healthz`. The cloud-backed session check timed out.
 
-Azure SQL reports `Paused`. Its historical metrics reached 100,000 consumed vCore-seconds and zero remaining allowance on 15 November, before this release. The application logs record SQL error 42119. This is the monthly free-offer pause described by [Microsoft's free-tier FAQ](https://learn.microsoft.com/en-us/azure/azure-sql/database/free-tier-faq). Keep `useFreeLimit=true` and `AutoPause`; do not silently enable SQL overage billing.
+The former free-offer Azure SQL database paused after its monthly allowance ran out. The application logs recorded SQL error 42119. This is the monthly free-offer pause described by [Microsoft's free-tier FAQ](https://learn.microsoft.com/en-us/azure/azure-sql/database/free-tier-faq). Keep `useFreeLimit=true` and `AutoPause`; do not silently enable SQL overage billing.
 
 ## Recommended direction
 
@@ -31,7 +31,7 @@ Azure supports [ETag-based conditional writes and blob leases](https://learn.mic
 
 ## Cost envelope
 
-Microsoft's [Retail Prices API](https://prices.azure.com/api/retail/prices) currently lists France Central Linux B1 at $0.018/hour. The relevant General Block Blob v2 Hot LRS rates are $0.0192/GB-month for the first storage tier, $0.059 per 10,000 write operations, and $0.0047 per 10,000 read/other operations. See [App Service pricing](https://azure.microsoft.com/en-us/pricing/details/app-service/linux/) and [Blob pricing](https://azure.microsoft.com/en-us/pricing/details/storage/blobs/).
+In the dated estimate, Microsoft's [Retail Prices API](https://prices.azure.com/api/retail/prices) listed France Central Linux B1 at $0.018/hour. The relevant General Block Blob v2 Hot LRS rates are $0.0192/GB-month for the first storage tier, $0.059 per 10,000 write operations, and $0.0047 per 10,000 read/other operations. See [App Service pricing](https://azure.microsoft.com/en-us/pricing/details/app-service/linux/) and [Blob pricing](https://azure.microsoft.com/en-us/pricing/details/storage/blobs/).
 
 This is an illustrative workload envelope, **not measured application usage or an unlimited-service promise**:
 
@@ -53,7 +53,7 @@ For a 730-hour month, the same envelope is approximately $14.50. The remaining r
 The existing SQL snapshot is authoritative. Do not redirect production to an empty Blob container, delete SQL, recreate user accounts or upload the laptop's separate fixture accounts.
 
 1. Implement the adapter and test it locally with isolated fixtures; keep the SQL adapter available for rollback. Add Terraform changes as a reviewable plan, without applying them.
-2. Obtain a complete verified export of the existing SQL-backed state. The exhausted free offer currently prevents this. Use an already verified complete backup if one exists; otherwise wait for the monthly reset, or separately review a temporary paid recovery window. This proposal does not authorize that paid window. A scratch directory alone is not proof of the last committed state.
+2. Obtain a complete verified export of the existing SQL-backed state. At the time of this proposal, the exhausted free offer prevented this. Use an already verified complete backup if one exists; otherwise wait for the monthly reset, or separately review a temporary paid recovery window. This proposal does not authorize that paid window. A scratch directory alone is not proof of the last committed state.
 3. During a brief maintenance window, block new writes, export the final state, hash and retain it, upload the initial manifest/chunks, and test a restore in a separate scratch directory. Compare account, workspace, membership, database and report counts; verify encrypted connections remain usable without printing credentials.
 4. Switch only after those checks pass. Confirm anonymous session readiness, existing-account login, scoped access, SQL reads/confirmed writes, two-person report editing and recovery after worker replacement. Keep the SQL resource and exported rollback snapshot intact until acceptance and retention review.
 5. Rollback must account for all post-cutover writes. Freeze and export the Blob state before reverting; never simply point to an older SQL snapshot and discard acknowledged edits.
@@ -69,4 +69,4 @@ With no readable authoritative backup and no paid recovery approval, a data-pres
 - A restore exercise succeeds, including retained recovery points and cleanup of abandoned uploads.
 - The reviewed infrastructure plan shows only the intended storage account/container and narrowly scoped app access; existing SQL remains protected and its billing behavior remains unchanged.
 
-This plan is ready for implementation review. It does not restore the currently paused production database by itself.
+This proposal was superseded for the current deployment by the fixed Basic SQL configuration.

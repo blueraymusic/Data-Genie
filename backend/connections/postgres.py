@@ -152,14 +152,16 @@ class PostgresConnector:
         parameters = {key: self.config[key] for key in ("host", "port", "user", "password", "dbname", "sslmode")}
         parameters["channel_binding"] = self.config.get("channel_binding", "prefer")
         if settings.public_url():
-            if self.config["sslmode"] != "verify-full":
-                raise ValueError("Hosted PostgreSQL connections require sslmode=verify-full.")
+            if parameters["sslmode"] not in {"require", "verify-full"}:
+                raise ValueError("Hosted PostgreSQL connections require verified TLS.")
+            # Provider URLs may request encryption only. Always verify the certificate on hosted connections.
+            parameters["sslmode"] = "verify-full"
             addresses = public_addresses(parameters["host"], parameters["port"])
             parameters["hostaddr"] = ",".join(addresses)
             # libpq requires a matching hostname for each pinned address;
             # retain it for certificate verification and pooler routing.
             parameters["host"] = ",".join([self.config["host"]] * len(addresses))
-        if self.config["sslmode"] == "verify-full":
+        if parameters["sslmode"] == "verify-full":
             parameters["sslrootcert"] = _root_certificate(self.config["host"])
         try:
             with psycopg.connect(**parameters, connect_timeout=5, prepare_threshold=None, row_factory=dict_row,

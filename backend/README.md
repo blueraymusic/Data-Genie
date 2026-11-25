@@ -29,7 +29,7 @@ Copy `.env.example` to `.env` for optional AI configuration. The existing `GEMIN
 - `/api/v1` discovers key-authorized actions; `POST /api/v1/actions/{name}` calls one.
 - `/api/v1/openapi.json` describes the HTTP action inputs.
 - `/mcp` provides the official SDK's Streamable HTTP transport with browser-based OAuth.
-- `/healthz` checks process health. It does not prove a database connection is available.
+- `/healthz` checks process health. `/api/auth/session` checks the hosted application repository during release verification. PostgreSQL credentials and schema access are checked by `POST /api/connections/test` in an authenticated workspace.
 
 Agent keys and OAuth access tokens serve different endpoints and are not interchangeable. See [agent setup](../docs/agents.md) for authentication, scopes, expiry, and retries.
 

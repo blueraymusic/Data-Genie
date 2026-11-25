@@ -313,7 +313,7 @@ export const faqGroups = [
       {
         question: 'How do I connect PostgreSQL?',
         search:
-          'Connect a local or hosted PostgreSQL database, including standard Supabase and Neon connections. In Databases choose PostgreSQL and paste the connection URL. Schema defaults to public. Expand Connection options to change Schema or add an optional Connection name. Test connection checks access without changing data or saving credentials. Connect PostgreSQL saves the connection for your account. For a local installation, follow the README link to install the optional connector dependencies first. The hosted site includes the connector.',
+          'Connect a local or hosted PostgreSQL database, including Supabase direct IPv6, the Supabase IPv4 Session pooler, and Neon. In Databases choose PostgreSQL and paste the connection URL. Hosted connections verify the certificate and hostname, including for URLs with sslmode=require. Schema defaults to public. Expand Connection options to change Schema or add an optional Connection name. Test connection checks access without changing data or saving credentials. Connect PostgreSQL saves the connection for your account.',
         answer: (
           <>
             <p>
@@ -323,9 +323,11 @@ export const faqGroups = [
               You can use standard PostgreSQL connections from Supabase and Neon.
             </p>
             <p>
-              A hosted Data Genie installation requires a public PostgreSQL address and verified
-              TLS. Private and loopback addresses are blocked. Use the local installation to connect
-              to a database running on your laptop.
+              Hosted Data Genie connects to public IPv4 and IPv6 addresses and verifies the server’s
+              certificate and hostname, including for URLs with <code>sslmode=require</code>. For
+              Supabase, use the direct URL or the IPv4 <strong>Session pooler</strong> URL from{' '}
+              <strong>Connect</strong>. Use the local installation for a database running on your
+              laptop.
             </p>
             <p>
               <strong>Test connection</strong> checks access without changing data or saving the
@@ -737,13 +739,12 @@ export const faqGroups = [
       {
         question: 'Where is my data stored on the hosted site?',
         search:
-          'The hosted Azure installation stores accounts, history, uploaded SQLite working copies and encrypted PostgreSQL connection settings on the server, with durable state in Azure SQL. Your laptop installation is separate: sign up on the hosted site and upload only the SQLite files you want to move. The small hosted installation supports 64 MiB of total application state and 256 files. SQL can pause after inactivity or when its free allowance is exhausted. If the first login takes time, choose Retry connection, then submit the form yourself. Connection retries keep the form details and do not replay a request.',
+          'The hosted Azure installation stores accounts, history, uploaded SQLite working copies and encrypted PostgreSQL connection settings on the server, with durable state in Azure SQL Basic. Your laptop installation is separate. The hosted installation supports 64 MiB of total application state and 256 files. If login reports a connection problem, choose Retry connection and submit the form again.',
         answer: (
           <>
             <p>
               On the hosted site, accounts, History, SQLite working copies and encrypted connection
-              settings are stored on the server, with durable state in Azure SQL. They are not
-              stored only in your browser or on your laptop.
+              settings are stored on the server, with durable state in Azure SQL Basic.
             </p>
             <p>
               A laptop installation has separate accounts and data. Sign up on the hosted site and
@@ -752,13 +753,11 @@ export const faqGroups = [
             </p>
             <p>
               This small deployment supports 64 MiB of total application state and 256 files across
-              all accounts. Azure SQL can pause after inactivity or if its free allowance is
-              exhausted. Keep downloaded copies of important SQLite databases.
+              all accounts. Keep downloaded copies of important SQLite databases.
             </p>
             <p>
-              The first connection after inactivity may take a moment. If login reports a connection
-              problem, choose <strong>Retry connection</strong>, then submit the form yourself. The
-              check keeps your entered details and does not repeat your request.
+              If login reports a connection problem, choose <strong>Retry connection</strong>, then
+              submit the form again. The check keeps your entered details.
             </p>
           </>
         ),

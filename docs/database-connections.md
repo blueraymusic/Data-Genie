@@ -10,13 +10,13 @@ Open [Data Genie](https://data-genie.space/), [sign up](https://data-genie.space
 
 The schema defaults to `public`. Expand **Connection options** to change **Schema** or add an optional **Connection name**. These options open automatically when a custom name or schema is already filled in. The connection URL, change-permission checkbox, and test button remain available without opening the options.
 
-The hosted site already includes the connector. It needs a public PostgreSQL hostname and `sslmode=verify-full` (the default for external hosts). A database listening only on your laptop, a private network, or a cloud-metadata address cannot be reached through the hosted connector. If your provider restricts incoming connections, its network rules must also permit the Data Genie app's outbound addresses; testing a URL does not change those rules.
+The hosted site already includes the connector. It needs a public PostgreSQL hostname and always uses `sslmode=verify-full`. You can paste a provider URL containing `sslmode=require` directly. A database listening only on your laptop, a private network, or a cloud-metadata address cannot be reached through the hosted connector. If your provider restricts incoming connections, its network rules must also permit the Data Genie app's outbound addresses. Testing a URL does not change those rules.
 
 ### Supabase, IPv4, and IPv6
 
 Data Genie accepts IPv4 and IPv6 PostgreSQL endpoints. Hosted connections try all resolved public addresses, retaining hostname and certificate verification. The server's network must support the selected endpoint's IP version.
 
-On Azure Linux App Service, enable outbound IPv6 with `WEBSITE_NETWORK_LINUX_OUTBOUND_DISABLE_IPV6=false` and restart the app. The repository's Terraform includes this setting. See [Azure connection configuration](../azure/README.md#direct-postgresql-and-pooled-connections). This enables the direct IPv6 route alongside IPv4 poolers; it does not change a saved connection's read-only setting.
+The repository's Terraform opts Azure Linux App Service into outbound IPv6 with `WEBSITE_NETWORK_LINUX_OUTBOUND_DISABLE_IPV6=false`. The live app reached a Supabase direct IPv6 endpoint and verified its TLS certificate after an Azure worker replacement. See [Azure connection configuration and verification](../azure/README.md#direct-postgresql-and-pooled-connections).
 
 Supabase's free plan includes a direct IPv6 endpoint and a shared IPv4 Session pooler. On IPv4 networks, choose **Connect → Session pooler** in Supabase and copy the exact URI: the pooler hostname differs from the direct hostname, and the username becomes `postgres.<project-ref>`. Use port `5432` for session mode. No paid IPv4 add-on is needed. A direct IPv6 URL cannot automatically reveal the project's pooler hostname, so paste the pooler URI when switching. See [Supabase's connection guide](https://supabase.com/docs/guides/database/connecting-to-postgres).
 
@@ -45,7 +45,7 @@ Use `npm start` to run the server with the project's `.venv` when it exists. Run
 
 Data Genie saves PostgreSQL connection settings, not a running PostgreSQL server. If the server is offline, the saved connection stays listed and you can start the database and choose **Try again**, or open another database. A missing encryption key or connection record offers **Enter connection details** to add a fresh connection. Existing History stays saved. Resolve any pending change before switching databases.
 
-External hosts default to certificate-verified SSL. A local Data Genie installation also accepts `sslmode=require`; hosted Data Genie requires `sslmode=verify-full`. SSL can be disabled only for loopback connections in local mode. `channel_binding` is preserved, including the `require` value supplied by [Neon's connection strings](https://neon.com/blog/postgres-needs-better-connection-security-defaults). `sslrootcert=system` selects full verification with system certificates. File-based libpq options and arbitrary connection parameters are not accepted.
+External hosts default to certificate-verified SSL. A local Data Genie installation honors `sslmode=require` as entered. Hosted Data Genie upgrades it to `sslmode=verify-full`. SSL can be disabled only for loopback connections in local mode. `channel_binding` is preserved, including the `require` value supplied by [Neon's connection strings](https://neon.com/blog/postgres-needs-better-connection-security-defaults). `sslrootcert=system` selects full verification. File-based libpq options and arbitrary connection parameters are not accepted.
 
 ## Live changes and exports
 
@@ -53,7 +53,7 @@ PostgreSQL is a live connection. Reads query that server; confirmed edits are sa
 
 To edit, add a connection with **Allow changes after I confirm them** checked. Then ask for a change, review the SQL, and use its confirmation button. An existing read-only connection keeps its original setting. Your PostgreSQL user's permissions still apply, and ending a Data Genie session does not undo confirmed changes.
 
-**Download CSV** exports the rows currently loaded in a result, in their displayed order. **Download SQLite file** applies only to SQLite connections. Data Genie does not export a full PostgreSQL backup or provide automatic undo; keep full database backups separately.
+With download permission, choose **Manage → CSV folder** on the PostgreSQL database card to export readable tables and views in the selected schema as a ZIP with `schema.json`. **Download CSV** on a query result exports the loaded rows in their displayed order. Use native PostgreSQL tools for a restorable backup. SQLite also offers a database file and a SQL dump.
 
 ## Work with data
 
@@ -91,4 +91,4 @@ For automated checks:
 GENIE_TEST_POSTGRES=1 .venv/bin/python -B -m unittest tests.test_postgres_integration
 ```
 
-The integration suite requires `initdb` and `postgres` on PATH. It creates a disposable cluster on a random loopback port and removes it afterward. It covers schema and relationships, reads, follow-ups, pagination, encrypted persistence, account ownership, read-only enforcement, confirmed/declined writes, and table creation/renaming. It never connects to your existing databases.
+The integration suite requires `initdb` and `postgres` on PATH and permission to bind loopback sockets. It creates a disposable cluster on a random loopback port and removes it afterward. It covers schema and relationships, reads, follow-ups, pagination, encrypted persistence, account ownership, read-only enforcement, confirmed/declined writes, and table creation/renaming. It never connects to your existing databases.

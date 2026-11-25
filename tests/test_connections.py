@@ -84,6 +84,22 @@ class ConnectionConfigTests(unittest.TestCase):
         self.assertEqual(connect.call_args.kwargs['sslmode'], 'verify-full')
         self.assertEqual(connect.call_args.kwargs['sslrootcert'], 'system')
 
+    @unittest.skipUnless(importlib.util.find_spec('psycopg'), 'PostgreSQL driver is not installed')
+    def test_connector_verifies_tls_for_hosted_provider_urls_with_sslmode_require(self):
+        config = connection_config({'connection_url':
+            'postgresql://reader:p@db.example.test/shop?sslmode=require&channel_binding=require'})
+        for origin, expected_mode in (('https://genie.example.test', 'verify-full'), ('', 'require')):
+            with self.subTest(origin=origin), \
+                    patch('backend.connections.postgres.settings.public_url', return_value=origin), \
+                    patch('backend.connections.postgres.public_addresses', return_value=['1.1.1.1']), \
+                    patch('psycopg.connect', return_value=MagicMock()) as connect:
+                with PostgresConnector(config).connection():
+                    pass
+                self.assertEqual(connect.call_args.kwargs['sslmode'], expected_mode)
+                self.assertEqual(connect.call_args.kwargs['channel_binding'], 'require')
+                self.assertEqual(connect.call_args.kwargs.get('sslrootcert'), 'system' if origin else None)
+        self.assertEqual(config['sslmode'], 'require')
+
     def test_postgres_values_preserve_precision_and_serialize_dates(self):
         value = _value({"id": 9007199254740993, "amount": Decimal("1234567890.12345678"), "date": date(2026, 10, 27), "tags": ["sample", True]})
         self.assertEqual(value, {"id":"9007199254740993", "amount":"1234567890.12345678", "date":"2026-10-27", "tags":["sample",True]})

@@ -22,7 +22,7 @@ Use `https://data-genie.space/mcp` in a client supporting custom remote MCP with
 
 ## Your account
 
-On the hosted site, signup sends a six-digit email code from **Blueray Inc.** Codes expire after **five minutes** and allow **three incorrect attempts**. A replacement code invalidates the previous one; resends have a one-minute cooldown and rate limits. The account is created only after verification. Existing accounts can still log in.
+On the hosted site, email signup sends a six-digit verification code. Signup and login also offer **Continue with Google**. Codes expire after **five minutes** and allow **three incorrect attempts**. A replacement code invalidates the previous one; resends have a one-minute cooldown and rate limits. The account is created only after verification. Existing accounts can still log in.
 
 Password checks allow three failures per account within a 15-minute window. Choose **Forgot password?** on Log in to request recovery instructions. Every address receives the same on-screen response; eligible password accounts receive a single-use link valid for 15 minutes when email delivery is configured. After mailbox verification, signup with an existing email offers login or password reset without replacing that account.
 

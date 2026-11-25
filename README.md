@@ -11,11 +11,11 @@ Give people and agents scoped access to your databases, with human review before
 - Ask questions or run SQL directly.
 - Manage tables and columns with a preview before changes.
 - Work with a team, grant database access, and transfer a team workspace you own with recipient approval. Personal workspaces cannot be transferred.
-- Verify new hosted accounts with a five-minute email code (three attempts).
+- Sign up with email verification or continue with Google on the hosted site.
 - Coedit report drafts live, share reviewed findings, and download PDFs.
 - Connect an agent through MCP or the HTTP API.
 - See workspace, database, access, and report updates without refreshing.
-- Export each database's current state, move it between workspaces you own, or remove it.
+- Download a SQLite file, SQLite SQL dump, or CSV archive. PostgreSQL supports CSV archives and result downloads. Owners can move or remove databases.
 
 ## Start locally
 
@@ -48,4 +48,4 @@ Open the address printed by the server and create an account. Hosted and local a
 
 Browser-based MCP clients use `https://data-genie.space/mcp`, then sign in and choose a workspace and permissions. Scripts can use workspace-scoped API keys. See the [connection steps](docs/agents.md).
 
-Built with React, Vite, Python, and SQLite. Local databases, accounts, and secrets are excluded from Git.
+Built with React, Vite, Python, and SQLite. The hosted app uses Azure App Service and Azure SQL for durable application state. External PostgreSQL connections run against the database you connect. Local databases, accounts, and secrets are excluded from Git.
