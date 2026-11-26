@@ -102,6 +102,7 @@ def public_user(row):
     user["microsoft_linked"] = bool(row["microsoft_linked"]) if "microsoft_linked" in row.keys() else False
     user["google_linked"] = bool(row["google_linked"]) if "google_linked" in row.keys() else False
     user["profile_photo"] = row["profile_photo"] if "profile_photo" in row.keys() else None
+    user["walkthrough_pending"] = bool(row["walkthrough_pending"])
     return user
 
 
@@ -182,6 +183,12 @@ class Accounts:
             EXISTS(SELECT 1 FROM google_identities g WHERE g.account_id=a.account_id) AS google_linked
             FROM accounts a WHERE a.{field}=?""", (value,)).fetchone()
 
+    @staticmethod
+    def _create_account(connection, first_name, last_name, email, encoded_password):
+        return connection.execute("""INSERT INTO accounts
+            (first_name,last_name,email,password_hash,created_at,walkthrough_pending) VALUES(?,?,?,?,?,1)""",
+            (first_name, last_name, email, encoded_password, int(time.time()))).lastrowid
+
     def _reserve_attempt(self, client, action, email=None):
         """Commit admission before hashing, including invalid/duplicate requests.
 
@@ -230,9 +237,8 @@ class Accounts:
         with self.repository._connection(write=True) as connection:
             if connection.execute("SELECT 1 FROM accounts WHERE email=?", (email,)).fetchone():
                 raise ValueError("Unable to create an account with these details. Try logging in or use different details.")
-            cursor = connection.execute("INSERT INTO accounts(first_name,last_name,email,password_hash,created_at) VALUES(?,?,?,?,?)",
-                                        (*names, email, encoded, int(time.time())))
-            account = self._account(connection, "account_id", cursor.lastrowid)
+            account_id = self._create_account(connection, *names, email, encoded)
+            account = self._account(connection, "account_id", account_id)
             return public_user(account)
 
     def login(self, email, password, client="local"):
@@ -273,10 +279,7 @@ class Accounts:
                 raise MicrosoftAccountError("email_not_allowed") from None
             if self._account(connection, "email", email):
                 raise MicrosoftAccountError("account_exists")
-            cursor = connection.execute("""INSERT INTO accounts
-                (first_name,last_name,email,password_hash,created_at) VALUES(?,?,?,?,?)""",
-                (first_name, last_name, email, MICROSOFT_PASSWORD_SENTINEL, int(time.time())))
-            account_id = cursor.lastrowid
+            account_id = self._create_account(connection, first_name, last_name, email, MICROSOFT_PASSWORD_SENTINEL)
             connection.execute("""INSERT INTO external_identities
                 (provider,issuer,subject,account_id,created_at) VALUES('microsoft',?,?,?,?)""",
                 (issuer, subject, account_id, int(time.time())))
@@ -326,10 +329,7 @@ class Accounts:
                 raise GoogleAccountError("email_not_allowed") from None
             if self._account(connection, "email", email):
                 raise GoogleAccountError("account_exists")
-            cursor = connection.execute("""INSERT INTO accounts
-                (first_name,last_name,email,password_hash,created_at) VALUES(?,?,?,?,?)""",
-                (first_name, last_name, email, GOOGLE_PASSWORD_SENTINEL, int(time.time())))
-            account_id = cursor.lastrowid
+            account_id = self._create_account(connection, first_name, last_name, email, GOOGLE_PASSWORD_SENTINEL)
             connection.execute("""INSERT INTO google_identities
                 (provider,issuer,subject,account_id,created_at) VALUES('google',?,?,?,?)""",
                 (issuer, subject, account_id, int(time.time())))
@@ -411,6 +411,11 @@ class Accounts:
             connection.execute("DELETE FROM browser_logins WHERE account_id=?", (account_id,))
             connection.execute("UPDATE agent_tokens SET revoked_at=COALESCE(revoked_at,?) WHERE account_id=?", (int(time.time()), account_id))
             connection.execute("DELETE FROM password_resets WHERE account_id=?", (account_id,))
+
+    def complete_walkthrough(self, account_id):
+        with self.repository._connection(write=True) as connection:
+            connection.execute("UPDATE accounts SET walkthrough_pending=0 WHERE account_id=? AND walkthrough_pending=1",
+                               (account_id,))
 
     def update_profile(self, account_id, payload):
         from .profile import profile_photo

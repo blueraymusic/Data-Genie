@@ -2,14 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { useLiveRefresh } from './useLiveRefresh';
 
-export function useWorkspaces(initialId) {
-  const [workspaces, setWorkspaces] = useState([]),
+export function useWorkspaces(initialId, preview) {
+  const [workspaces, setWorkspaces] = useState(preview?.workspaces || []),
     [invitations, setInvitations] = useState([]),
     [ownershipTransfers, setOwnershipTransfers] = useState([]),
     [selected, setSelected] = useState(initialId || ''),
-    [details, setDetails] = useState(null),
-    [loading, setLoading] = useState(true),
-    [listResolved, setListResolved] = useState(false),
+    [details, setDetails] = useState(preview?.details || null),
+    [loading, setLoading] = useState(!preview),
+    [listResolved, setListResolved] = useState(Boolean(preview)),
     [detailsLoading, setDetailsLoading] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
@@ -24,8 +24,9 @@ export function useWorkspaces(initialId) {
     if (!lock.current && !listRequest.current && !detailRequest.current)
       setRevision((value) => value + 1);
   }, []);
-  useLiveRefresh(refresh);
+  useLiveRefresh(refresh, { enabled: !preview });
   useEffect(() => {
+    if (preview) return;
     const controller = new AbortController();
     listRequest.current = controller;
     if (!hasLoaded.current) setLoading(true);
@@ -54,8 +55,9 @@ export function useWorkspaces(initialId) {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [revision]);
+  }, [revision, preview]);
   useEffect(() => {
+    if (preview) return;
     if (!selected) {
       setDetails(null);
       detailsWorkspace.current = null;
@@ -89,27 +91,30 @@ export function useWorkspaces(initialId) {
         if (!controller.signal.aborted) setDetailsLoading(false);
       });
     return () => controller.abort();
-  }, [selected, revision]);
-  const act = useCallback(async (path, body, success) => {
-    if (lock.current) return null;
-    lock.current = true;
-    setBusy(true);
-    setError('');
-    setMessage('');
-    try {
-      const data = await api(path, { method: 'POST', body });
-      window.dispatchEvent(new Event('dg-workspaces-changed'));
-      setMessage(success);
-      setRevision((value) => value + 1);
-      return data;
-    } catch (failure) {
-      setError(failure.message);
-      return null;
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
-  }, []);
+  }, [selected, revision, preview]);
+  const act = useCallback(
+    async (path, body, success) => {
+      if (preview || lock.current) return null;
+      lock.current = true;
+      setBusy(true);
+      setError('');
+      setMessage('');
+      try {
+        const data = await api(path, { method: 'POST', body });
+        window.dispatchEvent(new Event('dg-workspaces-changed'));
+        setMessage(success);
+        setRevision((value) => value + 1);
+        return data;
+      } catch (failure) {
+        setError(failure.message);
+        return null;
+      } finally {
+        lock.current = false;
+        setBusy(false);
+      }
+    },
+    [preview],
+  );
   function select(id) {
     setSelected(id);
     setError('');

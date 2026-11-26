@@ -25,10 +25,13 @@ const permissionLabels = {
   export: 'Export',
 };
 
-export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId }) {
+export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId, preview }) {
   const sectionTabs = useRef(null),
     sectionContent = useRef(null);
-  const teams = useWorkspaces(initialWorkspaceId || workbench.session?.access?.workspace_id),
+  const teams = useWorkspaces(
+      initialWorkspaceId || workbench.session?.access?.workspace_id,
+      preview,
+    ),
     { details } = teams,
     workspace = details?.workspace,
     owner = workspace?.role === 'owner',
@@ -62,7 +65,7 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
   useEnterMotion(
     sectionContent,
     `${workspace?.workspace_id || ''}:${tab}`,
-    Boolean(workspace && !teams.detailsLoading),
+    Boolean(!preview && workspace && !teams.detailsLoading),
   );
   const databases = (details?.databases || []).filter(
     (database) => owner || database.permissions?.read === true,
@@ -102,7 +105,7 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
     setModal(null);
   }, [teams.selected]);
   useEffect(() => {
-    if (!owner || workspace.personal || !personalId) {
+    if (preview || !owner || workspace.personal || !personalId) {
       setPersonalDatabases([]);
       return;
     }
@@ -117,7 +120,7 @@ export default function WorkspacesPage({ workbench, onOpened, initialWorkspaceId
         if (!controller.signal.aborted) setPersonalDatabases([]);
       });
     return () => controller.abort();
-  }, [owner, workspace?.workspace_id, workspace?.personal, personalId, details]);
+  }, [owner, workspace?.workspace_id, workspace?.personal, personalId, details, preview]);
   async function action(path, body, success) {
     if (disabled) return null;
     return teams.act(base + '/' + path, body, success);

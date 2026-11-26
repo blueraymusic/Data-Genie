@@ -107,9 +107,9 @@ class SignupVerification:
             if row and row['attempts'] < MAX_ATTEMPTS:
                 if re.fullmatch(r'\d{6}', code) and hmac.compare_digest(row['code_hash'], digest(challenge, code)):
                     if not self.accounts._account(connection, 'email', row['email']):
-                        cursor = connection.execute('INSERT INTO accounts(first_name,last_name,email,password_hash,created_at) VALUES(?,?,?,?,?)',
-                            (row['first_name'], row['last_name'], row['email'], row['password_hash'], int(time.time())))
-                        user = public_user(self.accounts._account(connection, 'account_id', cursor.lastrowid))
+                        account_id = self.accounts._create_account(
+                            connection, row['first_name'], row['last_name'], row['email'], row['password_hash'])
+                        user = public_user(self.accounts._account(connection, 'account_id', account_id))
                     else:
                         # Only the person who proved mailbox access receives
                         # this guidance. Never replace an existing password or

@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { useLiveRefresh } from './useLiveRefresh';
 
-export function useInvitationCount() {
+export function useInvitationCount(enabled = true) {
   const [count, setCount] = useState(0);
   useEffect(() => {
+    if (!enabled) return;
     let controller;
     const load = () => {
       controller?.abort();
@@ -21,11 +22,14 @@ export function useInvitationCount() {
     return () => {
       controller?.abort();
     };
-  }, []);
-  useLiveRefresh(async (signal) => {
-    const data = await api('/api/workspaces', { signal });
-    if (!signal.aborted)
-      setCount((data.invitations?.length || 0) + (data.ownership_transfers?.length || 0));
-  });
+  }, [enabled]);
+  useLiveRefresh(
+    async (signal) => {
+      const data = await api('/api/workspaces', { signal });
+      if (!signal.aborted)
+        setCount((data.invitations?.length || 0) + (data.ownership_transfers?.length || 0));
+    },
+    { enabled },
+  );
   return count;
 }

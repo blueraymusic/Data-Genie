@@ -15,6 +15,7 @@ export function SavedDatabases({ workbench, onOpened, onReconnect }) {
     [revision, setRevision] = useState(0);
   const disabled = workbench.busy || workbench.pending || workbench.workingCommands?.size > 0;
   useEffect(() => {
+    if (workbench.preview) return;
     const controller = new AbortController();
     setLoading(true);
     setLoadError('');
@@ -54,7 +55,7 @@ export function SavedDatabases({ workbench, onOpened, onReconnect }) {
       window.removeEventListener('dg-databases-changed', load);
       document.removeEventListener('visibilitychange', load);
     };
-  }, [user.account_id, workbench.session?.database_id, revision]);
+  }, [user.account_id, workbench.session?.database_id, workbench.preview, revision]);
 
   const collection = useDatabaseCollection(saved, user.account_id);
   async function open(item) {
@@ -73,7 +74,7 @@ export function SavedDatabases({ workbench, onOpened, onReconnect }) {
   return (
     <section className="saved-databases" aria-label="Saved databases">
       <h2>Recent databases</h2>
-      {loading && (
+      {loading && !workbench.preview && (
         <p className="small muted" role="status">
           Loading saved databases…
         </p>
@@ -90,7 +91,7 @@ export function SavedDatabases({ workbench, onOpened, onReconnect }) {
           </button>
         </div>
       )}
-      {!loading && !loadError && !saved.length && (
+      {(!loading || workbench.preview) && !loadError && !saved.length && (
         <p className="small muted">
           No databases yet. Create one or add a connection to get started.
         </p>

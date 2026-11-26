@@ -11,6 +11,8 @@
 5. The app opens **Choose your database**, or **Teams** if the person followed an invitation. A personal workspace is provisioned when workspace/database services first load. A new account starts without shared database permissions. Creating or uploading a database adds it to the selected workspace; joining a team requires the invitation's matching email and code.
 6. The account, saved sessions, and request history remain in this installation. A locally created account is separate from a hosted account. Signing out ends the browser login without deleting saved databases or history.
 
+New email and Google accounts see a walkthrough on their first visit to **Databases**. It highlights controls across the app using sample data and works before a database is connected. Finishing or skipping saves the preference to the account. **Take the walkthrough** sits below **Default workspace view** in **Account & preferences**.
+
 For local development, verification is optional unless `GENIE_VERIFY_EMAIL=true` is set. Without verification, valid signup creates the account immediately. Do not use that mode for a hosted public registration flow.
 
 ## Password attempts and login lifetime

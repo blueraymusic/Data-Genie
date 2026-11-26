@@ -1,12 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-import { encodeDatabase } from '../lib/api';
+import { useEffect, useId, useRef, useState } from 'react';
+import { databaseUploadProblem, encodeDatabase } from '../lib/api';
+import { Icon } from './Icon';
 import { PostgresConnectionFields } from './PostgresConnectionFields';
+import { useFileDrop } from '../hooks/useFileDrop';
 import { useEnterMotion } from '../hooks/useMotion';
-export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
+export function DatabaseForm({ onOpen, busy = false, initialMode = 'create', preview = false }) {
   const form = useRef(null),
-    details = useRef(null);
+    details = useRef(null),
+    fileInput = useRef(null);
+  const uploadHint = useId();
   const [mode, setMode] = useState(initialMode),
-    [dragOver, setDragOver] = useState(false),
     [file, setFile] = useState(null),
     [uploadName, setUploadName] = useState(''),
     [name, setName] = useState('my_database.sqlite3'),
@@ -19,12 +22,32 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
       schema_name: 'public',
       allow_changes: false,
     });
-  useEnterMotion(details, mode);
+  const blocked = busy || reading;
+  const fileDrop = useFileDrop({ disabled: blocked, onFiles: attachFiles });
+  useEnterMotion(details, mode, !preview);
   useEffect(() => {
-    if (initialMode === 'postgresql') form.current?.querySelector('#postgresUrl')?.focus();
-  }, [initialMode]);
+    if (!preview && initialMode === 'postgresql')
+      form.current?.querySelector('#postgresUrl')?.focus();
+  }, [initialMode, preview]);
+  function attachFiles(files) {
+    if (files.length !== 1) {
+      setError('Choose one SQLite database at a time.');
+      return;
+    }
+    const [selected] = files;
+    const problem = databaseUploadProblem(selected);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    setFile(selected);
+    setUploadName(selected.name);
+    setMode('upload');
+    setError('');
+  }
   async function submit(event) {
     event.preventDefault();
+    if (blocked || (mode === 'upload' && !file)) return;
     setError('');
     setReading(true);
     try {
@@ -34,7 +57,7 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
           : mode === 'upload'
             ? {
                 database_mode: mode,
-                name: uploadName || file?.name,
+                name: uploadName || file.name,
                 contents: await encodeDatabase(file),
               }
             : { database_mode: mode, database_name: name, starter },
@@ -48,45 +71,21 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
   }
   return (
     <form
-      className={'database-form' + (dragOver ? ' is-file-drop-target' : '')}
+      className={
+        'database-form' + (fileDrop.active && mode !== 'upload' ? ' is-file-drop-target' : '')
+      }
       ref={form}
       onSubmit={submit}
-      onDragOver={(event) => {
-        if (busy || reading || !event.dataTransfer.types.includes('Files')) return;
-        event.preventDefault();
-        event.dataTransfer.dropEffect = 'copy';
-        setDragOver(true);
-      }}
-      onDragLeave={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setDragOver(false);
-      }}
-      onDrop={(event) => {
-        event.preventDefault();
-        setDragOver(false);
-        if (busy || reading || !event.dataTransfer.files[0]) return;
-        if (event.dataTransfer.files.length !== 1) {
-          setError('Drop one SQLite database at a time.');
-          return;
-        }
-        if (
-          !event.dataTransfer.files[0].size ||
-          event.dataTransfer.files[0].size > 25 * 1024 * 1024
-        ) {
-          setError('Choose a SQLite file between 1 byte and 25 MB.');
-          return;
-        }
-        setFile(event.dataTransfer.files[0]);
-        setUploadName(event.dataTransfer.files[0].name);
-        setMode('upload');
-        setError('');
-      }}
+      {...fileDrop.handlers}
     >
       <div className="database-form-heading">
         <h2>Add a database</h2>
         <p className="small muted">
-          {dragOver
-            ? 'Release to attach your SQLite file.'
-            : 'Choose where to start, or drop a SQLite file here.'}
+          {mode === 'upload'
+            ? 'Choose where to start.'
+            : fileDrop.active
+              ? 'Release to attach your SQLite file.'
+              : 'Choose where to start, or drop a SQLite file here.'}
         </p>
       </div>
       <fieldset className="database-choice" disabled={busy || reading}>
@@ -98,7 +97,7 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
             ['postgresql', 'PostgreSQL', 'Connect a live database'],
             ['sample', 'Try the sample', 'Customers, products, and sales'],
           ].map(([value, label, hint]) => (
-            <label key={value}>
+            <label key={value} data-tour={'database-' + value}>
               <input
                 type="radio"
                 name="database_mode"
@@ -142,36 +141,65 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
           </div>
         )}
         {mode === 'upload' && (
-          <div className="database-fields">
-            <label htmlFor="databaseFile">SQLite file</label>
+          <div className="database-fields sqlite-upload-fields">
             <input
-              id="databaseFile"
+              ref={fileInput}
               type="file"
+              aria-label="SQLite file"
               accept=".db,.sqlite,.sqlite3"
+              hidden
+              disabled={blocked}
               onChange={(event) => {
-                setFile(event.target.files[0]);
-                setUploadName(event.target.files[0]?.name || '');
+                const files = Array.from(event.currentTarget.files);
+                event.currentTarget.value = '';
+                if (files.length) attachFiles(files);
               }}
-              required={!file}
-              disabled={busy || reading}
             />
-            {file && <p className="small muted">Selected: {file.name}</p>}
+            <div
+              className="sqlite-upload-zone"
+              data-selected={Boolean(file)}
+              data-dragging={fileDrop.active}
+            >
+              <span className="sqlite-upload-icon">
+                <Icon name={file && !fileDrop.active ? 'database' : 'upload'} />
+              </span>
+              <div className="sqlite-upload-copy" aria-live="polite">
+                <strong>
+                  {fileDrop.active
+                    ? 'Release to attach the file'
+                    : file?.name || 'Drop a SQLite file here'}
+                </strong>
+                <small id={uploadHint}>
+                  {file && !fileDrop.active
+                    ? 'Ready to open'
+                    : '.db, .sqlite, .sqlite3 · Up to 25 MB'}
+                </small>
+              </div>
+              <button
+                className="btn sqlite-upload-action"
+                type="button"
+                aria-describedby={uploadHint}
+                disabled={blocked}
+                onClick={() => fileInput.current?.click()}
+              >
+                {file ? 'Replace file' : 'Choose file'}
+              </button>
+            </div>
+            <p className="sqlite-upload-note">
+              <Icon name="copy" /> Data Genie opens a copy. Your original file stays intact.
+            </p>
             {file && (
-              <label>
+              <label className="sqlite-upload-name">
                 Save database as
                 <input
                   value={uploadName}
                   onChange={(event) => setUploadName(event.target.value)}
                   maxLength={150}
                   required
-                  disabled={busy || reading}
+                  disabled={blocked}
                 />
               </label>
             )}
-            <p className="small muted">
-              Drop a SQLite file here, or choose one. Up to 25 MB. You work on a copy and can
-              download your changes.
-            </p>
           </div>
         )}
         {mode === 'sample' && (
@@ -190,7 +218,7 @@ export function DatabaseForm({ onOpen, busy = false, initialMode = 'create' }) {
         )}
       </div>
       {mode !== 'postgresql' && (
-        <button className="btn pri start-button" disabled={busy || reading}>
+        <button className="btn pri start-button" disabled={blocked || (mode === 'upload' && !file)}>
           {busy || reading
             ? 'Opening database…'
             : mode === 'create'

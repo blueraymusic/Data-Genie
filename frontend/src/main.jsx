@@ -27,4 +27,5 @@ import './styles/reports.css';
 import './styles/polish.css';
 import './styles/page-flow.css';
 import './styles/auth.css';
+import './styles/walkthrough.css';
 createRoot(document.getElementById('root')).render(<App />);

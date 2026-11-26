@@ -31,6 +31,7 @@ class SignupVerificationTests(HttpHarness, unittest.TestCase):
         status, data = self.request('POST', '/api/auth/verify-email', dict(challenge=challenge['challenge'], code=code))
         self.assertEqual(status, 200)
         self.assertEqual(data['user']['email'], self.payload['email'])
+        self.assertTrue(data['user']['walkthrough_pending'])
         self.assertEqual(self.request('POST', '/api/auth/verify-email', dict(challenge=challenge['challenge'], code=code))[0], 400)
 
     def test_three_wrong_attempts_lock_even_the_correct_code(self):

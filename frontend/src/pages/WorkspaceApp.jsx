@@ -10,6 +10,12 @@ import { TableRail } from '../components/TableRail';
 import { Modal } from '../components/Modal';
 import { PersonalWorkspace } from '../components/PersonalWorkspace';
 import { WorkspaceTabs } from '../components/WorkspaceTabs';
+import { WorkspaceWalkthrough, useWorkspaceWalkthrough } from '../components/WorkspaceWalkthrough';
+import {
+  walkthroughSQL,
+  walkthroughTeam,
+  walkthroughWorkbench,
+} from '../data/workspaceWalkthrough';
 import DatabaseChooser from './DatabaseChooser';
 import AskPage from './AskPage';
 import StructurePage from './StructurePage';
@@ -48,9 +54,29 @@ const titles = {
 };
 
 export default function WorkspaceApp() {
-  const { user, logout } = useAuth(),
-    { route, navigate } = useRouter(),
-    workbench = useWorkbench(user);
+  const { user, logout } = useAuth();
+  const workbench = useWorkbench(user);
+  const surface = useRef(null);
+  const tour = useWorkspaceWalkthrough(surface, !workbench.loading);
+  return (
+    <>
+      <div className="walkthrough-surface" ref={surface} inert={tour.step ? true : undefined}>
+        <WorkspaceContent
+          user={user}
+          logout={logout}
+          liveWorkbench={workbench}
+          tourStep={tour.step}
+        />
+      </div>
+      {tour.step && <WorkspaceWalkthrough surface={surface} {...tour} />}
+    </>
+  );
+}
+
+function WorkspaceContent({ user, logout, liveWorkbench, tourStep }) {
+  const { route, navigate } = useRouter();
+  const [tourView, , , , example] = tourStep || [];
+  const workbench = tourView ? walkthroughWorkbench(tourView, example) : liveWorkbench;
   const [selected, setSelected] = useState(''),
     [railOpen, setRailOpen] = useState(false),
     [draft, setDraft] = useState(''),
@@ -76,8 +102,10 @@ export default function WorkspaceApp() {
   const railTrigger = useRef(null),
     wasRailOpen = useRef(false);
   const content = useRef(null),
-    view = viewFromRoute(route),
+    liveView = viewFromRoute(route),
+    view = tourView || liveView,
     session = workbench.session;
+  const activeTable = tourView ? session?.tables[0] || '' : selected;
   const inWorkspace = ['ask', 'schema', 'sql'].includes(view);
   useEffect(() => {
     if (railOpen) {
@@ -91,25 +119,31 @@ export default function WorkspaceApp() {
     wasRailOpen.current = railOpen;
   }, [railOpen]);
   const access = databaseAccess(session);
-  useEnterMotion(content, `${view}:${session?.session_id || ''}:${workbench.loading}`);
+  useEnterMotion(
+    content,
+    `${liveView}:${liveWorkbench.session?.session_id || ''}:${liveWorkbench.loading}`,
+    !tourView,
+  );
   const mode = session && !session.ai?.enabled ? 'sql' : savedMode;
   const disabled = workbench.busy || workbench.pending || workbench.workingCommands.size > 0;
   useEffect(() => {
-    if (session && !session.tables.includes(selected)) setSelected(session.tables[0] || '');
-  }, [session, selected]);
+    if (liveWorkbench.session && !liveWorkbench.session.tables.includes(selected))
+      setSelected(liveWorkbench.session.tables[0] || '');
+  }, [liveWorkbench.session, selected]);
   useEffect(() => {
     setDraft('');
     setSqlDraft('');
-  }, [session?.session_id]);
+  }, [liveWorkbench.session?.session_id]);
   useEffect(() => {
-    const tables = session?.conversation_context?.tables || [];
-    if (tables.length === 1 && session.tables.includes(tables[0])) setSelected(tables[0]);
-  }, [session?.conversation_context?.request, session?.session_id]);
+    const current = liveWorkbench.session;
+    const tables = current?.conversation_context?.tables || [];
+    if (tables.length === 1 && current.tables.includes(tables[0])) setSelected(tables[0]);
+  }, [liveWorkbench.session?.conversation_context?.request, liveWorkbench.session?.session_id]);
   useEffect(() => {
-    document.title = titles[view] + ' | Data Genie';
+    document.title = titles[liveView] + ' | Data Genie';
     content.current?.scrollTo(0, 0);
     setRailOpen(false);
-  }, [view]);
+  }, [liveView]);
   function go(next) {
     navigate(viewRoutes[next]);
   }
@@ -187,7 +221,13 @@ export default function WorkspaceApp() {
     (session && !access.canRead && !['connect', 'account'].includes(view))
   )
     return (
-      <PersonalWorkspace user={user} view="workspaces" onNavigate={go} logout={logout}>
+      <PersonalWorkspace
+        user={user}
+        view="workspaces"
+        onNavigate={go}
+        logout={logout}
+        preview={workbench.preview}
+      >
         <Suspense
           fallback={
             <p className="workspace-loading" role="status">
@@ -198,9 +238,12 @@ export default function WorkspaceApp() {
           <WorkspacesPage
             workbench={workbench}
             onOpened={opened}
-            initialWorkspaceId={new URLSearchParams((route.split('?')[1] || '').split('#')[0]).get(
-              'workspace',
-            )}
+            preview={tourView ? walkthroughTeam : undefined}
+            initialWorkspaceId={
+              tourView
+                ? walkthroughTeam.details.workspace.workspace_id
+                : new URLSearchParams((route.split('?')[1] || '').split('#')[0]).get('workspace')
+            }
           />
         </Suspense>
       </PersonalWorkspace>
@@ -227,6 +270,7 @@ export default function WorkspaceApp() {
     return (
       <DatabaseChooser
         workbench={workbench}
+        previewMode={tourView === 'entry' ? example || 'create' : undefined}
         onOpened={(data) => {
           const explicitView = new URLSearchParams((route.split('?')[1] || '').split('#')[0]).get(
             'view',
@@ -256,11 +300,13 @@ export default function WorkspaceApp() {
             setModal(signout ? 'signout' : 'end');
           }}
           disabled={disabled}
+          preview={workbench.preview}
         />
         <div className="dashboard-body">
           <TableRail
             key={session.session_id}
-            {...{ session, selected, setSelected }}
+            {...{ session, setSelected }}
+            selected={activeTable}
             open={railOpen}
             onClose={() => setRailOpen(false)}
             onNewTable={newTable}
@@ -331,7 +377,7 @@ export default function WorkspaceApp() {
                       <label className="table-selector">
                         Table
                         <select
-                          value={selected}
+                          value={activeTable}
                           onChange={(event) => setSelected(event.target.value)}
                           aria-label="Table for suggested requests"
                         >
@@ -364,7 +410,12 @@ export default function WorkspaceApp() {
                 </p>
               )}
               {view === 'ask' && (
-                <AskPage {...{ workbench, selected, draft, setDraft }} onNewTable={newTable} />
+                <AskPage
+                  {...{ workbench, setDraft }}
+                  selected={activeTable}
+                  draft={tourView ? '' : draft}
+                  onNewTable={newTable}
+                />
               )}
               {view === 'schema' && <StructurePage workbench={workbench} />}
               {view === 'history' && <HistoryPage workbench={workbench} onReuse={reuse} />}
@@ -372,8 +423,9 @@ export default function WorkspaceApp() {
               {view === 'connect' && <DatabasesPage workbench={workbench} onOpened={opened} />}
               {view === 'sql' && (
                 <SqlPage
-                  {...{ workbench, selected }}
-                  draft={sqlDraft}
+                  workbench={workbench}
+                  selected={activeTable}
+                  draft={tourView ? walkthroughSQL : sqlDraft}
                   setDraft={setSqlDraft}
                   onNewTable={newTable}
                 />
@@ -382,7 +434,7 @@ export default function WorkspaceApp() {
           </div>
         </div>
       </div>
-      <WorkspaceTabs view={view} onNavigate={go} session={session} />
+      <WorkspaceTabs view={view} onNavigate={go} session={session} preview={workbench.preview} />
       {modal === 'table' && (
         <Modal titleId="newTableTitle" onClose={() => setModal(null)}>
           <form onSubmit={prepareTable}>

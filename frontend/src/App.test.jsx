@@ -7,6 +7,7 @@ import AskPage from './pages/AskPage';
 import { SqlBlock } from './components/SqlBlock';
 import { normalizeCommand } from './hooks/useWorkbench';
 import { Router } from './lib/router';
+import { walkthroughSteps } from './data/workspaceWalkthrough';
 
 const user = {
   account_id: 1,
@@ -427,19 +428,28 @@ describe('React pages and account flow', () => {
     expect(screen.getByRole('heading', { name: 'Getting started', exact: true })).toBeTruthy();
   });
 
-  it('validates registration then opens the authenticated database chooser', async () => {
+  it('validates registration, opens the sample walkthrough, and remembers completion', async () => {
     history.replaceState({}, '', '/signup');
-    fetch.mockImplementation((path) =>
-      response(
-        path === '/api/auth/session'
-          ? { user: null }
-          : path === '/api/auth/register'
-            ? { user, csrf_token: 'csrf-test' }
-            : { sessions: [] },
-      ),
-    );
+    let signedIn = false;
+    let pending = true;
+    fetch.mockImplementation((path) => {
+      if (path === '/api/auth/session')
+        return response({ user: signedIn ? { ...user, walkthrough_pending: pending } : null });
+      if (path === '/api/auth/register') {
+        signedIn = true;
+        return response({
+          user: { ...user, walkthrough_pending: pending },
+          csrf_token: 'csrf-test',
+        });
+      }
+      if (path === '/api/auth/walkthrough') {
+        pending = false;
+        return response({ walkthrough_pending: false });
+      }
+      return response({ sessions: [] });
+    });
     const events = userEvent.setup();
-    render(<App />);
+    const app = render(<App />);
     await events.type(
       await screen.findByRole('textbox', { name: 'First name', exact: true }),
       'Test',
@@ -460,10 +470,62 @@ describe('React pages and account flow', () => {
       'a long test passphrase',
     );
     await events.click(screen.getByRole('button', { name: 'Create account', exact: true }));
+    const tour = within(await screen.findByRole('dialog', { name: 'Welcome to Data Genie' }));
+    const welcome = tour.getByRole('heading', { name: 'Welcome to Data Genie' });
+    expect(document.activeElement).toBe(welcome);
+    await events.click(tour.getByRole('button', { name: 'Next' }));
+    expect(tour.getByRole('heading', { name: 'Recent databases' })).toBeTruthy();
+    await events.click(tour.getByRole('button', { name: 'Previous' }));
+    expect(tour.getByRole('heading', { name: 'Welcome to Data Genie' })).toBeTruthy();
+    const surface = document.querySelector('.walkthrough-surface');
+    expect(surface.hasAttribute('inert')).toBe(true);
+    for (const [, selector, title] of walkthroughSteps.slice(1)) {
+      await events.click(tour.getByRole('button', { name: 'Next' }));
+      expect(tour.getByRole('heading', { name: title })).toBeTruthy();
+      await waitFor(() => expect(surface.querySelector(selector)).toBeTruthy());
+    }
+    expect(
+      fetch.mock.calls.filter(([, options]) => options?.method === 'POST').map(([path]) => path),
+    ).toEqual(['/api/auth/register']);
+    expect(
+      fetch.mock.calls.some(([path]) => /walkthrough-example|walkthrough-personal/.test(path)),
+    ).toBe(false);
+    await events.click(tour.getByRole('button', { name: 'Finish' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/auth/walkthrough',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    app.unmount();
+    render(<App />);
     expect(
       await screen.findByRole('heading', { name: 'Choose your database.', exact: true }),
     ).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(localStorage.getItem('password')).toBeNull();
+  });
+
+  it('lets an existing account open and close the walkthrough without saving again', async () => {
+    history.replaceState({}, '', '/account');
+    fetch.mockImplementation((path) =>
+      response(path === '/api/auth/session' ? { user, csrf_token: 'csrf-test' } : { sessions: [] }),
+    );
+    const events = userEvent.setup();
+    render(<App />);
+    const replay = await screen.findByRole('button', { name: 'Take the walkthrough' });
+    expect(replay.closest('.account-walkthrough-row').previousElementSibling.className).toBe(
+      'account-workspace-setting',
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await events.click(replay);
+    const tour = within(screen.getByRole('dialog', { name: 'Welcome to Data Genie' }));
+    await events.click(tour.getByRole('button', { name: 'Skip tour' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(location.search).toBe('');
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Take the walkthrough' }),
+    );
+    expect(fetch.mock.calls.some(([path]) => path === '/api/auth/walkthrough')).toBe(false);
   });
 
   it('does not execute a prepared database change until confirmation', async () => {

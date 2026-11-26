@@ -147,6 +147,16 @@ export function AuthProvider({ children }) {
     }
     return data.user;
   }, []);
+  const completeWalkthrough = useCallback(async () => {
+    const owner = account.current;
+    await api('/api/auth/walkthrough', { method: 'POST', body: {} });
+    if (owner !== null && account.current === owner) {
+      setUser((current) =>
+        current?.account_id === owner ? { ...current, walkthrough_pending: false } : current,
+      );
+      announce();
+    }
+  }, []);
   const deleteAccount = useCallback(async (body) => {
     const owner = account.current;
     const result = await api('/api/auth/delete', { method: 'POST', body });
@@ -177,6 +187,7 @@ export function AuthProvider({ children }) {
         logout,
         changePassword,
         updateProfile,
+        completeWalkthrough,
         deleteAccount,
         refresh,
       }}

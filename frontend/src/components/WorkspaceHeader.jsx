@@ -28,8 +28,9 @@ export function WorkspaceHeader({
   onEnd,
   onLogout,
   disabled,
+  preview = false,
 }) {
-  const invitationCount = useInvitationCount();
+  const invitationCount = useInvitationCount(!preview);
   const dropdown = useRef(null),
     trigger = useRef(null);
   const [menu, setMenu] = useState(false),

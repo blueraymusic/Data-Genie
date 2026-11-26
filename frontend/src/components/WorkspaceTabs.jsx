@@ -1,8 +1,8 @@
 import { Icon } from './Icon';
 import { databaseAccess } from '../lib/access';
 import { useInvitationCount } from '../hooks/useInvitationCount';
-export function WorkspaceTabs({ view, onNavigate, session }) {
-  const invitationCount = useInvitationCount();
+export function WorkspaceTabs({ view, onNavigate, session, preview = false }) {
+  const invitationCount = useInvitationCount(!preview);
   return (
     <nav className="tabs" aria-label="Mobile navigation">
       {[

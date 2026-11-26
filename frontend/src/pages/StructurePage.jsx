@@ -245,7 +245,9 @@ function SchemaTable({ table, sessionId, index, disabled, dialect, onChange, can
   );
 }
 export default function StructurePage({ workbench }) {
-  const [tables, setTables] = useState(null),
+  const [tables, setTables] = useState(() =>
+      workbench.preview ? workbench.session.table_details : null,
+    ),
     [error, setError] = useState(''),
     [revision, setRevision] = useState(0),
     [change, setChange] = useState(null),
@@ -290,7 +292,8 @@ export default function StructurePage({ workbench }) {
       }
     },
     {
-      enabled: access.canRead && !workbench.busy && !workbench.workingCommands?.size,
+      enabled:
+        !workbench.preview && access.canRead && !workbench.busy && !workbench.workingCommands?.size,
       key: JSON.stringify([session.session_id, revision, schemaOutcomes]),
       events: ['dg-databases-changed'],
     },
@@ -301,6 +304,7 @@ export default function StructurePage({ workbench }) {
     setOpenedReview(null);
   }, [session.session_id]);
   useEffect(() => {
+    if (workbench.preview) return;
     const controller = new AbortController();
     setTables(null);
     setError('');
@@ -315,7 +319,7 @@ export default function StructurePage({ workbench }) {
         }
       });
     return () => controller.abort();
-  }, [session.session_id, revision, schemaOutcomes]);
+  }, [session.session_id, workbench.preview, revision, schemaOutcomes]);
   function prepare(sql) {
     if (disabled) return;
     setChange(null);

@@ -6,6 +6,8 @@
 
 Sign up or log in, then choose a database. You can create an empty SQLite database, upload a SQLite file, try the sample, or connect PostgreSQL. Hosted accounts and laptop accounts are separate. The [account walkthrough](account-lifecycle.md) explains verification, the personal workspace, invitations, and password recovery step by step.
 
+On your first visit to **Databases** after creating an account, the walkthrough highlights controls across **Databases**, **Workspace**, **History**, **Teams**, and **Account**. Use **Next** and **Previous** to move between highlights. The walkthrough uses sample data. To replay it, choose **Take the walkthrough** below **Default workspace view** in **Account & preferences**.
+
 Open screens update automatically while visible, and check for changes when you return to the tab. Database lists, workspace membership, permissions, reports, Structure, open row previews, and History update without reloading the page. Saved SQL results remain snapshots; run a query again to get a new answer.
 
 ## Start alone or with a team

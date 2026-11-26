@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     email TEXT NOT NULL COLLATE NOCASE UNIQUE,
     password_hash TEXT NOT NULL,
     profile_photo TEXT,
+    walkthrough_pending INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS browser_logins (
@@ -500,8 +501,11 @@ class Repository:
             connection = self._open()
             try:
                 connection.executescript(SCHEMA)
-                if "profile_photo" not in {row[1] for row in connection.execute("PRAGMA table_info(accounts)")}:
+                account_columns = {row[1] for row in connection.execute("PRAGMA table_info(accounts)")}
+                if "profile_photo" not in account_columns:
                     connection.execute("ALTER TABLE accounts ADD COLUMN profile_photo TEXT")
+                if "walkthrough_pending" not in account_columns:
+                    connection.execute("ALTER TABLE accounts ADD COLUMN walkthrough_pending INTEGER NOT NULL DEFAULT 0")
                 if "archived_at" not in {row[1] for row in connection.execute("PRAGMA table_info(workspaces)")}:
                     connection.execute("ALTER TABLE workspaces ADD COLUMN archived_at INTEGER")
                 if "account_id" not in {row[1] for row in connection.execute("PRAGMA table_info(sessions)")}:

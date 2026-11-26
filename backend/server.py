@@ -512,6 +512,10 @@ class Handler(BaseHTTPRequestHandler):
                 payload = self.read_json(150 * 1024)
                 updated = self.accounts().update_profile(user["account_id"], payload)
                 return self.json({"user": updated})
+            if parsed.path == "/api/auth/walkthrough":
+                self.read_json(1024)
+                self.accounts().complete_walkthrough(user["account_id"])
+                return self.json({"walkthrough_pending": False})
             if parsed.path == "/api/auth/delete":
                 result = self.account_deletion().delete(user["account_id"], self.read_json(16 * 1024), self.login_token(), self.client_address[0])
                 self.set_login_cookie("")

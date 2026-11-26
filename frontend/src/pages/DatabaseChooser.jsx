@@ -6,14 +6,14 @@ import { InvitationNotice } from '../components/InvitationNotice';
 import { TeamWorkspaceEntry } from '../components/TeamWorkspaceEntry';
 import { useAuth } from '../context/AuthContext';
 import { useRouter, Link } from '../lib/router';
-export default function DatabaseChooser({ workbench, onOpened }) {
+export default function DatabaseChooser({ workbench, onOpened, previewMode }) {
   const { user, logout } = useAuth(),
     { navigate } = useRouter();
   const [formVersion, setFormVersion] = useState(0),
     [error, setError] = useState('');
   useEffect(() => {
-    document.title = 'Databases | Data Genie';
-  }, []);
+    if (!previewMode) document.title = 'Databases | Data Genie';
+  }, [previewMode]);
   async function open(payload, id) {
     const data = await workbench.open(payload, id);
     if (onOpened) onOpened(data);
@@ -42,7 +42,7 @@ export default function DatabaseChooser({ workbench, onOpened }) {
           </button>
         </span>
       </p>
-      <InvitationNotice />
+      {!previewMode && <InvitationNotice />}
       <div className="database-entry-layout">
         <div className="database-start-options">
           <SavedDatabases
@@ -57,8 +57,9 @@ export default function DatabaseChooser({ workbench, onOpened }) {
           />
         </div>
         <DatabaseForm
-          key={formVersion}
-          initialMode={formVersion ? 'postgresql' : 'create'}
+          key={previewMode || formVersion}
+          initialMode={previewMode || (formVersion ? 'postgresql' : 'create')}
+          preview={Boolean(previewMode)}
           onOpen={open}
           busy={workbench.busy}
         />

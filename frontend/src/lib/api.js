@@ -74,9 +74,15 @@ export function savedSession() {
   }
 }
 
+export function databaseUploadProblem(file) {
+  return !file?.size || file.size > 25 * 1024 * 1024
+    ? 'Choose a SQLite file between 1 byte and 25 MB.'
+    : '';
+}
+
 export async function encodeDatabase(file) {
-  if (!file || !file.size || file.size > 25 * 1024 * 1024)
-    throw new Error('Choose a SQLite file between 1 byte and 25 MB.');
+  const problem = databaseUploadProblem(file);
+  if (problem) throw new Error(problem);
   const bytes = new Uint8Array(await file.arrayBuffer());
   let binary = '';
   for (let offset = 0; offset < bytes.length; offset += 8192)

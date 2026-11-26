@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useRef } from 'react';
 import { useAutosizeTextarea } from './hooks/useAutosizeTextarea';
 import { useFileDrop } from './hooks/useFileDrop';
@@ -78,4 +78,35 @@ it('rejects multiple, empty, and oversized database drops without creating or op
   Object.defineProperty(large, 'size', { value: 26 * 1024 * 1024 });
   fireEvent.drop(form, { dataTransfer: { files: [large] } });
   expect(onOpen).not.toHaveBeenCalled();
+});
+
+it('opens the SQLite picker, shows the selected file, and uploads it under the chosen name', async () => {
+  const onOpen = vi.fn();
+  render(<DatabaseForm initialMode="upload" onOpen={onOpen} />);
+  const input = screen.getByLabelText('SQLite file');
+  const open = screen.getByRole('button', { name: 'Open SQLite file' });
+  const pick = vi.spyOn(input, 'click');
+  expect(open.disabled).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Choose file' }));
+  expect(pick).toHaveBeenCalledOnce();
+  const file = Object.assign(new File(['sqlite'], 'inventory.sqlite3'), {
+    arrayBuffer: async () => new TextEncoder().encode('sqlite').buffer,
+  });
+  fireEvent.change(input, { target: { files: [file] } });
+  expect(screen.getByText('inventory.sqlite3', { exact: true })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Replace file' })).toBeTruthy();
+  fireEvent.change(input, { target: { files: [new File([], 'empty.sqlite3')] } });
+  expect(screen.getByRole('status').textContent).toContain('1 byte and 25 MB');
+  expect(screen.getByLabelText('Save database as').value).toBe('inventory.sqlite3');
+  fireEvent.change(screen.getByLabelText('Save database as'), {
+    target: { value: 'Stock.sqlite3' },
+  });
+  fireEvent.click(open);
+  await waitFor(() =>
+    expect(onOpen).toHaveBeenCalledWith({
+      database_mode: 'upload',
+      name: 'Stock.sqlite3',
+      contents: btoa('sqlite'),
+    }),
+  );
 });

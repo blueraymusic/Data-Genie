@@ -50,6 +50,29 @@ class AccountTests(HttpHarness, unittest.TestCase):
         self.assertEqual(self.request("POST", "/api/auth/login", {}, extra_headers={"Content-Type":"text/plain"})[0], 400)
         self.assertEqual(self.request("GET", "/api/status", extra_headers={"Host":"evil.example"})[0], 403)
 
+    def test_walkthrough_is_account_scoped_and_stays_dismissed_after_signing_in(self):
+        self.assertTrue(self.account["walkthrough_pending"])
+        path = "/api/auth/walkthrough"
+        self.assertEqual(self.request("POST", path, {}, extra_headers={"Cookie":""})[0], 401)
+        self.assertEqual(self.request("POST", path, {}, extra_headers={"X-CSRF-Token":""})[0], 403)
+        accounts = authentication.Accounts(workbench.get_repository())
+        other = accounts.register("Other", "Reader", "other@example.com", self.password)
+        for _ in range(2):
+            self.assertEqual(self.request("POST", path, {"account_id": other["account_id"]}),
+                             (200, {"walkthrough_pending": False}))
+        _, login = self.request("POST", "/api/auth/login", {"email": self.account["email"], "password": self.password})
+        self.assertFalse(login["user"]["walkthrough_pending"])
+        _, session = self.request("GET", "/api/auth/session")
+        self.assertFalse(session["user"]["walkthrough_pending"])
+        self.assertTrue(accounts.login(other["email"], self.password)["walkthrough_pending"])
+
+    def test_account_migration_leaves_the_tour_off_for_existing_accounts(self):
+        path = workbench.REPOSITORY_PATH
+        with sqlite3.connect(path, factory=workbench.Conn) as connection:
+            connection.execute("ALTER TABLE accounts DROP COLUMN walkthrough_pending")
+        accounts = authentication.Accounts(Repository(path))
+        self.assertFalse(accounts.login(self.account["email"], self.password)["walkthrough_pending"])
+
     def test_another_account_cannot_read_change_download_or_resume_a_session(self):
         target = self.session_id
         self.request("POST", "/api/auth/register", {"first_name":"Other", "last_name":"Reader", "email":"other@example.com", "password":self.password}, extra_headers={"Cookie":""})

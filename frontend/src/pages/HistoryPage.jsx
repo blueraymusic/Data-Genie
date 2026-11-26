@@ -152,13 +152,19 @@ export default function HistoryPage({ workbench, onReuse }) {
   const id = workbench.session?.session_id;
   const { route = '', navigate } = useRouter() || {};
   const linkedSession =
-    new URLSearchParams((route.split('?')[1] || '').split('#')[0]).get('agent_session') || '';
-  const [sessions, setSessions] = useState([]),
+    (!workbench.preview &&
+      new URLSearchParams((route.split('?')[1] || '').split('#')[0]).get('agent_session')) ||
+    '';
+  const [sessions, setSessions] = useState(() => (workbench.preview ? [workbench.session] : [])),
     [target, setTarget] = useState(linkedSession || id || ''),
     [search, setSearch] = useState(''),
     [operation, setOperation] = useState(''),
     [filters, setFilters] = useState({ search: '', operation: '' }),
-    [page, setPage] = useState(null),
+    [page, setPage] = useState(() =>
+      workbench.preview
+        ? { requests: workbench.feed, total: workbench.feed.length, has_more: false }
+        : null,
+    ),
     [offset, setOffset] = useState(0),
     [error, setError] = useState(''),
     [sessionsError, setSessionsError] = useState(''),
@@ -176,6 +182,7 @@ export default function HistoryPage({ workbench, onReuse }) {
     setOffset(0);
   }, [id, linkedSession]);
   useEffect(() => {
+    if (workbench.preview) return;
     const controller = new AbortController();
     setSessionsError('');
     api('/api/sessions', { signal: controller.signal })
@@ -193,8 +200,9 @@ export default function HistoryPage({ workbench, onReuse }) {
           setSessionsError(error.message);
       });
     return () => controller.abort();
-  }, [id, revision]);
+  }, [id, revision, workbench.preview]);
   useEffect(() => {
+    if (workbench.preview) return;
     if (!target) {
       lastTotal.current = 0;
       setPage({ requests: [], total: 0, has_more: false });
@@ -236,7 +244,7 @@ export default function HistoryPage({ workbench, onReuse }) {
         }
       });
     return () => controller.abort();
-  }, [id, target, filters, revision, offset]);
+  }, [id, target, filters, revision, offset, workbench.preview]);
   useLiveRefresh(
     async (signal) => {
       if (!page || workbench.busy || workbench.workingCommands.size) return;
@@ -283,7 +291,7 @@ export default function HistoryPage({ workbench, onReuse }) {
       setPage((previous) => (JSON.stringify(previous) === JSON.stringify(next) ? previous : next));
     },
     {
-      enabled: !workbench.busy && !workbench.workingCommands.size,
+      enabled: !workbench.preview && !workbench.busy && !workbench.workingCommands.size,
       key: JSON.stringify([id, target, filters, offset, revision]),
       events: ['dg-databases-changed'],
     },

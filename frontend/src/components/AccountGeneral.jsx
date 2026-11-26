@@ -1,9 +1,10 @@
-import { Link } from '../lib/router';
+import { Link, useRouter } from '../lib/router';
 import { databaseAccess } from '../lib/access';
 import { Icon } from './Icon';
 import { AccountProfile } from './AccountProfile';
 
 export function AccountGeneral({ user, theme, toggle, session, mode, setMode }) {
+  const { navigate } = useRouter();
   const aiAvailable = Boolean(session?.ai?.enabled);
   return (
     <>
@@ -101,6 +102,21 @@ export function AccountGeneral({ user, theme, toggle, session, mode, setMode }) 
             a copy.
           </p>
         )}
+      </section>
+      <section className="account-database-row account-walkthrough-row">
+        <div>
+          <h3>App walkthrough</h3>
+          <p>Get a guided look at Data Genie’s screens and controls.</p>
+        </div>
+        <button
+          className="btn"
+          type="button"
+          data-tour="replay"
+          onClick={() => navigate('/account?walkthrough=1')}
+        >
+          <Icon name="replay" />
+          Take the walkthrough
+        </button>
       </section>
       {session &&
         (session.source === 'postgresql' ? (

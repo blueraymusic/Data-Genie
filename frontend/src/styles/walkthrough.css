@@ -1,0 +1,177 @@
+.walkthrough-surface {
+  display: contents;
+}
+.walkthrough-dialog {
+  position: fixed;
+  inset: 0;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+}
+.walkthrough-dialog::backdrop {
+  background: transparent;
+}
+.walkthrough-scrim {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: var(--spotlight-left, 0px) var(--spotlight-width, 0px) 1fr;
+  grid-template-rows: var(--spotlight-top, 100%) var(--spotlight-height, 0px) 1fr;
+  transition:
+    grid-template-columns var(--motion-slow) var(--ease-out),
+    grid-template-rows var(--motion-slow) var(--ease-out);
+}
+.walkthrough-scrim > span {
+  background: #0b152240;
+  backdrop-filter: blur(1.5px);
+}
+.walkthrough-scrim > :nth-child(1) {
+  grid-area: 1 / 1 / 2 / -1;
+}
+.walkthrough-scrim > :nth-child(2) {
+  grid-area: 2 / 1;
+}
+.walkthrough-scrim > :nth-child(3) {
+  grid-area: 2 / 3;
+}
+.walkthrough-scrim > :nth-child(4) {
+  grid-area: 3 / 1 / 4 / -1;
+}
+.walkthrough-focus {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--lapis);
+  border-radius: 12px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--paper) 70%, transparent);
+  pointer-events: none;
+  transition:
+    left var(--motion-slow) var(--ease-out),
+    top var(--motion-slow) var(--ease-out),
+    width var(--motion-slow) var(--ease-out),
+    height var(--motion-slow) var(--ease-out);
+}
+.walkthrough-callout {
+  --walkthrough-card-width: 440px;
+  position: absolute;
+  top: 35%;
+  left: max(12px, calc((100% - var(--walkthrough-card-width)) / 2));
+  box-sizing: border-box;
+  width: min(var(--walkthrough-card-width), calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  padding: 22px 24px 17px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--rule);
+  border-radius: 15px;
+  background: var(--paper);
+  box-shadow: var(--shadow-floating);
+  transition:
+    left var(--motion-slow) var(--ease-out),
+    top var(--motion-slow) var(--ease-out);
+}
+.walkthrough-copy {
+  animation: walkthrough-copy-in var(--motion-normal) var(--ease-out) both;
+}
+@keyframes walkthrough-copy-in {
+  from {
+    opacity: 0.55;
+    transform: translateY(3px);
+  }
+}
+.walkthrough-copy p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.walkthrough-copy .walkthrough-progress {
+  margin-bottom: 6px;
+  color: var(--lapis);
+  font-size: 12px;
+  font-weight: 650;
+}
+.walkthrough-copy h2 {
+  margin: 0 0 7px;
+  outline: none;
+  font: 500 clamp(29px, 4vw, 34px)/1.07 var(--serif);
+  letter-spacing: -0.02em;
+}
+.walkthrough-actions,
+.walkthrough-actions > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+.walkthrough-actions {
+  justify-content: space-between;
+  margin-top: 17px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+.walkthrough-button,
+.walkthrough-skip {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 600 14px/1.25 var(--sans);
+  cursor: pointer;
+}
+.walkthrough-button:hover:not(:disabled) {
+  border-color: var(--control-border);
+}
+.walkthrough-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.walkthrough-next {
+  border-color: var(--lapis);
+  background: var(--lapis);
+  color: var(--on-lapis);
+}
+.walkthrough-next:hover:not(:disabled) {
+  border-color: var(--lapis);
+  background: color-mix(in srgb, var(--lapis) 87%, var(--ink));
+}
+.walkthrough-next .ic {
+  width: 14px;
+  height: 14px;
+}
+.walkthrough-skip {
+  padding-inline: 0;
+  border-color: transparent;
+  color: var(--ink-soft);
+}
+.walkthrough-skip:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+@media (max-width: 480px) {
+  .walkthrough-callout {
+    padding: 18px 17px 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .walkthrough-scrim,
+  .walkthrough-focus,
+  .walkthrough-callout {
+    transition: none;
+  }
+  .walkthrough-copy {
+    animation: none;
+  }
+}

@@ -295,6 +295,101 @@
   margin: 4px 0 0;
   font-size: 12px;
 }
+.sqlite-upload-fields {
+  container: sqlite-upload / inline-size;
+}
+.sqlite-upload-zone {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px dashed var(--control-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--lapis-wash) 36%, var(--paper));
+}
+.sqlite-upload-zone[data-selected='true'] {
+  border-style: solid;
+  border-color: var(--rule);
+}
+.sqlite-upload-zone:focus-within,
+.sqlite-upload-zone[data-dragging='true'] {
+  border-color: var(--lapis);
+}
+.sqlite-upload-zone[data-dragging='true'] {
+  background: var(--lapis-wash);
+  box-shadow: inset 0 0 0 1px var(--lapis);
+}
+.sqlite-upload-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--lapis-wash);
+  color: var(--lapis);
+}
+.sqlite-upload-icon .ic {
+  width: 21px;
+  height: 21px;
+}
+.sqlite-upload-copy {
+  display: grid;
+  gap: 3px;
+  overflow-wrap: anywhere;
+}
+.sqlite-upload-copy strong {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.sqlite-upload-copy small,
+.sqlite-upload-note {
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.workspace-page .btn.sqlite-upload-action {
+  justify-content: center;
+  min-height: 44px;
+  padding-inline: 13px;
+  border-color: var(--control-border);
+  background: var(--paper);
+  color: var(--lapis);
+  font-weight: 650;
+  white-space: nowrap;
+}
+.workspace-page .btn.sqlite-upload-action:hover:not(:disabled) {
+  border-color: var(--lapis);
+  background: var(--lapis-wash);
+}
+.sqlite-upload-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 9px 0 0;
+}
+.sqlite-upload-note .ic {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  color: var(--lapis);
+}
+.sqlite-upload-name {
+  margin-top: 14px;
+}
+@container sqlite-upload (max-width: 330px) {
+  .sqlite-upload-zone {
+    grid-template-columns: 42px minmax(0, 1fr);
+    row-gap: 8px;
+  }
+  .sqlite-upload-action {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
 .workspace-page .database-form .start-button {
   width: auto;
   min-width: 180px;

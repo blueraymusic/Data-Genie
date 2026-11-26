@@ -36,6 +36,7 @@ class GoogleAccountTests(unittest.TestCase):
         first = self.accounts.google_login(self.identity)
         self.assertFalse(first["password_enabled"])
         self.assertTrue(first["google_linked"])
+        self.assertTrue(first["walkthrough_pending"])
         # Mutable claims do not move an existing identity to another account or
         # update an email into a collision with another local account.
         other = self.local("other@example.test")
