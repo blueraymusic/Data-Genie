@@ -21,7 +21,11 @@
   opacity: 0.55;
   cursor: wait;
 }
-.workspace-page .google-button:disabled {
+.workspace-page .google-entry button.google-button:disabled {
+  border-color: var(--control-border);
+  background: var(--paper);
+  color: var(--ink-soft);
+  opacity: 1;
   cursor: default;
 }
 .workspace-page .google-preview-note {

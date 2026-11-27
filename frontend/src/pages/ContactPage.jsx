@@ -1,29 +1,60 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { PublicHeader } from '../components/PublicHeader';
 import { Icon } from '../components/Icon';
 import { Link } from '../lib/router';
 import { useAuth } from '../context/AuthContext';
-import { contactDraft, contactEmail, contactReasons } from '../lib/contact';
+import { contactDraft, contactEmail, contactTopics } from '../lib/contact';
+
+const requiredMessages = {
+  full_name: 'Enter your full name.',
+  email: 'Enter your email address.',
+  message: 'Enter a message so we know how to help.',
+};
+
+function fieldError(field) {
+  if (!field.value.trim()) return requiredMessages[field.name];
+  if (field.validity.typeMismatch) return 'Enter a valid email address, such as name@company.com.';
+  return '';
+}
 
 export default function ContactPage() {
   const { user } = useAuth();
   const form = useRef(null);
-  const [message, setMessage] = useState('');
+  const focusError = useRef(null);
+  const [topic, setTopic] = useState('support');
+  const [errors, setErrors] = useState({});
+  const [status, setStatus] = useState('');
+  const selectedTopic = contactTopics.find(({ id }) => id === topic);
+
   useEffect(() => {
     document.title = 'Contact us | Data Genie';
   }, []);
+  useLayoutEffect(() => {
+    if (!focusError.current) return;
+    form.current.elements.namedItem(focusError.current).focus();
+    focusError.current = null;
+  }, [errors]);
+
   function draft() {
-    for (const [key, label] of [
-      ['first_name', 'your first name'],
-      ['last_name', 'your last name'],
-      ['message', 'a message'],
-    ]) {
-      const field = form.current.elements.namedItem(key);
-      field.setCustomValidity(field.value.trim() ? '' : 'Enter ' + label + '.');
+    const fields = form.current.elements;
+    const nextErrors = {};
+    for (const name of Object.keys(requiredMessages)) {
+      const error = fieldError(fields.namedItem(name));
+      if (error) nextErrors[name] = error;
     }
-    if (!form.current.reportValidity()) return null;
+    const firstError = Object.keys(nextErrors)[0];
+    focusError.current = firstError;
+    setErrors(nextErrors);
+    setStatus(firstError ? 'Check the highlighted fields.' : '');
+    if (firstError) return null;
     return contactDraft(new FormData(form.current));
   }
+
+  function clearFieldError({ target }) {
+    if (!errors[target.name] || fieldError(target)) return;
+    setErrors((previous) => ({ ...previous, [target.name]: '' }));
+  }
+
   function openEmail(event) {
     event.preventDefault();
     const prepared = draft();
@@ -33,134 +64,189 @@ export default function ContactPage() {
     document.body.append(link);
     link.click();
     link.remove();
-    setMessage(
-      'Your email draft is ready. Review and send it in your email app. If it didn’t open, use Copy message.',
+    setStatus(
+      'Draft ready. Review and send it in your email app. If it didn’t open, use Copy message.',
     );
   }
+
   async function copy() {
     const prepared = draft();
     if (!prepared) return;
     try {
       await navigator.clipboard.writeText(
-        `To: ${contactEmail}\nSubject: ${prepared.subject}\n\n${prepared.body}`,
+        'To: ' + contactEmail + '\nSubject: ' + prepared.subject + '\n\n' + prepared.body,
       );
-      setMessage('Message copied. Paste it into an email to ' + contactEmail + '.');
+      setStatus('Message copied. Paste it into an email to ' + contactEmail + '.');
     } catch {
-      setMessage('Copy is unavailable. You can email us directly at ' + contactEmail + '.');
+      setStatus('Copy is unavailable. You can email us directly at ' + contactEmail + '.');
     }
   }
+
+  function requestDemo(event) {
+    event.preventDefault();
+    setTopic('demo');
+    form.current.elements.namedItem('message').focus();
+  }
+
   return (
     <div className="home-page contact-page" data-authenticated={user ? 'true' : undefined}>
       <a className="skip" href="#main">
         Skip to content
       </a>
       <PublicHeader contact />
-      <main className="wrap" id="main" tabIndex={-1}>
+      <main className="wrap contact-layout" id="main" tabIndex={-1}>
         <header className="contact-heading">
-          <h1>Contact us</h1>
+          <p className="contact-kicker">Contact us</p>
+          <h1>
+            Let’s talk <em>data.</em>
+          </h1>
+          <p className="contact-lead">Get support, request a demo, or ask about pricing.</p>
         </header>
-        <div className="contact-layout">
-          <form
-            className="contact-form"
-            aria-label="Contact Data Genie"
-            ref={form}
-            onSubmit={openEmail}
-            onInput={(event) => event.target.setCustomValidity?.('')}
-          >
-            <div className="contact-fields">
-              <label>
-                First name
-                <input name="first_name" autoComplete="given-name" maxLength="100" required />
-              </label>
-              <label>
-                Last name
-                <input name="last_name" autoComplete="family-name" maxLength="100" required />
-              </label>
-              <label>
-                Email
-                <input name="email" type="email" autoComplete="email" maxLength="254" required />
-              </label>
-              <label>
-                Organization <span className="optional">(optional)</span>
-                <input name="company" autoComplete="organization" maxLength="160" />
-              </label>
-              <label className="contact-wide">
-                What can we help with?
-                <span className="contact-select">
-                  <select name="reason" defaultValue="" required>
-                    <option value="" disabled>
-                      Choose a reason
-                    </option>
-                    {contactReasons.map((reason) => (
-                      <option key={reason}>{reason}</option>
-                    ))}
-                  </select>
-                  <Icon name="chevron-down" />
-                </span>
-              </label>
-              <label className="contact-wide">
-                Your message
-                <textarea
-                  name="message"
-                  rows="3"
-                  maxLength="2500"
-                  required
-                  placeholder="What are you trying to do, and how can we help?"
-                />
-              </label>
+        <form
+          className="contact-form"
+          aria-label="Contact Data Genie"
+          aria-describedby="contact-method"
+          ref={form}
+          noValidate
+          onSubmit={openEmail}
+          onInput={clearFieldError}
+        >
+          <fieldset className="contact-topics">
+            <legend>How can we help?</legend>
+            <div className="contact-topic-options">
+              {contactTopics.map(({ id, label }) => (
+                <label key={id}>
+                  <input
+                    type="radio"
+                    name="topic"
+                    value={id}
+                    checked={topic === id}
+                    onChange={() => setTopic(id)}
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
             </div>
-            <p className="contact-note">Review and send the draft in your email app.</p>
-            <div className="contact-form-actions">
-              <button className="btn btn-primary" type="submit">
-                Open email draft <Icon name="arrow" />
-              </button>
-              <button className="btn btn-secondary" type="button" onClick={copy}>
-                Copy message
-              </button>
+          </fieldset>
+          <div className="contact-fields">
+            <div className="contact-field">
+              <label htmlFor="contact-name">Full name</label>
+              <input
+                id="contact-name"
+                name="full_name"
+                autoComplete="name"
+                placeholder="Jane Smith"
+                maxLength="200"
+                required
+                aria-invalid={errors.full_name ? true : undefined}
+                aria-describedby={errors.full_name ? 'contact-name-error' : undefined}
+              />
+              {errors.full_name && (
+                <p className="contact-error" id="contact-name-error">
+                  {errors.full_name}
+                </p>
+              )}
             </div>
-            <p className="contact-status" role="status">
-              {message}
-            </p>
-          </form>
-          <aside className="contact-help" aria-labelledby="contact-help-h">
-            <h2 id="contact-help-h">Need a quick answer?</h2>
-            <div>
-              <Link href="/faq">
-                Questions & answers <Icon name="arrow" />
-              </Link>
-              <p>Connections, approvals, accounts and your saved history.</p>
+            <div className="contact-field">
+              <label htmlFor="contact-email">Work email</label>
+              <input
+                id="contact-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder="jane@work.com"
+                maxLength="254"
+                required
+                aria-invalid={errors.email ? true : undefined}
+                aria-describedby={errors.email ? 'contact-email-error' : undefined}
+              />
+              {errors.email && (
+                <p className="contact-error" id="contact-email-error">
+                  {errors.email}
+                </p>
+              )}
             </div>
-            <div>
-              <a
-                href="https://github.com/blueraymusic/Data-Genie#readme"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Documentation <Icon name="arrow" />
-                <span className="sr-only">(opens in a new tab)</span>
-              </a>
-              <p>Read the project guide and setup instructions.</p>
+            <div className="contact-field contact-wide">
+              <label htmlFor="contact-company">
+                Company <span>(optional)</span>
+              </label>
+              <input
+                id="contact-company"
+                name="company"
+                autoComplete="organization"
+                placeholder="Company name"
+                maxLength="160"
+              />
             </div>
-            <div>
-              <a
-                href="https://github.com/blueraymusic/Data-Genie/issues"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Report an issue <Icon name="arrow" />
-                <span className="sr-only">(opens in a new tab)</span>
-              </a>
-              <p>Found a bug? Share the steps that led to it.</p>
+            <div className="contact-field contact-wide">
+              <label htmlFor="contact-message">Message</label>
+              <p className="contact-hint" id="contact-topic-hint" aria-live="polite">
+                {selectedTopic.hint}
+              </p>
+              <textarea
+                id="contact-message"
+                name="message"
+                rows="3"
+                maxLength="2500"
+                required
+                aria-invalid={errors.message ? true : undefined}
+                aria-describedby={
+                  errors.message ? 'contact-topic-hint contact-message-error' : 'contact-topic-hint'
+                }
+              />
+              {errors.message && (
+                <p className="contact-error" id="contact-message-error">
+                  {errors.message}
+                </p>
+              )}
             </div>
-            <div className="contact-direct">
-              <p>Prefer to write directly?</p>
-              <a href={'mailto:' + contactEmail} aria-label={'Email us at ' + contactEmail}>
-                <span className="contact-address">{contactEmail}</span>
-                <span className="contact-address-short">Email us</span>
-              </a>
-            </div>
-          </aside>
-        </div>
+          </div>
+          <div className="contact-form-actions">
+            <button className="btn btn-primary" type="submit">
+              Open email draft <Icon name="arrow" />
+            </button>
+            <button className="btn btn-quiet" type="button" onClick={copy}>
+              <Icon name="copy" /> Copy message
+            </button>
+          </div>
+          <p className="contact-method" id="contact-method">
+            You review and send the draft in your email app.
+          </p>
+          <p className="contact-status" role="status">
+            {status}
+          </p>
+        </form>
+        <aside className="contact-resources">
+          <ul className="contact-trust" aria-label="Data Genie controls">
+            <li>
+              <Icon name="check" /> Change approvals
+            </li>
+            <li>
+              <Icon name="check" /> Workspace permissions
+            </li>
+            <li>
+              <Icon name="check" /> Request history
+            </li>
+          </ul>
+          <nav className="contact-help" aria-label="Other ways to get help">
+            <Link href="/faq">
+              Support docs <Icon name="arrow" />
+            </Link>
+            <a
+              href={
+                'mailto:' +
+                contactEmail +
+                '?subject=' +
+                encodeURIComponent('Data Genie — Enterprise & Pricing')
+              }
+            >
+              Email about pricing <Icon name="arrow" />
+            </a>
+            <a href="#contact-message" onClick={requestDemo}>
+              Request a live demo <Icon name="arrow" />
+            </a>
+          </nav>
+        </aside>
       </main>
     </div>
   );
