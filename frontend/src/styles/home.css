@@ -150,20 +150,6 @@
 .home-page .btn-sm {
   padding: 9px 14px;
 }
-.home-page .icon-btn {
-  width: 44px;
-  height: 44px;
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--ink);
-}
-.home-page .icon-btn:hover {
-  background: var(--lapis-wash);
-}
 .home-page .button-row {
   display: flex;
   flex-wrap: wrap;
@@ -192,20 +178,6 @@
   border: 0;
   text-align: left;
 }
-.home-page .top {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: color-mix(in srgb, var(--chalk) 94%, transparent);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--rule);
-}
-.home-page .bar {
-  display: flex;
-  align-items: center;
-  gap: 28px;
-  height: 68px;
-}
 .home-page .brand {
   display: inline-flex;
   align-items: center;
@@ -219,30 +191,6 @@
 .home-page .brand .mark {
   width: 32px;
   height: 32px;
-}
-.home-page .nav {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.home-page .nav a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 10px 8px;
-  color: var(--ink-soft);
-  text-decoration: none;
-  white-space: nowrap;
-}
-.home-page .nav a:hover {
-  color: var(--ink);
-}
-.home-page .actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-  flex: none;
 }
 .home-page .home-hero {
   overflow: clip;
@@ -880,7 +828,9 @@
 .home-page .faq-layout {
   display: grid;
   grid-template-columns: 1fr 1.6fr;
+  align-items: start;
   gap: 40px;
+  padding-bottom: 40px;
 }
 .home-page .home-faq .inline-link {
   margin-top: 24px;
@@ -996,16 +946,6 @@
   }
 }
 @media (max-width: 1120px) {
-  .home-page .nav {
-    gap: 0;
-  }
-  .home-page .bar {
-    gap: 18px;
-  }
-  .home-page .nav a {
-    padding-inline: 6px;
-    font-size: 12px;
-  }
   .home-page .hero-layout {
     gap: 28px;
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -1039,9 +979,6 @@
   }
 }
 @media (max-width: 900px) {
-  .home-page .nav {
-    display: none;
-  }
   .home-page .hero-layout {
     grid-template-columns: 1fr;
     max-width: 760px;
@@ -1105,34 +1042,6 @@
 @media (max-width: 620px) {
   .home-page .wrap {
     padding-inline: 20px;
-  }
-  .home-page .bar {
-    gap: 10px;
-    height: 68px;
-    padding-inline: 16px;
-  }
-  .home-page .bar .brand {
-    font-size: 21px;
-    gap: 6px;
-  }
-  .home-page .bar .brand .mark {
-    width: 27px;
-    height: 27px;
-  }
-  .home-page .actions {
-    gap: 0;
-  }
-  .home-page .actions .btn {
-    padding-inline: 9px;
-    font-size: 11px;
-    min-height: 44px;
-  }
-  .home-page .actions .icon-btn {
-    width: 44px;
-    height: 44px;
-  }
-  .home-page[data-authenticated='true'] .actions [data-entry='login'] {
-    display: none;
   }
   .home-page .hero-layout {
     padding-block: 28px;
@@ -1266,21 +1175,6 @@
   }
 }
 @media (max-width: 360px) {
-  .home-page .bar {
-    padding-inline: 12px;
-    gap: 4px;
-  }
-  .home-page .bar .brand {
-    font-size: 19px;
-    gap: 4px;
-  }
-  .home-page .bar .brand .mark {
-    width: 24px;
-    height: 24px;
-  }
-  .home-page .actions .btn {
-    padding-inline: 7px;
-  }
   .home-page .hero-layout {
     padding-inline: 16px;
   }

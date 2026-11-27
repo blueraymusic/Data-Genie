@@ -1,3 +1,14 @@
+export function faqAnswerAnchor(question) {
+  return (
+    'faq-answer-' +
+    question
+      .toLowerCase()
+      .replace(/[’']/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/-$/, '')
+  );
+}
+
 export const faqGroups = [
   {
     id: 'getting-started',
@@ -43,6 +54,19 @@ export const faqGroups = [
       },
       {
         question: 'What can I do with Data Genie?',
+        help: [
+          'how does this work',
+          'how does it work',
+          'how it works',
+          'how does Data Genie work',
+          'what is Data Genie',
+          'what does Data Genie do',
+          'what is this site',
+          'what does this do',
+          'how to use this site',
+          'how do I use this app',
+          'how do I use Data Genie',
+        ],
         search:
           'Ask questions about SQLite or PostgreSQL, find and count records, add or update data, and create or change tables. Data Genie translates your request into SQL and shows the result alongside it. Reads run immediately. Changes wait for your confirmation, and your requests stay in History.',
         answer: (
@@ -61,6 +85,7 @@ export const faqGroups = [
       },
       {
         question: 'Can I try Data Genie without an account?',
+        help: ['try a demo', 'sample data', 'try without signing up', 'practice without account'],
         search:
           'Yes. The homepage demo, workspace tour and interactive examples use sample data without an account. Try follow-ups, SQL explanations, sample approvals and history filters. These examples never connect to or change your database. Sign up or log in to use your own SQLite or PostgreSQL database.',
         answer: (
@@ -78,6 +103,7 @@ export const faqGroups = [
       },
       {
         question: 'How can I contact Data Genie?',
+        help: ['contact support', 'report a problem', 'email support'],
         search:
           'Open Contact us to ask a question, report a problem, or share feedback. The form prepares an email draft for you to review and send in your own email app. Copy message is available if you prefer to paste it into webmail. No message is sent automatically. You do not need an account.',
         answer: (
@@ -113,6 +139,13 @@ export const faqGroups = [
       },
       {
         question: 'How do I get my first database?',
+        help: [
+          'get started',
+          'start using Data Genie',
+          'create a database',
+          'add a database',
+          'create sqlite database',
+        ],
         search:
           'Choose Sign up to create an account, or Log in if you already have one. Then create a new SQLite database, upload a SQLite file, connect PostgreSQL, or try the sample. A new SQLite database starts empty unless you select the example notes table. Use + New table beside Tables to add your own table, or describe it in the request bar.',
         answer: (
@@ -131,7 +164,27 @@ export const faqGroups = [
         ),
       },
       {
+        question: 'How do I replay the walkthrough?',
+        help: ['walkthrough', 'show me around', 'restart the tour', 'replay onboarding'],
+        search:
+          'First signup tour onboarding guide replay Account preferences Default workspace view Take the walkthrough.',
+        answer: (
+          <p>
+            New accounts see the walkthrough on their first visit to <strong>Databases</strong>. To
+            open it again, go to <strong>Account &amp; preferences</strong> and select{' '}
+            <strong>Take the walkthrough</strong> below <strong>Default workspace view</strong>.
+          </p>
+        ),
+      },
+      {
         question: 'Can I create and share reports?',
+        help: [
+          'make a report',
+          'create report',
+          'publish a report',
+          'share reports',
+          'export report pdf',
+        ],
         search:
           'In Teams open Reports and New report. Write from a blank page, use a template, or draft with Data Genie AI from source notes you supply. Members can edit their own drafts. Owners review and share reports with workspace members and viewers. Viewers see only shared reports, not database rows, chats or SQL. Anyone allowed to read a saved report can Download PDF. Only the creator can Delete an active report while a Member or Owner. Anyone who can view an archived report can delete it, with confirmation. Reports are saved snapshots, not live dashboards.',
         answer: (
@@ -153,6 +206,7 @@ export const faqGroups = [
       },
       {
         question: 'Can I attach a PDF or image to a question?',
+        help: ['upload pdf', 'attach a picture', 'add file to question'],
         search:
           'Attach PDF or image in Ask. Up to two PDF PNG JPEG WebP files and 4 MB combined. Sent to the configured AI service with that request only, not saved in History or reused automatically. Generated SQL and summaries can include information from the file. Database permissions and confirmations still apply.',
         answer: (
@@ -180,6 +234,7 @@ export const faqGroups = [
       },
       {
         question: 'Can I share a database with my team?',
+        help: ['share a database', 'collaborate with teammates', 'team database permissions'],
         search:
           'Choose Create team workspace on Choose your database or Databases, enter a New workspace name and choose Create workspace. No database connection is needed first. The new team opens in Teams; creating it keeps the current database connection and does not move that database. Add a database in Databases, then invite teammates in People & access as Members or Viewers. Members need explicit permission for each database; joining alone does not grant access. Viewers can read only reports shared by the owner and cannot open raw databases. Shared database changes affect the same underlying data, while each person keeps private chats and History.',
         answer: (
@@ -274,6 +329,12 @@ export const faqGroups = [
     items: [
       {
         question: 'Why won’t my saved PostgreSQL connection open?',
+        help: [
+          'postgres connection failed',
+          'postgresql connection error',
+          'database won’t connect',
+          'saved database offline',
+        ],
         search:
           'A saved connection stores settings, not a running PostgreSQL server. Start the database server and choose Try again if it is offline. A missing key or saved connection record offers Enter connection details. Start Data Genie with npm start to use the project .venv and installed connector packages. A failed open keeps your current database and saved History.',
         answer: (
@@ -312,6 +373,13 @@ export const faqGroups = [
       },
       {
         question: 'How do I connect PostgreSQL?',
+        help: [
+          'connect postgres',
+          'add postgres database',
+          'connect supabase',
+          'connect neon',
+          'supabase connection URL',
+        ],
         search:
           'Connect a local or hosted PostgreSQL database, including Supabase direct IPv6, the Supabase IPv4 Session pooler, and Neon. In Databases choose PostgreSQL and paste the connection URL. Hosted connections verify the certificate and hostname, including for URLs with sslmode=require. Schema defaults to public. Expand Connection options to change Schema or add an optional Connection name. Test connection checks access without changing data or saving credentials. Connect PostgreSQL saves the connection for your account.',
         answer: (
@@ -429,6 +497,7 @@ export const faqGroups = [
       },
       {
         question: 'Is this an MCP connector?',
+        help: ['mcp', 'mcp url', 'connect an agent', 'set up mcp'],
         search:
           'PostgreSQL connects directly using its native database protocol. Agents can use the hosted MCP endpoint https://data-genie.space/mcp with browser OAuth sign-in and workspace consent, the HTTP API with an agent key, or the optional local stdio bridge.',
         answer: (
@@ -490,6 +559,16 @@ export const faqGroups = [
     items: [
       {
         question: 'Which database files can I upload?',
+        help: [
+          'upload sqlite',
+          'upload a sqlite file',
+          'upload a file',
+          'upload a database file',
+          'upload csv',
+          'import csv',
+          'import excel',
+          'upload size limit',
+        ],
         search:
           'Upload a valid SQLite database with a .db, .sqlite, or .sqlite3 extension, up to 25 MB. Renaming a spreadsheet or another file type does not turn it into a SQLite database.',
         answer: (
@@ -523,6 +602,12 @@ export const faqGroups = [
       },
       {
         question: 'What does Data Genie AI receive about my database?',
+        help: [
+          'what is sent to ai',
+          'what does the ai see',
+          'does ai see my data',
+          'what data is shared with ai',
+        ],
         search:
           'Data Genie sends the configured AI service your request, the database structure, and up to eight recent turns from this conversation. Context includes your messages, assistant replies, clarification questions, SQL, execution status, and brief result summaries. Table rows are not sent automatically. Attached files and source notes for AI reports are sent when you submit them. Other conversations, file paths, and profile details are not sent. Values typed into a request are included. New conversation clears the context for future requests.',
         answer: (
@@ -546,6 +631,7 @@ export const faqGroups = [
       },
       {
         question: 'Can I use Data Genie without AI?',
+        help: ['use without ai', 'do i need ai', 'write sql directly', 'run sql manually'],
         search:
           'Yes. Open the SQL tab to enter standard SQLite or PostgreSQL statements. Examples cover previewing rows, counts, filters and creating tables. The parser checks statements before running them, and changes need confirmation. Structure has forms for editing tables and columns. Neither SQL nor Structure uses AI. Set your default workspace view in Account & preferences.',
         answer: (
@@ -615,6 +701,13 @@ export const faqGroups = [
       },
       {
         question: 'When does a request actually run?',
+        help: [
+          'do changes run automatically',
+          'does it change my data',
+          'are changes approved',
+          'review changes',
+          'confirmation before changes',
+        ],
         search:
           'Data Genie validates the SQL first. Read requests run immediately. Changes wait for review and confirmation. SQLite changes are checked against a temporary copy. PostgreSQL previews do not execute writes; confirmed changes run on the live database, where permissions and constraints still apply. Use the confirmation button to proceed or Don’t run to decline. Finish that decision before sending another request.',
         answer: (
@@ -764,6 +857,7 @@ export const faqGroups = [
       },
       {
         question: 'What is saved in History?',
+        help: ['what does history keep', 'are query results saved', 'find old queries'],
         search:
           'Your request, translated SQL, status, and available result are saved where Data Genie runs. Search requests, filter by SQL operation and revisit SQLite and PostgreSQL sessions without a live database connection. Saved results contain up to 500 rows and are snapshots. Structure-only inspections stay in the conversation but are not stored in History. Run requests again for current data.',
         answer: (
@@ -823,12 +917,13 @@ export const faqGroups = [
       {
         question: 'Can I log in with Google?',
         search:
-          'When enabled on this installation, Continue with Google appears on Log in and Sign up. It supports Google accounts alongside Data Genie passwords. To connect Google to an existing password account, log in first and use Connect Google in Account & preferences. A matching email does not automatically connect accounts. Google-only accounts manage their password with Google. Logging out of Data Genie does not log you out of Google everywhere.',
+          'When enabled on this installation, choose Sign up with Google to create an account or Continue with Google to log in. It supports Google accounts alongside Data Genie passwords. To connect Google to an existing password account, log in first and use Connect Google in Account & preferences. A matching email does not automatically connect accounts. Google-only accounts manage their password with Google. Logging out of Data Genie does not log you out of Google everywhere.',
         answer: (
           <>
             <p>
-              When enabled, <strong>Continue with Google</strong> appears on Log in and Sign up.
-              Email and password login stays available.
+              When Google is enabled, choose <strong>Sign up with Google</strong> to create an
+              account or <strong>Continue with Google</strong> to log in. Email and password login
+              stays available.
             </p>
             <p>
               To add it to an existing account, log in with your Data Genie password, then choose{' '}
@@ -928,6 +1023,7 @@ export const faqGroups = [
       },
       {
         question: 'What if I forgot my password?',
+        help: ['reset password', 'recover password', 'forgot password', 'password reset email'],
         search:
           'Forgot password recovery email generic response account presence private fifteen minute single use reset link three login attempts.',
         answer: (

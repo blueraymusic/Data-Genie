@@ -1,13 +1,6 @@
 .terms-page .terms-intro {
   padding-block: 28px 24px;
 }
-.terms-page .actions .btn-primary {
-  background: var(--lapis);
-  color: var(--on-lapis);
-}
-.terms-page .actions .btn-quiet {
-  color: var(--ink);
-}
 .terms-page .terms-intro h1 {
   max-width: 18ch;
 }
@@ -69,6 +62,8 @@
   align-items: baseline;
   gap: 14px;
   margin: 0 0 14px;
+  font-family: var(--serif);
+  font-weight: 400;
   font-size: clamp(24px, 3vw, 29px);
   line-height: 1.3;
 }

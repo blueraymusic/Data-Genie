@@ -68,7 +68,7 @@ export function PublicHeader({ faq = false, contact = false }) {
   }, [menuOpen]);
   return (
     <header
-      className="top"
+      className="top public-header"
       ref={header}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && menuOpen) {
@@ -77,15 +77,15 @@ export function PublicHeader({ faq = false, contact = false }) {
         }
       }}
     >
-      <div className="wrap bar">
+      <div className="bar">
         <Brand />
         <nav className="nav" aria-label="Main navigation">
           <NavigationLinks faq={faq} contact={contact} />
         </nav>
         <div className="actions">
-          {!menuOpen && <ThemeToggle />}
-          <EntryLink className={'btn ' + (faq ? 'quiet' : 'btn-quiet btn-sm signin')} />
-          <EntryLink primary className={'btn ' + (faq ? 'primary' : 'btn-primary btn-sm')} />
+          <ThemeToggle />
+          <EntryLink className="btn btn-quiet btn-sm" />
+          <EntryLink primary className="btn btn-primary btn-sm" />
           <button
             ref={menuButton}
             className="icon-btn public-menu-toggle"

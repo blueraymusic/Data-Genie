@@ -137,11 +137,11 @@ describe('compact account creation', () => {
   it('offers Google only on the details step, including after a password-step round trip', async () => {
     const events = userEvent.setup();
     show();
-    await screen.findByRole('link', { name: 'Continue with Google' });
+    await screen.findByRole('link', { name: 'Sign up with Google' });
     await next(events);
-    expect(screen.queryByRole('link', { name: 'Continue with Google' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Sign up with Google' })).toBeNull();
     await events.click(screen.getByRole('button', { name: 'Back', exact: true }));
-    expect(screen.getByRole('link', { name: 'Continue with Google' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Sign up with Google' })).toBeTruthy();
   });
 
   it('keeps Google and the original details form out of the email verification step', async () => {
@@ -153,13 +153,13 @@ describe('compact account creation', () => {
     });
     const events = userEvent.setup();
     show();
-    await screen.findByRole('link', { name: 'Continue with Google' });
+    await screen.findByRole('link', { name: 'Sign up with Google' });
     await next(events);
     await events.type(screen.getByLabelText('Password', { exact: true }), password);
     await events.type(screen.getByLabelText('Confirm password'), password);
     await events.click(screen.getByRole('button', { name: 'Create account', exact: true }));
     await screen.findByLabelText('Verification code');
-    expect(screen.queryByRole('link', { name: 'Continue with Google' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Sign up with Google' })).toBeNull();
     expect(screen.queryByLabelText('First name')).toBeNull();
     expect(screen.getAllByRole('heading', { name: 'Check your email.', exact: true })).toHaveLength(
       1,

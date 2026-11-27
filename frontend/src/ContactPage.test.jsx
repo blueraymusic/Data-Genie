@@ -43,19 +43,17 @@ async function fill(events) {
 describe('Contact us', () => {
   it('is public and provides a direct address and real help links', async () => {
     render(<App />);
-    expect(screen.getByRole('heading', { name: 'We’d love to hear from you.' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: contactEmail }).getAttribute('href')).toBe(
-      'mailto:' + contactEmail,
-    );
+    expect(screen.getByRole('heading', { name: 'Contact us' })).toBeTruthy();
+    expect(
+      screen.getByRole('link', { name: 'Email us at ' + contactEmail }).getAttribute('href'),
+    ).toBe('mailto:' + contactEmail);
     expect(screen.getByRole('link', { name: 'Questions & answers' }).getAttribute('href')).toBe(
       '/faq',
     );
     expect(screen.getByRole('link', { name: /Documentation/ }).getAttribute('href')).toBe(
       'https://github.com/blueraymusic/Data-Genie#readme',
     );
-    expect(
-      screen.getByText('Nothing is sent until you send the email. Fields marked * are required.'),
-    ).toBeTruthy();
+    expect(screen.getByText('Review and send the draft in your email app.')).toBeTruthy();
   });
   it('requires valid fields and never opens an empty email draft', async () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});

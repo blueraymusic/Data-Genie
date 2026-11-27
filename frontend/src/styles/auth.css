@@ -15,24 +15,13 @@
 }
 .workspace-page.auth-screen {
   min-height: 100svh;
-  background:
-    radial-gradient(
-      ellipse at 85% 25%,
-      color-mix(in srgb, var(--lapis-wash) 70%, transparent),
-      transparent 65%
-    ),
-    var(--chalk);
+  background: var(--chalk);
 }
 .workspace-page.auth-screen .entry-gate {
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  padding: 0 clamp(16px, 4vw, 40px) 16px;
-  max-width: 1180px;
+  padding: 0 24px 16px;
 }
 .workspace-page.auth-screen .gate-header {
-  flex: none;
-  height: 64px;
+  height: 68px;
   gap: 12px;
   border-bottom: 1px solid var(--rule);
 }
@@ -49,150 +38,158 @@
   text-underline-offset: 4px;
 }
 .workspace-page.auth-screen .gate-header .brand {
-  font-size: 23px;
+  font-size: 24px;
 }
 .workspace-page.auth-screen .gate-layout {
-  flex: none;
   width: 100%;
-  max-width: none;
-  display: grid;
-  grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
+  max-width: 960px;
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
   align-items: start;
-  gap: clamp(24px, 4vw, 48px);
-  margin: 60px 0 0;
-  padding: 24px 0 16px;
+  gap: clamp(32px, 7vw, 82px);
+  margin-inline: auto;
+  padding-block: clamp(34px, 9vh, 76px) 42px;
 }
 .workspace-page.auth-screen .gate-form {
   min-width: 0;
-  width: 100%;
-  max-width: 460px;
-  padding: 28px;
-  border: 1px solid var(--rule);
-  border-radius: 20px;
-  background: var(--paper);
-  box-shadow: var(--shadow-raised);
 }
 .workspace-page.auth-screen .gate-form h1 {
   max-width: none;
   margin: 0;
-  font-size: clamp(28px, 3vw, 36px);
-  line-height: 1.12;
+  font-size: clamp(36px, 4.4vw, 54px);
+  line-height: 1.06;
   letter-spacing: -0.025em;
 }
 .workspace-page.auth-screen .gate-form .lead {
-  margin: 8px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
+  margin: 10px 0 0;
+  font: 400 15px/1.65 var(--sans);
   color: var(--ink-soft);
 }
 .workspace-page.auth-screen .auth-step {
   margin: 0 0 8px;
-  font-size: 10px;
-  line-height: 16px;
-  letter-spacing: 0.08em;
-  color: var(--lapis);
+  color: var(--ink-soft);
+  font: 500 12px/1.5 var(--sans);
+  letter-spacing: 0;
+  text-transform: none;
 }
 .workspace-page.auth-screen .auth-content {
   min-width: 0;
-  margin-top: 20px;
+  margin-top: 26px;
 }
 .workspace-page.auth-screen .fields {
   min-width: 0;
   padding: 0;
   margin: 0;
   border: 0;
-  gap: 12px;
+  gap: 15px;
 }
 .workspace-page.auth-screen .fields[hidden] {
   display: none;
 }
 .workspace-page.auth-screen .fields label,
 .workspace-page.auth-screen .fields > div > label {
-  gap: 5px;
-  font-size: 12px;
-  line-height: 18px;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 22px;
 }
 .workspace-page.auth-screen input:not([type='checkbox']):not([type='radio']) {
-  min-height: 44px;
+  min-height: 48px;
   padding: 10px 12px;
   font-size: 16px;
   border-color: var(--control-border);
-  border-radius: 9px;
+  border-radius: 8px;
 }
 .workspace-page.auth-screen input:focus-visible {
   border-color: var(--lapis);
   outline-offset: 2px;
 }
 .workspace-page.auth-screen .auth-details:not([hidden]) + .auth-passwords {
-  margin-top: 12px;
+  margin-top: 15px;
 }
 .workspace-page.auth-screen .auth-label-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 5px;
-  font-size: 12px;
-  line-height: 18px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  line-height: 22px;
 }
 .workspace-page.auth-screen .auth-label-row a {
-  font-size: 11px;
+  font-size: 12px;
   text-underline-offset: 3px;
 }
 .workspace-page.auth-screen .password-input {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.workspace-page.auth-screen .password-input:has(input:focus-visible) {
+  border-color: var(--lapis);
+  outline: 1px solid var(--lapis);
 }
 .workspace-page.auth-screen .password-input button {
   position: static;
-  min-width: 44px;
-  min-height: 44px;
-  border: 1px solid var(--control-border);
-  border-radius: 9px;
-  background: var(--paper);
-  font-size: 11px;
+  align-self: stretch;
+  padding-inline: 12px;
+  border: 0;
+  border-inline-start: 1px solid var(--rule);
+  border-radius: 0 7px 7px 0;
+  outline-offset: -3px;
+  color: var(--lapis);
+  font-size: 12px;
 }
-.workspace-page.auth-screen .password-input input {
-  padding-right: 12px;
+.workspace-page.auth-screen .password-input button:hover:enabled {
+  background: var(--lapis-wash);
+}
+.workspace-page.auth-screen .password-input input:not([type='checkbox']):not([type='radio']) {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  outline: none;
 }
 .workspace-page.auth-screen .identity-note {
-  margin: 8px 0 0;
-  font-size: 11px;
-  line-height: 16px;
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
 }
 .workspace-page.auth-screen .auth-form-actions {
   display: flex;
   gap: 10px;
-  margin-top: 16px;
+  margin-top: 19px;
 }
 .workspace-page.auth-screen .start-button {
   flex: 1;
   width: auto;
-  min-height: 44px;
+  min-height: 48px;
   margin: 0;
-  border-radius: 9px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
 }
+.workspace-page.auth-screen .start-button .ic {
+  width: 17px;
+  height: 17px;
+}
 .workspace-page.auth-screen .auth-back {
   min-width: 72px;
-  border-radius: 9px;
+  border-radius: 8px;
 }
 .workspace-page.auth-screen .google-entry {
-  margin: 0 0 14px;
+  margin: 0 0 19px;
 }
 .workspace-page.auth-screen .google-button {
-  min-height: 44px;
-  border-radius: 9px;
-  font-size: 13px;
+  min-height: 48px;
+  border-radius: 8px;
+  font-size: 14px;
 }
 .workspace-page.auth-screen .auth-divider {
-  margin: 10px 0 0;
-  line-height: 14px;
-  font-size: 10px;
+  margin: 15px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
 }
 .workspace-page.auth-screen .auth-feedback {
   margin-top: 12px;
@@ -220,10 +217,10 @@
   justify-content: space-between;
   gap: 16px;
   border-top: 1px solid var(--rule);
-  padding-top: 12px;
-  margin-top: 18px;
-  font-size: 10px;
-  line-height: 15px;
+  padding-top: 14px;
+  margin-top: 22px;
+  font-size: 12px;
+  line-height: 1.5;
   color: var(--ink-soft);
 }
 .workspace-page.auth-screen .auth-footer p {
@@ -263,63 +260,50 @@
 }
 .workspace-page.auth-screen .auth-story {
   min-width: 0;
-  padding: 24px 0 0;
-}
-.workspace-page.auth-screen .auth-story > .eyebrow {
-  margin: 0 0 12px;
+  padding: 8px 0 8px clamp(24px, 4vw, 48px);
+  margin-top: 8px;
+  border-inline-start: 1px solid var(--rule);
 }
 .workspace-page.auth-screen .auth-story h2 {
-  max-width: 18ch;
-  font-size: clamp(28px, 3vw, 38px);
-  line-height: 1.15;
+  margin: 0 0 21px;
+  font: 500 clamp(26px, 3vw, 36px)/1.12 var(--serif);
   letter-spacing: -0.02em;
-  margin: 0 0 18px;
 }
-.workspace-page.auth-screen .auth-story h2 em {
-  font-weight: 400;
+.workspace-page.auth-screen .auth-example-label {
+  margin: 0 0 5px;
   color: var(--ink-soft);
-}
-.workspace-page.auth-screen .auth-story-preview {
-  padding: 16px;
-  border: 1px solid var(--rule);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--paper) 75%, transparent);
-}
-.workspace-page.auth-screen .auth-story-preview .example-label {
-  font-size: 10px;
-  margin-bottom: 8px;
-}
-.workspace-page.auth-screen .auth-story-preview .human-example {
-  font-size: 21px;
-  line-height: 1.4;
-  margin: 0 0 16px;
-}
-.workspace-page.auth-screen .auth-story-preview .sqlblock {
-  margin: 0;
   font-size: 12px;
-  border-radius: 8px;
 }
-.workspace-page.auth-screen .auth-story-result {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--add);
-  font-size: 11px;
-  margin-top: 14px;
+.workspace-page.auth-screen .auth-story .human-example {
+  margin: 0 0 15px;
+  font: 500 16px/1.5 var(--sans);
+}
+.workspace-page.auth-screen .auth-story .sqlblock {
+  margin: 0;
+  border-radius: 8px;
+  font-size: 12px;
 }
 .workspace-page.auth-screen .auth-story-note {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 11px;
+  gap: 7px;
+  margin: 15px 0 0;
   color: var(--ink-soft);
-  margin: 16px 0 0;
+  font-size: 12px;
+}
+.workspace-page.auth-screen .auth-story-note .ic {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.workspace-page.auth-screen .gate-recovery .auth-content > form > .start-button {
+  width: 100%;
+  margin-top: 16px;
 }
 @media (max-width: 850px) {
   .workspace-page.auth-screen .gate-layout {
     grid-template-columns: minmax(0, 1fr);
-    justify-items: center;
-    padding-block: 12px;
+    max-width: 420px;
   }
   .workspace-page.auth-screen .auth-story {
     display: none;
@@ -327,138 +311,23 @@
 }
 @media (max-width: 500px) {
   .workspace-page.auth-screen .entry-gate {
-    padding: 0 16px 8px;
+    padding-inline: 16px;
   }
   .workspace-page.auth-screen .gate-header {
-    height: 52px;
     gap: 4px;
   }
   .workspace-page.auth-screen .gate-header .brand {
-    font-size: 20px;
+    font-size: 21px;
   }
-  .workspace-page.auth-screen .gate-form {
-    padding: 20px;
-    border-radius: 16px;
+  .workspace-page.auth-screen .gate-header > nav a {
+    padding-inline: 6px;
   }
+  .workspace-page.auth-screen .auth-content {
+    margin-top: 22px;
+  }
+}
+@media (max-height: 520px) {
   .workspace-page.auth-screen .gate-layout {
-    padding-block: 8px;
+    padding-block: 24px 38px;
   }
-  .workspace-page.auth-screen .auth-content {
-    margin-top: 16px;
-  }
-  .workspace-page.auth-screen .auth-form-actions {
-    margin-top: 12px;
-  }
-  .workspace-page.auth-screen .auth-footer {
-    gap: 12px;
-    margin-top: 14px;
-    padding-top: 10px;
-  }
-}
-@media (max-height: 700px) {
-  .workspace-page.auth-screen .gate-header {
-    height: 52px;
-  }
-  .workspace-page.auth-screen .gate-layout {
-    padding-block: 8px;
-  }
-  .workspace-page.auth-screen .gate-form {
-    padding: 20px;
-  }
-  .workspace-page.auth-screen .auth-story h2 {
-    font-size: 32px;
-    margin-bottom: 18px;
-  }
-  .workspace-page.auth-screen .auth-content {
-    margin-top: 14px;
-  }
-  .workspace-page.auth-screen .auth-form-actions {
-    margin-top: 12px;
-  }
-  .workspace-page.auth-screen .auth-footer {
-    margin-top: 12px;
-    padding-top: 10px;
-  }
-}
-@media (max-height: 520px) and (min-width: 600px) {
-  .workspace-page.auth-screen .entry-gate {
-    padding-bottom: 6px;
-  }
-  .workspace-page.auth-screen .gate-header {
-    height: 44px;
-  }
-  .workspace-page.auth-screen .gate-layout {
-    grid-template-columns: 1fr;
-    padding: 4px 0;
-  }
-  .workspace-page.auth-screen .gate-form {
-    display: grid;
-    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-    column-gap: 24px;
-    align-items: start;
-    max-width: 800px;
-    padding: 16px 20px;
-  }
-  .workspace-page.auth-screen .gate-form h1 {
-    font-size: 28px;
-  }
-  .workspace-page.auth-screen .gate-intro {
-    padding-top: 4px;
-  }
-  .workspace-page.auth-screen .auth-content {
-    margin-top: 0;
-  }
-  .workspace-page.auth-screen .auth-footer {
-    grid-column: 1/-1;
-    margin-top: 10px;
-    padding-top: 8px;
-  }
-  .workspace-page.auth-screen .auth-story {
-    display: none;
-  }
-  .workspace-page.auth-screen .google-entry {
-    margin-bottom: 10px;
-  }
-  .workspace-page.auth-screen .auth-divider {
-    margin-top: 6px;
-  }
-  .workspace-page.auth-screen .fields {
-    gap: 8px;
-  }
-  .workspace-page.auth-screen .auth-details:not([hidden]) + .auth-passwords {
-    margin-top: 8px;
-  }
-  .workspace-page.auth-screen .auth-form-actions {
-    margin-top: 10px;
-  }
-}
-@media (max-height: 520px) and (min-width: 600px) {
-  .workspace-page.auth-screen .auth-content {
-    display: contents;
-  }
-  .workspace-page.auth-screen .gate-intro {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .workspace-page.auth-screen .auth-content > form {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-  .workspace-page.auth-screen .google-entry {
-    grid-column: 1;
-    grid-row: 2;
-    align-self: start;
-    margin-top: 12px;
-  }
-  .workspace-page.auth-screen .auth-content > .auth-feedback {
-    grid-column: 2;
-    grid-row: 3;
-  }
-  .workspace-page.auth-screen .auth-footer {
-    grid-row: 4;
-  }
-}
-.workspace-page.auth-screen .gate-recovery .auth-content > form > .start-button {
-  width: 100%;
-  margin-top: 16px;
 }

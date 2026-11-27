@@ -411,10 +411,15 @@ describe('React pages and account flow', () => {
     );
   });
 
-  it('searches FAQ answers and handles no matches', async () => {
-    history.replaceState({}, '', '/faq');
+  it('keeps main navigation when opening FAQ and searches questions by topic', async () => {
     const events = userEvent.setup();
     render(<App />);
+    const homeNav = within(screen.getByRole('navigation', { name: 'Main navigation' }));
+    const links = homeNav.getAllByRole('link').map((link) => link.getAttribute('href'));
+    await events.click(homeNav.getByRole('link', { name: 'FAQ' }));
+    const faqNav = within(screen.getByRole('navigation', { name: 'Main navigation' }));
+    expect(faqNav.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual(links);
+    expect(faqNav.getByRole('link', { name: 'FAQ' }).getAttribute('aria-current')).toBe('page');
     const search = screen.getByRole('searchbox', { name: 'Search questions and answers' });
     await events.type(search, 'AI receive');
     expect(screen.getByRole('status').textContent).toMatch(/^[1-9]\d* matching questions?$/);
@@ -426,6 +431,45 @@ describe('React pages and account flow', () => {
     expect(screen.getByRole('button', { name: 'Expand all' }).disabled).toBe(true);
     await events.click(screen.getByRole('button', { name: 'Clear', exact: true }));
     expect(screen.getByRole('heading', { name: 'Getting started', exact: true })).toBeTruthy();
+    expect(document.activeElement).toBe(search);
+    await events.type(search, 'AI receive');
+    const topics = within(screen.getByRole('navigation', { name: 'Jump to a topic' }));
+    await events.click(topics.getByRole('link', { name: 'PostgreSQL connections' }));
+    expect(location.hash).toBe('#postgresql');
+    expect(search.value).toBe('');
+    expect(
+      screen.getByRole('heading', { name: 'PostgreSQL connections', exact: true }),
+    ).toBeTruthy();
+  });
+
+  it('answers help questions from the FAQ and opens the cited answer', async () => {
+    const events = userEvent.setup();
+    render(<App />);
+    await events.click(screen.getByRole('button', { name: 'Open Data Genie help chat' }));
+    const chat = within(screen.getByRole('dialog', { name: 'Data Genie help' }));
+    const requestCount = fetch.mock.calls.length;
+    await events.click(chat.getByRole('button', { name: 'How does Data Genie work?' }));
+    expect(chat.getByText(/Ask questions about SQLite or PostgreSQL/)).toBeTruthy();
+    const suggestions = within(chat.getByRole('group', { name: 'Suggested follow-up questions' }));
+    await events.click(
+      suggestions.getByRole('button', { name: 'Which database files can I upload?' }),
+    );
+    expect(chat.getByRole('heading', { name: 'Which database files can I upload?' })).toBeTruthy();
+    const input = chat.getByRole('textbox', { name: 'Ask about Data Genie' });
+    await events.type(input, 'What is the weather in Missouri?{Enter}');
+    expect(chat.getByText('I couldn’t find an answer in the Data Genie FAQ.')).toBeTruthy();
+    await events.type(input, 'I need to connect to Supabase{Enter}');
+    expect(chat.getByRole('heading', { name: 'How do I connect PostgreSQL?' })).toBeTruthy();
+    expect(fetch.mock.calls).toHaveLength(requestCount);
+    await events.click(chat.getAllByRole('link', { name: 'Read this in the FAQ' }).at(-1));
+    expect(screen.queryByRole('dialog', { name: 'Data Genie help' })).toBeNull();
+    expect(location.hash).toBe('#faq-answer-how-do-i-connect-postgresql');
+    expect(document.getElementById(location.hash.slice(1)).closest('details').open).toBe(true);
+    await events.click(screen.getByRole('button', { name: 'Open Data Genie help chat' }));
+    const reopened = within(screen.getByRole('dialog', { name: 'Data Genie help' }));
+    await events.click(reopened.getByRole('button', { name: 'Start a new help chat' }));
+    expect(reopened.getByRole('button', { name: 'How does Data Genie work?' })).toBeTruthy();
+    expect(reopened.queryByRole('link', { name: 'Read this in the FAQ' })).toBeNull();
   });
 
   it('validates registration, opens the sample walkthrough, and remembers completion', async () => {

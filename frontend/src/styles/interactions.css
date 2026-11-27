@@ -181,9 +181,6 @@
 .workspace-page .tw th {
   box-shadow: inset 0 -1px var(--rule);
 }
-.faq-page summary span::after {
-  transition: transform var(--motion-fast) var(--ease-out);
-}
 .faq-page details[open] .answer {
   animation: backdrop-enter var(--motion-normal) ease-out both;
 }

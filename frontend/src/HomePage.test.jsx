@@ -251,9 +251,7 @@ describe('interactive homepage', () => {
     await events.click(screen.getByRole('button', { name: 'Open navigation' }));
     const menu = within(screen.getByRole('navigation', { name: 'Mobile navigation' }));
     await events.click(menu.getByRole('link', { name: 'Contact us' }));
-    expect(
-      await screen.findByRole('heading', { name: 'We’d love to hear from you.' }),
-    ).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Contact us' })).toBeTruthy();
     expect(location.pathname).toBe('/contact');
     expect(screen.queryByRole('navigation', { name: 'Mobile navigation' })).toBeNull();
   });

@@ -340,11 +340,14 @@
   color: var(--ink-soft);
 }
 .workspace-page .person-picker-chevron {
-  font-size: 22px;
+  width: 16px;
+  height: 16px;
   flex: none;
+  align-self: center;
+  color: var(--ink-soft);
   transition: transform 160ms ease;
 }
-.workspace-page .person-picker-chevron.is-open {
+.workspace-page .person-picker-trigger[aria-expanded='true'] .person-picker-chevron {
   transform: rotate(180deg);
 }
 .workspace-page .person-picker-panel {

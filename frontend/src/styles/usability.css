@@ -46,7 +46,6 @@
   gap: 8px;
   margin-top: 12px;
 }
-.faq-page .top,
 .workspace-page .top {
   background: color-mix(in srgb, var(--chalk) 92%, transparent);
   backdrop-filter: blur(16px);

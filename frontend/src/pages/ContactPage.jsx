@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { Brand } from '../components/Brand';
 import { PublicHeader } from '../components/PublicHeader';
 import { Icon } from '../components/Icon';
 import { Link } from '../lib/router';
@@ -56,17 +55,11 @@ export default function ContactPage() {
         Skip to content
       </a>
       <PublicHeader contact />
-      <main id="main">
-        <section className="contact-intro">
-          <div className="wrap">
-            <p className="eyebrow">Contact us</p>
-            <h1>
-              We’d love to <em>hear from you.</em>
-            </h1>
-            <p>A question, a rough edge, or an idea for Data Genie? Tell us about it.</p>
-          </div>
-        </section>
-        <div className="wrap contact-layout">
+      <main className="wrap" id="main" tabIndex={-1}>
+        <header className="contact-heading">
+          <h1>Contact us</h1>
+        </header>
+        <div className="contact-layout">
           <form
             className="contact-form"
             aria-label="Contact Data Genie"
@@ -74,21 +67,17 @@ export default function ContactPage() {
             onSubmit={openEmail}
             onInput={(event) => event.target.setCustomValidity?.('')}
           >
-            <p className="contact-form-intro">
-              Fill in your message. We’ll open your email app with a draft for you to review and
-              send.
-            </p>
             <div className="contact-fields">
               <label>
-                First name <span aria-hidden="true">*</span>
+                First name
                 <input name="first_name" autoComplete="given-name" maxLength="100" required />
               </label>
               <label>
-                Last name <span aria-hidden="true">*</span>
+                Last name
                 <input name="last_name" autoComplete="family-name" maxLength="100" required />
               </label>
               <label>
-                Email <span aria-hidden="true">*</span>
+                Email
                 <input name="email" type="email" autoComplete="email" maxLength="254" required />
               </label>
               <label>
@@ -96,30 +85,31 @@ export default function ContactPage() {
                 <input name="company" autoComplete="organization" maxLength="160" />
               </label>
               <label className="contact-wide">
-                What can we help with? <span aria-hidden="true">*</span>
-                <select name="reason" defaultValue="" required>
-                  <option value="" disabled>
-                    Choose a reason
-                  </option>
-                  {contactReasons.map((reason) => (
-                    <option key={reason}>{reason}</option>
-                  ))}
-                </select>
+                What can we help with?
+                <span className="contact-select">
+                  <select name="reason" defaultValue="" required>
+                    <option value="" disabled>
+                      Choose a reason
+                    </option>
+                    {contactReasons.map((reason) => (
+                      <option key={reason}>{reason}</option>
+                    ))}
+                  </select>
+                  <Icon name="chevron-down" />
+                </span>
               </label>
               <label className="contact-wide">
-                Your message <span aria-hidden="true">*</span>
+                Your message
                 <textarea
                   name="message"
-                  rows="5"
+                  rows="3"
                   maxLength="2500"
                   required
                   placeholder="What are you trying to do, and how can we help?"
                 />
               </label>
             </div>
-            <p className="contact-note">
-              Nothing is sent until you send the email. Fields marked * are required.
-            </p>
+            <p className="contact-note">Review and send the draft in your email app.</p>
             <div className="contact-form-actions">
               <button className="btn btn-primary" type="submit">
                 Open email draft <Icon name="arrow" />
@@ -164,21 +154,14 @@ export default function ContactPage() {
             </div>
             <div className="contact-direct">
               <p>Prefer to write directly?</p>
-              <a href={'mailto:' + contactEmail}>{contactEmail}</a>
+              <a href={'mailto:' + contactEmail} aria-label={'Email us at ' + contactEmail}>
+                <span className="contact-address">{contactEmail}</span>
+                <span className="contact-address-short">Email us</span>
+              </a>
             </div>
           </aside>
         </div>
       </main>
-      <footer className="home-footer dark-surface">
-        <div className="wrap footer-row">
-          <Brand />
-          <nav aria-label="Footer navigation">
-            <Link href="/">Homepage</Link>
-            <Link href="/faq">FAQ</Link>
-            <Link href="/signup">Try Data Genie</Link>
-          </nav>
-        </div>
-      </footer>
     </div>
   );
 }

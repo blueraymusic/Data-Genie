@@ -1,14 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { api, rememberSession } from '../lib/api';
 import '../styles/google-signin.css';
 
 export function useGoogleSignIn() {
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState(null);
   useEffect(() => {
     const controller = new AbortController();
     api('/api/auth/providers', { signal: controller.signal })
       .then((data) => {
-        if (!controller.signal.aborted) setEnabled(data.google?.enabled === true);
+        const available = data.google?.enabled;
+        if (!controller.signal.aborted && typeof available === 'boolean') setEnabled(available);
       })
       .catch(() => {
         // Provider discovery never prevents signing in with a Data Genie password.
@@ -65,21 +66,39 @@ export function GoogleMark() {
   );
 }
 
-export function GoogleSignIn({ disabled = false }) {
+export function GoogleSignIn({ disabled = false, signup = false, previewUnavailable = false }) {
+  const noteId = useId();
+  const content = (
+    <>
+      <GoogleMark />
+      {signup ? 'Sign up with Google' : 'Continue with Google'}
+    </>
+  );
   return (
     <div className="google-entry">
-      <a
-        className="btn google-button"
-        href="/api/auth/google/start"
-        aria-disabled={disabled || undefined}
-        onClick={(event) => {
-          if (disabled) event.preventDefault();
-          else rememberSession(null);
-        }}
-      >
-        <GoogleMark />
-        Continue with Google
-      </a>
+      {previewUnavailable ? (
+        <>
+          <button className="btn google-button" type="button" disabled aria-describedby={noteId}>
+            {content}
+          </button>
+          <p className="google-preview-note" id={noteId}>
+            Google sign-up isn’t configured in this preview.{' '}
+            <a href="https://data-genie.space/signup">Open live sign-up</a>
+          </p>
+        </>
+      ) : (
+        <a
+          className="btn google-button"
+          href="/api/auth/google/start"
+          aria-disabled={disabled || undefined}
+          onClick={(event) => {
+            if (disabled) event.preventDefault();
+            else rememberSession(null);
+          }}
+        >
+          {content}
+        </a>
+      )}
       <p className="auth-divider">
         <span>or use your email</span>
       </p>

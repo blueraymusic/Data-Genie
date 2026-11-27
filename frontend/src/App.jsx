@@ -3,6 +3,7 @@ import { Router, useRouter } from './lib/router';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthShell } from './components/AuthShell';
+import { HelpChat } from './components/HelpChat';
 import HomePage from './pages/HomePage';
 import FaqPage from './pages/FaqPage';
 import ContactPage from './pages/ContactPage';
@@ -85,13 +86,23 @@ class ErrorBoundary extends Component {
     return this.props.children;
   }
 }
+function SiteContent() {
+  const { user } = useAuth();
+  return (
+    <>
+      <Pages />
+      <HelpChat key={user?.account_id ?? 'public'} />
+    </>
+  );
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <Router>
         <ThemeProvider>
           <AuthProvider>
-            <Pages />
+            <SiteContent />
           </AuthProvider>
         </ThemeProvider>
       </Router>

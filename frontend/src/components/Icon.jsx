@@ -18,6 +18,7 @@ export function Icon({ name, className = 'ic', ...props }) {
     upload: 'M12 16V3m-4 4 4-4 4 4M4 15v5h16v-5',
     layers: 'm3 7 9-4 9 4-9 4-9-4Zm0 5 9 4 9-4M3 17l9 4 9-4',
     arrow: 'M5 12h14m-5-5 5 5-5 5',
+    'chevron-down': 'm6 9 6 6 6-6',
     send: 'M12 19V5m-6 6 6-6 6 6',
     workspace: 'M8 3v18M8 9h13',
     report: 'M14 3H5v18h14V8l-5-5ZM14 3v5h5M8 12h8M8 16h6',

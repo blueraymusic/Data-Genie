@@ -56,22 +56,11 @@ export function AuthShell({ title, lead, children, variant = 'auth', eyebrow, he
             )}
           </main>
           {compact ? (
-            <aside className="auth-story" aria-label="Working with Data Genie">
-              <p className="eyebrow">Make sense of your data</p>
-              <h2>
-                Ask a question.
-                <br />
-                <em>Know what happens next.</em>
-              </h2>
-              <div className="auth-story-preview">
-                <p className="example-label">Your request</p>
-                <p className="human-example">Show customers from Missouri.</p>
-                <SqlBlock sql={"SELECT * FROM customers\nWHERE state = 'Missouri';"} />
-                <div className="auth-story-result">
-                  <Icon name="check" />
-                  <span>Read the SQL. Review the result.</span>
-                </div>
-              </div>
+            <aside className="auth-story" aria-labelledby="auth-example-title">
+              <h2 id="auth-example-title">From a question to SQL</h2>
+              <p className="auth-example-label">Example question</p>
+              <p className="human-example">Show customers from Missouri.</p>
+              <SqlBlock sql={"SELECT * FROM customers\nWHERE state = 'Missouri';"} />
               <p className="auth-story-note">
                 <Icon name="lock" />
                 Changes wait for your confirmation.

@@ -108,9 +108,7 @@ export function PersonPicker({ members, selected, disabled, onSelect, onOpenChan
           <small title={selected.email}>{selected.email}</small>
         </span>
         <span className="person-picker-role">{roleOf(selected)}</span>
-        <span className={'person-picker-chevron' + (open ? ' is-open' : '')} aria-hidden="true">
-          ⌄
-        </span>
+        <Icon name="chevron-down" className="ic person-picker-chevron" />
       </button>
       {open && (
         <div className="person-picker-panel">

@@ -49,7 +49,9 @@ describe('Google sign-in', () => {
           <AuthPage />
         </Router>,
       );
-      const link = await screen.findByRole('link', { name: 'Continue with Google' });
+      const link = await screen.findByRole('link', {
+        name: path === '/signup' ? 'Sign up with Google' : 'Continue with Google',
+      });
       expect(link.getAttribute('href')).toBe('/api/auth/google/start');
       expect(screen.getByLabelText('Password', { exact: true })).toBeTruthy();
       expect(
@@ -60,6 +62,25 @@ describe('Google sign-in', () => {
       ).toBeTruthy();
     },
   );
+  it('explains unavailable Google sign-up on a local preview and keeps email signup usable', async () => {
+    history.replaceState({}, '', '/signup');
+    fetch.mockImplementation(() => response({ google: { enabled: false } }));
+    render(
+      <Router>
+        <AuthPage />
+      </Router>,
+    );
+    const google = await screen.findByRole('button', { name: 'Sign up with Google' });
+    expect(google.disabled).toBe(true);
+    expect(document.getElementById(google.getAttribute('aria-describedby')).textContent).toContain(
+      'Google sign-up isn’t configured in this preview.',
+    );
+    expect(screen.getByRole('link', { name: 'Open live sign-up' }).getAttribute('href')).toBe(
+      'https://data-genie.space/signup',
+    );
+    expect(screen.getByRole('button', { name: 'Continue', exact: true }).disabled).toBe(false);
+  });
+
   it.each([false, 'failed'])(
     'keeps local sign-in usable when the provider is %s',
     async (enabled) => {

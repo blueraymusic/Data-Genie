@@ -29,14 +29,14 @@ body {
 }
 
 /* Header, authentication and supporting pages share the same quiet entrance. */
-:is(.home-page, .faq-page) .public-mobile-nav {
+.public-header .public-mobile-nav {
   transform-origin: top right;
   animation: surface-enter var(--motion-normal) var(--ease-out) backwards;
 }
 .workspace-page .gate-form,
 .workspace-page .gate-example,
-.faq-page .intro,
-.contact-page .contact-intro .wrap,
+.faq-page :is(.intro, .faq-intro),
+.contact-page .contact-heading,
 .contact-page .contact-form,
 .contact-page .contact-help {
   animation: soft-content-enter var(--motion-slow) var(--ease-out) backwards;
@@ -62,10 +62,10 @@ body {
 }
 
 /* Navigation and action feedback move only the decorative glyph or underline. */
-:is(.home-page, .faq-page) .nav > a {
+.public-header .nav > a {
   position: relative;
 }
-:is(.home-page, .faq-page) .nav > a::after {
+.public-header .nav > a::after {
   content: '';
   position: absolute;
   inset: auto 8px 3px;
@@ -75,7 +75,7 @@ body {
   transform-origin: left;
   transition: transform var(--motion-normal) var(--ease-out);
 }
-:is(.home-page, .faq-page) .nav > a:is(:hover, :focus-visible, [aria-current='page'])::after {
+.public-header .nav > a:is(:hover, :focus-visible, [aria-current='page'])::after {
   transform: scaleX(1);
 }
 .home-page :is(.btn, .inline-link, .inline-action) [data-icon='arrow'],

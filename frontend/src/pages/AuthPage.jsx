@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRouter, Link } from '../lib/router';
 import { AuthShell } from '../components/AuthShell';
+import { Icon } from '../components/Icon';
 import { GoogleSignIn, googleError, useGoogleSignIn } from '../components/GoogleSignIn';
 import { readWorkspaceInvitation } from '../lib/workspaceInvites';
 import { VerifySignup } from '../components/VerifySignup';
@@ -13,11 +14,15 @@ const emptyDetails = {
   password: '',
   confirmPassword: '',
 };
+const loopbackHosts = new Set(['127.0.0.1', 'localhost', '[::1]']);
+
 export default function AuthPage() {
   const { pathname, route, navigate } = useRouter(),
     { authenticate, refresh, error: authError, connectionError } = useAuth();
   const googleEnabled = useGoogleSignIn();
   const signup = pathname === '/signup';
+  const googlePreviewUnavailable =
+    signup && googleEnabled === false && loopbackHosts.has(window.location.hostname);
   const [verification, setVerification] = useState(null),
     [step, setStep] = useState(0),
     [details, setDetails] = useState(emptyDetails),
@@ -102,13 +107,13 @@ export default function AuthPage() {
     <AuthShell
       variant={signup ? 'signup' : 'signin'}
       title={checking ? 'Check your email.' : signup ? 'Create your account.' : 'Welcome back.'}
-      lead={signup ? null : 'Your databases and saved work, ready when you are.'}
+      lead={signup ? null : 'Log in to access your databases, reports, and query history.'}
       eyebrow={
         signup && !checking
           ? `Step ${step + 1} of 2 · ${step ? 'Secure your account' : 'Your details'}`
           : checking
             ? 'Verify your email'
-            : 'Good to see you again'
+            : undefined
       }
       headerAction={
         <Link href={signup ? '/signin' : '/signup'}>{signup ? 'Log in' : 'Sign up'}</Link>
@@ -133,7 +138,13 @@ export default function AuthPage() {
         />
       ) : (
         <>
-          {googleEnabled && (!signup || !step) && <GoogleSignIn disabled={busy || retrying} />}
+          {(googleEnabled || googlePreviewUnavailable) && (!signup || !step) && (
+            <GoogleSignIn
+              signup={signup}
+              disabled={busy || retrying}
+              previewUnavailable={googlePreviewUnavailable}
+            />
+          )}
           <form className="auth-form" key={signup ? 'signup' : 'login'} onSubmit={submit}>
             <fieldset
               className="fields auth-details"
@@ -263,7 +274,7 @@ export default function AuthPage() {
                       ? 'Create account'
                       : 'Continue'
                     : 'Log in'}
-                <span aria-hidden="true"> →</span>
+                <Icon name="arrow" />
               </button>
             </div>
           </form>

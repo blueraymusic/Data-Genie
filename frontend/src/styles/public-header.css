@@ -1,12 +1,118 @@
-:is(.home-page, .faq-page) .public-menu-toggle {
+.public-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: color-mix(in srgb, var(--chalk) 94%, transparent);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--rule);
+  font: 400 14px/1.5 var(--sans);
+}
+.public-header > .bar {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  width: 100%;
+  max-width: 1160px;
+  height: 68px;
+  margin-inline: auto;
+  padding-inline: 24px;
+}
+.public-header .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+  font: 600 24px/1 var(--serif);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+}
+.public-header .brand .mark {
+  width: 32px;
+  height: 32px;
+}
+.public-header .nav,
+.public-header .actions {
+  display: flex;
+  align-items: center;
+}
+.public-header .nav {
+  gap: 10px;
+}
+.public-header .nav > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 8px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.public-header .nav > a:hover {
+  color: var(--ink);
+}
+.public-header .nav > a[aria-current='page'] {
+  color: var(--lapis);
+}
+.public-header .actions {
+  gap: 4px;
+  margin-left: auto;
+  flex: none;
+}
+.public-header .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 9px 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font: 500 14px/1.3 var(--sans);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.public-header .btn-primary {
+  background: var(--lapis);
+  color: var(--on-lapis);
+}
+.public-header .btn-primary:hover {
+  background: color-mix(in srgb, var(--lapis) 88%, var(--ink));
+}
+.public-header :is(.btn-quiet, .btn-secondary) {
+  background: transparent;
+  color: var(--ink);
+}
+.public-header .btn-secondary {
+  border-color: var(--control-border);
+}
+.public-header :is(.btn-quiet, .btn-secondary, .icon-btn):hover {
+  background: var(--lapis-wash);
+}
+.public-header .icon-btn {
+  width: 44px;
+  height: 44px;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+}
+.public-header .ic {
+  width: 18px;
+  height: 18px;
+}
+.public-header .public-menu-toggle,
+.public-header .public-mobile-nav {
   display: none;
 }
-:is(.home-page, .faq-page) .public-mobile-nav {
+.public-header .public-mobile-nav {
   position: absolute;
   top: calc(100% + 8px);
   right: 16px;
   z-index: 30;
-  display: grid;
   gap: 4px;
   width: min(340px, calc(100vw - 32px));
   padding: 12px;
@@ -15,22 +121,21 @@
   background: var(--paper);
   box-shadow: var(--shadow-floating);
 }
-:is(.home-page, .faq-page) .public-mobile-nav > a {
+.public-header .public-mobile-nav > a {
+  display: flex;
   min-height: 44px;
-  padding: 12px;
+  align-items: center;
+  padding: 10px 12px;
   border-radius: 6px;
   color: var(--ink);
   text-decoration: none;
-  font: 400 14px/1.5 var(--sans);
 }
-:is(.home-page, .faq-page) .public-mobile-nav > a:hover {
-  background: var(--lapis-wash);
-}
-:is(.home-page, .faq-page) .public-mobile-nav > a[aria-current='page'] {
+.public-header .public-mobile-nav > a:hover,
+.public-header .public-mobile-nav > a[aria-current='page'] {
   background: var(--lapis-wash);
   color: var(--lapis);
 }
-:is(.home-page, .faq-page) .mobile-nav-actions {
+.public-header .mobile-nav-actions {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -38,31 +143,71 @@
   margin-top: 6px;
   border-top: 1px solid var(--rule);
 }
+@media (max-width: 1120px) {
+  .public-header > .bar {
+    gap: 18px;
+  }
+  .public-header .nav {
+    gap: 0;
+  }
+  .public-header .nav > a {
+    padding-inline: 6px;
+    font-size: 12px;
+  }
+}
 @media (max-width: 1100px) {
-  :is(.home-page, .faq-page) .top .nav {
+  .public-header .nav {
     display: none;
   }
-  :is(.home-page, .faq-page) .public-menu-toggle {
+  .public-header .public-menu-toggle {
     display: inline-grid;
-    place-items: center;
+  }
+  .public-header .public-mobile-nav {
+    display: grid;
+  }
+  .public-header:has(.public-mobile-nav) .actions > .icon-btn:not(.public-menu-toggle) {
+    display: none;
   }
 }
 @media (max-width: 620px) {
-  :is(.home-page, .faq-page) .actions > .icon-btn:not(.public-menu-toggle),
-  :is(.home-page, .faq-page) .actions > [data-entry='login'] {
-    display: none;
+  .public-header > .bar {
+    gap: 10px;
+    padding-inline: 16px;
   }
-  :is(.home-page, .faq-page) .actions {
+  .public-header .brand {
+    font-size: 21px;
+    gap: 6px;
+  }
+  .public-header .brand .mark {
+    width: 27px;
+    height: 27px;
+  }
+  .public-header .actions {
     gap: 4px;
   }
-  :is(.home-page, .faq-page) .actions > [data-entry='signup'] {
-    min-height: 44px;
+  .public-header .actions > .icon-btn:not(.public-menu-toggle),
+  .public-header .actions > [data-entry='login'] {
+    display: none;
+  }
+  .public-header .actions > [data-entry='signup'] {
     padding-inline: 10px;
     font-size: 11px;
   }
-  :is(.home-page, .faq-page) .public-menu-toggle {
-    width: 44px;
-    height: 44px;
-    padding: 0;
+}
+@media (max-width: 360px) {
+  .public-header > .bar {
+    gap: 4px;
+    padding-inline: 12px;
+  }
+  .public-header .brand {
+    font-size: 19px;
+    gap: 4px;
+  }
+  .public-header .brand .mark {
+    width: 24px;
+    height: 24px;
+  }
+  .public-header .actions > [data-entry='signup'] {
+    padding-inline: 7px;
   }
 }

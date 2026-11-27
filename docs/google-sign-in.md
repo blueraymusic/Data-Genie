@@ -1,6 +1,6 @@
 # Google sign-in
 
-The hosted signup and login pages offer **Continue with Google** alongside email and password. Self-hosted installations can enable it with server-side OAuth configuration. It uses Google's OpenID Connect authorization-code flow on the existing Python server. This setup does not enable Google Cloud Billing, Firebase Authentication, Identity Platform, or any paid Google API. Existing Azure hosting and Key Vault metering remain unchanged.
+The hosted account pages offer **Sign up with Google** and **Continue with Google** alongside email and password. Self-hosted installations can enable it with server-side OAuth configuration. It uses Google's OpenID Connect authorization-code flow on the existing Python server. This setup does not enable Google Cloud Billing, Firebase Authentication, Identity Platform, or any paid Google API. Existing Azure hosting and Key Vault metering remain unchanged.
 
 ## Create the OAuth client
 
@@ -36,7 +36,7 @@ Terraform stores the Google secret in the existing Key Vault under `google-secre
 
 Microsoft sign-in is retired. Its old Terraform inputs and historical `microsoft-secret` resource remain only to avoid deleting secrets from existing state. They no longer produce Microsoft runtime app settings. No Azure deployment identity or Microsoft-based agent connection is removed by this change.
 
-`GET /api/auth/providers` reports whether Google is configured, without exposing credentials. The button appears on signup and login only when valid server configuration is available. Email/password continues to work while Google is disabled.
+`GET /api/auth/providers` reports whether Google is configured, without exposing credentials. A working Google button requires valid server configuration. The local signup page shows when Google is unavailable, and email/password continues to work.
 
 ## Accounts and linking
 

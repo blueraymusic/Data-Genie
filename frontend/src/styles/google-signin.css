@@ -13,13 +13,21 @@
   color: #1f1f1f;
   text-decoration: none;
 }
-.workspace-page .google-button:hover {
+.workspace-page .google-button:hover:not(:disabled) {
   border-color: #1f1f1f;
   background: #f2f2f2;
 }
 .workspace-page .google-button[aria-disabled='true'] {
   opacity: 0.55;
   cursor: wait;
+}
+.workspace-page .google-button:disabled {
+  cursor: default;
+}
+.workspace-page .google-preview-note {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  font-size: 12px;
 }
 .workspace-page .google-mark {
   flex: none;
