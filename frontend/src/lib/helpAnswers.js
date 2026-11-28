@@ -88,3 +88,25 @@ export function findHelpAnswers(question) {
   if (!runnerUp || best.score > runnerUp.score + 1) return [best.item];
   return ranked.slice(0, 3).map(({ item }) => item);
 }
+
+export async function suggestHelpAnswers(question, signal) {
+  try {
+    const response = await fetch('/api/help/faq', {
+      method: 'POST',
+      credentials: 'omit',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+      signal,
+    });
+    if (!response.ok) return [];
+    const { matches } = await response.json();
+    if (Array.isArray(matches)) {
+      return [...new Set(matches.slice(0, 3))]
+        .map((id) => index.find((item) => item.href === '/faq#' + id))
+        .filter(Boolean);
+    }
+  } catch {
+    // The FAQ and local matches remain available when the provider is unavailable.
+  }
+  return [];
+}

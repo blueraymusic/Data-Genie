@@ -66,12 +66,13 @@ def application(environ, start_response):
             request.headers.get("Sec-Fetch-Site") == "cross-site"
             or (origin and origin != settings.public_url())
         )
-        # OAuth exchanges can wait on Google. Those handlers explicitly split
+        # Provider calls can wait on Google. Those handlers explicitly split
         # their own short durable operations so other users aren't locked out.
         manages_transaction = (request.command, urlsplit(request.path).path) in {
             ("GET", "/api/v1/openapi.json"),
             ("GET", "/api/auth/providers"), ("GET", "/api/auth/google/start"),
             ("GET", "/api/auth/google/callback"), ("POST", "/api/auth/google/link"),
+            ("POST", "/api/help/faq"),
         }
         if hosted and request.local_host() and not cross_origin and request.path.startswith("/api/") and not manages_transaction:
             with cloud_state.transaction():

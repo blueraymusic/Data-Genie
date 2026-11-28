@@ -309,6 +309,11 @@ body:has(.query-workspace) .help-chat-trigger {
   padding: 11px 14px;
   border-top: 1px solid var(--rule);
 }
+.help-chat-privacy {
+  margin: 6px 1px 0;
+  color: var(--ink-soft);
+  font-size: 11px;
+}
 .help-chat-composer {
   display: flex;
   align-items: center;

@@ -1,3 +1,5 @@
+import React from 'react';
+
 export function faqAnswerAnchor(question) {
   return (
     'faq-answer-' +
@@ -79,6 +81,35 @@ export const faqGroups = [
             <p>
               Reads run immediately. Changes wait for your confirmation, and your requests stay in
               History.
+            </p>
+          </>
+        ),
+      },
+      {
+        question: 'How do I create an account?',
+        help: [
+          'how to create an account',
+          'create a new account',
+          'set up an account',
+          'how do I sign up',
+          'sign up',
+          'signup',
+          'how do I register',
+          'register',
+          'how do I sign up with Google',
+        ],
+        search:
+          'Create a Data Genie account or register using Sign up with Google or your name, email address and password. The hosted site sends a six-digit email verification code. Check spam if it doesn’t arrive.',
+        answer: (
+          <>
+            <p>
+              Open <a href="/signup">Sign up</a>. Choose <strong>Sign up with Google</strong> if it
+              appears, or enter your name and email and select <strong>Continue</strong>.
+            </p>
+            <p>
+              For email sign-up, choose and confirm a password, then select{' '}
+              <strong>Create account</strong>. On the hosted site, enter the six-digit code sent to
+              your email to finish. Check spam if the code doesn’t arrive.
             </p>
           </>
         ),

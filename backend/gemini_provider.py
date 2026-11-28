@@ -46,21 +46,21 @@ def _schema_for_prompt(tables):
     ]
 
 
-def _request_json(url, api_key, body):
+def _request_json(url, api_key, body, *, attempts=3, timeout=15):
     payload = json.dumps(body).encode("utf-8")
     outgoing = request.Request(url, data=payload, method="POST", headers={
         "Content-Type": "application/json",
         "x-goog-api-key": api_key,
     })
-    # Only planning is retried. SQL execution and confirmation are never replayed.
-    for attempt in range(3):
+    # Callers only retry generation. Execution and confirmation are never replayed.
+    for attempt in range(attempts):
         try:
-            with request.urlopen(outgoing, timeout=15) as response:
+            with request.urlopen(outgoing, timeout=timeout) as response:
                 return json.loads(response.read().decode("utf-8"))
         except error.HTTPError as exc:
             transient = exc.code in {408, 429, 500, 502, 503, 504}
             exc.close()
-            if transient and attempt < 2:
+            if transient and attempt + 1 < attempts:
                 time.sleep(random.uniform(0.5, 0.8) * (attempt + 1))
                 continue
             # Never expose response bodies, credentials, or request URLs in chat.
@@ -74,7 +74,7 @@ def _request_json(url, api_key, body):
                 raise GeminiError("Data Genie AI rejected the planning request. Try a simpler request or use the SQL tab.") from exc
             raise GeminiError("Data Genie AI could not prepare SQL right now. Try again or use the SQL tab.", retryable=transient) from exc
         except (error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-            if attempt < 2:
+            if attempt + 1 < attempts:
                 time.sleep(random.uniform(0.5, 0.8) * (attempt + 1))
                 continue
             raise GeminiError("Data Genie AI could not be reached right now. Try again later or use the SQL tab.", retryable=True) from exc

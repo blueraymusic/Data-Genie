@@ -21,6 +21,7 @@ from . import workbench
 from . import settings
 from . import authentication
 from . import google_auth
+from . import help_faq
 from . import workspace_api
 from . import agent_api
 from .access_control import session_access
@@ -435,6 +436,13 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if agent_api.handle(self, parsed.path):
                 return
+            if parsed.path == "/api/help/faq":
+                if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/json":
+                    raise ValueError("Send the help question as JSON.")
+                question = self.read_json(2048).get("question")
+                if not isinstance(question, str) or not 1 <= len(question.strip()) <= 280:
+                    raise ValueError("Enter a help question of up to 280 characters.")
+                return self.json({"matches": help_faq.match(question.strip(), self.client_address[0])})
             if parsed.path.startswith("/api/auth/microsoft/"):
                 return self.json({"error": "Not found."}, 404)
             if parsed.path == "/api/auth/google/link":

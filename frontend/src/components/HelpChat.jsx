@@ -1,6 +1,6 @@
-import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useDismissMotion, useReducedMotion } from '../hooks/useMotion';
-import { findHelpAnswers } from '../lib/helpAnswers';
+import { findHelpAnswers, suggestHelpAnswers } from '../lib/helpAnswers';
 import { Link } from '../lib/router';
 import { Icon } from './Icon';
 import { Modal } from './Modal';
@@ -60,6 +60,9 @@ export function HelpChat() {
   const focusReply = useRef(false);
   const followNewTurn = useRef(false);
   const nextId = useRef(0);
+  const pending = useRef(null);
+  const latestId = messages.at(-1)?.id;
+  const searching = messages.at(-1)?.searching;
   const reduced = useReducedMotion();
   const { dismiss, closing } = useDismissMotion(panel, () => setOpen(false));
 
@@ -74,17 +77,33 @@ export function HelpChat() {
       latest.current.querySelector('[tabindex="-1"]')?.focus({ preventScroll: true });
     focusReply.current = false;
     followNewTurn.current = false;
-  }, [open, messages, reduced]);
+  }, [open, latestId, reduced]);
 
-  function ask(value, fromSuggestion = false) {
+  useEffect(() => () => pending.current?.abort(), []);
+
+  async function ask(value, fromSuggestion = false) {
     const question = value.trim();
-    if (!question) return;
+    if (!question || pending.current) return;
     const answers = findHelpAnswers(question);
+    const request = answers.length ? null : new AbortController();
+    pending.current = request;
     const id = ++nextId.current;
     focusReply.current = fromSuggestion;
     followNewTurn.current = true;
-    setMessages((previous) => [...previous.slice(-15), { id, question, answers }]);
+    setMessages((previous) => [
+      ...previous.slice(-15),
+      { id, question, answers, searching: Boolean(request) },
+    ]);
     setDraft('');
+    if (!request) return;
+    const matches = await suggestHelpAnswers(question, request.signal);
+    if (request.signal.aborted) return;
+    pending.current = null;
+    setMessages((previous) =>
+      previous.map((turn) =>
+        turn.id === id ? { ...turn, answers: matches, searching: false } : turn,
+      ),
+    );
   }
 
   return (
@@ -124,6 +143,8 @@ export function HelpChat() {
                   aria-label="Start a new help chat"
                   title="New chat"
                   onClick={() => {
+                    pending.current?.abort();
+                    pending.current = null;
                     setMessages([]);
                     setDraft('');
                     composer.current?.focus();
@@ -156,7 +177,7 @@ export function HelpChat() {
                 />
               </div>
             )}
-            {messages.map(({ id, question, answers }, index) => {
+            {messages.map(({ id, question, answers, searching: waiting }, index) => {
               const isLatest = index === messages.length - 1;
               const related =
                 isLatest && (answers.length ? followUps.get(answers[0].question) : starters);
@@ -164,7 +185,9 @@ export function HelpChat() {
                 <div className="help-chat-turn" key={id} ref={isLatest ? latest : undefined}>
                   <p className="help-chat-question">{question}</p>
                   <div className="help-chat-answer">
-                    {answers.length === 1 ? (
+                    {waiting ? (
+                      <p role="status">Looking for a matching FAQ answer…</p>
+                    ) : answers.length === 1 ? (
                       <>
                         <h3 tabIndex={-1}>{answers[0].question}</h3>
                         {answers[0].answer}
@@ -198,7 +221,7 @@ export function HelpChat() {
                         </Link>
                       </>
                     )}
-                    {related && answers.length < 2 && (
+                    {!waiting && related && answers.length < 2 && (
                       <HelpSuggestions
                         questions={related}
                         label="Suggested follow-up questions"
@@ -232,11 +255,14 @@ export function HelpChat() {
                 className="help-chat-send"
                 type="submit"
                 aria-label="Send question"
-                disabled={!draft.trim()}
+                disabled={searching || !draft.trim()}
               >
                 <Icon name="send" />
               </button>
             </div>
+            <p className="help-chat-privacy">
+              Unmatched questions may be sent to Google Gemini. Leave out passwords and keys.
+            </p>
           </form>
         </Modal>
       )}

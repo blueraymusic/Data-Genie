@@ -442,6 +442,23 @@ describe('React pages and account flow', () => {
     ).toBeTruthy();
   });
 
+  it('answers how to create an account and links to sign-up and the FAQ', async () => {
+    const events = userEvent.setup();
+    render(<App />);
+    await events.click(screen.getByRole('button', { name: 'Open Data Genie help chat' }));
+    const chat = within(screen.getByRole('dialog', { name: 'Data Genie help' }));
+    await events.type(
+      chat.getByRole('textbox', { name: 'Ask about Data Genie' }),
+      'how to create an account{Enter}',
+    );
+    expect(chat.getByRole('heading', { name: 'How do I create an account?' })).toBeTruthy();
+    expect(chat.getByRole('link', { name: 'Sign up' }).getAttribute('href')).toBe('/signup');
+    expect(chat.getByText(/enter the six-digit code sent to your email/)).toBeTruthy();
+    await events.click(chat.getByRole('link', { name: 'Read this in the FAQ' }));
+    expect(location.hash).toBe('#faq-answer-how-do-i-create-an-account');
+    expect(document.getElementById(location.hash.slice(1)).closest('details').open).toBe(true);
+  });
+
   it('answers help questions from the FAQ and opens the cited answer', async () => {
     const events = userEvent.setup();
     render(<App />);
@@ -457,10 +474,18 @@ describe('React pages and account flow', () => {
     expect(chat.getByRole('heading', { name: 'Which database files can I upload?' })).toBeTruthy();
     const input = chat.getByRole('textbox', { name: 'Ask about Data Genie' });
     await events.type(input, 'What is the weather in Missouri?{Enter}');
-    expect(chat.getByText('I couldn’t find an answer in the Data Genie FAQ.')).toBeTruthy();
+    expect(await chat.findByText('I couldn’t find an answer in the Data Genie FAQ.')).toBeTruthy();
     await events.type(input, 'I need to connect to Supabase{Enter}');
     expect(chat.getByRole('heading', { name: 'How do I connect PostgreSQL?' })).toBeTruthy();
-    expect(fetch.mock.calls).toHaveLength(requestCount);
+    expect(fetch.mock.calls.slice(requestCount)).toEqual([
+      [
+        '/api/help/faq',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ question: 'What is the weather in Missouri?' }),
+        }),
+      ],
+    ]);
     await events.click(chat.getAllByRole('link', { name: 'Read this in the FAQ' }).at(-1));
     expect(screen.queryByRole('dialog', { name: 'Data Genie help' })).toBeNull();
     expect(location.hash).toBe('#faq-answer-how-do-i-connect-postgresql');
@@ -470,6 +495,28 @@ describe('React pages and account flow', () => {
     await events.click(reopened.getByRole('button', { name: 'Start a new help chat' }));
     expect(reopened.getByRole('button', { name: 'How does Data Genie work?' })).toBeTruthy();
     expect(reopened.queryByRole('link', { name: 'Read this in the FAQ' })).toBeNull();
+  });
+
+  it('renders only known FAQ entries from the Gemini fallback', async () => {
+    fetch.mockImplementation((path) =>
+      response(
+        path === '/api/help/faq'
+          ? { matches: ['unknown-entry', 'faq-answer-how-do-i-create-an-account'] }
+          : { user: null },
+      ),
+    );
+    const events = userEvent.setup();
+    render(<App />);
+    await events.click(screen.getByRole('button', { name: 'Open Data Genie help chat' }));
+    const chat = within(screen.getByRole('dialog', { name: 'Data Genie help' }));
+    await events.type(
+      chat.getByRole('textbox', { name: 'Ask about Data Genie' }),
+      'What’s the way in for a brand-new visitor?{Enter}',
+    );
+    expect(await chat.findByRole('heading', { name: 'How do I create an account?' })).toBeTruthy();
+    expect(chat.getByRole('link', { name: 'Read this in the FAQ' }).getAttribute('href')).toBe(
+      '/faq#faq-answer-how-do-i-create-an-account',
+    );
   });
 
   it('validates registration, opens the sample walkthrough, and remembers completion', async () => {

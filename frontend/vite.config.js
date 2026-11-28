@@ -1,10 +1,22 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { faqAnswerAnchor, faqGroups } from './src/data/faq.jsx';
+
+const faqCatalog = {
+  name: 'faq-catalog',
+  apply: 'build',
+  generateBundle() {
+    const entries = faqGroups.flatMap(({ items }) =>
+      items.map(({ question, search }) => ({ id: faqAnswerAnchor(question), question, search })),
+    );
+    this.emitFile({ type: 'asset', fileName: 'help-faq.json', source: JSON.stringify(entries) });
+  },
+};
 
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
-  plugins: [react()],
+  plugins: [react(), faqCatalog],
   build: { outDir: 'dist', emptyOutDir: true },
   server: {
     proxy: Object.fromEntries(
