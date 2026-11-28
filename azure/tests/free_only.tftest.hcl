@@ -1,4 +1,11 @@
 mock_provider "azurerm" {
+  mock_data "azurerm_client_config" {
+    defaults = {
+      tenant_id       = "00000000-0000-0000-0000-000000000001"
+      object_id       = "00000000-0000-0000-0000-000000000002"
+      subscription_id = "00000000-0000-0000-0000-000000000003"
+    }
+  }
   mock_data "azurerm_resource_group" {
     defaults = {
       name     = "data_genie"
@@ -29,6 +36,10 @@ mock_provider "random" {}
 
 run "free_only_plan" {
   command = plan
+  assert {
+    condition     = azurerm_linux_web_app.app.app_settings["WEBSITE_NETWORK_LINUX_OUTBOUND_DISABLE_IPV6"] == "false"
+    error_message = "The app must allow outbound IPv6 for direct PostgreSQL connections as well as IPv4 poolers."
+  }
   assert {
     condition     = azurerm_service_plan.hosting.sku_name == "F1"
     error_message = "The default hosting tier must remain free."
@@ -79,10 +90,101 @@ run "budgeted_student_credit_hosting" {
     condition     = azapi_resource.free_state.body.properties.useFreeLimit == true && azapi_resource.free_state.body.properties.freeLimitExhaustionBehavior == "AutoPause"
     error_message = "Using credit for hosting must not enable SQL overages."
   }
+  assert {
+    condition     = azurerm_linux_web_app.app.site_config[0].always_on == true
+    error_message = "B1 should keep the app warm using its included Always On capability."
+  }
 }
 
 run "larger_paid_tier_rejected" {
   command = plan
   variables { app_service_sku = "P1v3" }
   expect_failures = [var.app_service_sku]
+}
+
+run "custom_https_origin" {
+  command = plan
+  variables { public_url = "https://data-genie.space" }
+  assert {
+    condition     = azurerm_linux_web_app.app.app_settings["GENIE_PUBLIC_URL"] == "https://data-genie.space"
+    error_message = "The canonical origin must survive subsequent infrastructure applies."
+  }
+}
+
+run "invalid_public_origin" {
+  command = plan
+  variables { public_url = "http://data-genie.space/path" }
+  expect_failures = [var.public_url]
+}
+
+run "google_sign_in_settings" {
+  command = plan
+  variables {
+    public_url           = "https://data-genie.space"
+    google_client_id     = "123456789-test.apps.googleusercontent.com"
+    google_client_secret = "test-only-secret"
+    google_redirect_uri  = "https://data-genie.space/api/auth/google/callback"
+  }
+  override_resource {
+    target          = azurerm_key_vault_secret.app["google-secret"]
+    override_during = plan
+    values = {
+      versionless_id = "https://example.vault.azure.net/secrets/google-secret"
+    }
+  }
+  assert {
+    condition     = azurerm_linux_web_app.app.app_settings["GENIE_GOOGLE_CLIENT_ID"] == var.google_client_id && azurerm_linux_web_app.app.app_settings["GENIE_GOOGLE_REDIRECT_URI"] == var.google_redirect_uri
+    error_message = "Reviewed Google sign-in settings must survive infrastructure applies."
+  }
+  assert {
+    condition     = azurerm_linux_web_app.app.app_settings["GENIE_GOOGLE_CLIENT_SECRET"] == "@Microsoft.KeyVault(SecretUri=https://example.vault.azure.net/secrets/google-secret)"
+    error_message = "Google credentials must reach the app through Key Vault, not a plain-text app setting."
+  }
+  assert {
+    condition     = !can(azurerm_linux_web_app.app.app_settings["GENIE_MICROSOFT_CLIENT_ID"]) && !can(azurerm_linux_web_app.app.app_settings["GENIE_MICROSOFT_CLIENT_SECRET"])
+    error_message = "The retired Microsoft provider must have no runtime credentials."
+  }
+}
+
+run "invalid_google_client" {
+  command = plan
+  variables { google_client_id = "not-a-google-client" }
+  expect_failures = [var.google_client_id]
+}
+
+run "invalid_google_callback" {
+  command = plan
+  variables { google_redirect_uri = "http://data-genie.space/api/auth/google/callback" }
+  expect_failures = [var.google_redirect_uri]
+}
+
+run "approved_fixed_basic_sql" {
+  command = plan
+  variables {
+    app_service_sku = "B1"
+    sql_state_tier = "basic"
+  }
+  override_resource {
+    target = azapi_resource.free_state
+    values = {
+      output = {
+        sku = { name = "Basic", tier = "Basic", capacity = 5 }
+        properties = { useFreeLimit = false, maxSizeBytes = 2147483648 }
+      }
+    }
+  }
+  assert {
+    condition = azapi_resource.free_state.body.sku.name == "Basic" && azapi_resource.free_state.body.sku.capacity == 5 && azapi_resource.free_state.body.properties.maxSizeBytes == 2147483648 && azapi_resource.free_state.body.properties.useFreeLimit == false
+    error_message = "Basic must remain fixed at 5 DTUs and 2 GiB with no free-offer billing."
+  }
+  assert {
+    condition = !can(azapi_resource.free_state.body.properties.minCapacity) && !can(azapi_resource.free_state.body.properties.autoPauseDelay)
+    error_message = "Basic must not retain incompatible serverless compute settings."
+  }
+}
+
+run "unapproved_sql_tier" {
+  command = plan
+  variables { sql_state_tier = "standard" }
+  expect_failures = [var.sql_state_tier]
 }

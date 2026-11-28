@@ -15,42 +15,64 @@ import sqlite3
 import sys
 import tempfile
 import errno
+import time
 
 from . import workbench
 from . import settings
 from . import authentication
+from . import google_auth
+from . import help_faq
+from . import workspace_api
+from . import agent_api
+from .access_control import session_access
 from .connections import ConnectionFailure
 
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_JSON_BYTES = 36 * 1024 * 1024
 STATIC_FILES = {
+    "/connect-agent": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/favicon.svg": ("frontend/public/favicon.svg", "image/svg+xml"),
     "/": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/index.html": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/faq": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/contact": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/contact.html": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/terms": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/faq.html": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/app": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/dashboard.html": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/signin": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/signup": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/forgot-password": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/reset-password": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/databases": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/history": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/account": ("frontend/dist/index.html", "text/html; charset=utf-8"),
+    "/workspaces": ("frontend/dist/index.html", "text/html; charset=utf-8"),
     "/static/design.css": ("frontend/src/styles/design.css", "text/css; charset=utf-8"),
     "/static/favicon.svg": ("frontend/public/favicon.svg", "image/svg+xml"),
 }
 
 
 class Handler(BaseHTTPRequestHandler):
-    def send_body(self, body, content_type, status=200, filename=None):
+    def log_request(self, code="-", size="-"):
+        # OAuth authorization codes and state must not enter local request logs.
+        self.log_message('"%s %s %s" %s %s', self.command, urlparse(self.path).path,
+                         self.request_version, str(code), str(size))
+
+    def send_body(self, body, content_type, status=200, filename=None, headers=None):
         self.send_response(status)
+        for name, value in (headers or {}).items():
+            self.send_header(name, value)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Cache-Control", "no-store")
         if getattr(self, "response_cookie", None):
             self.send_header("Set-Cookie", self.response_cookie)
+        for cookie in getattr(self, "response_cookies", []):
+            self.send_header("Set-Cookie", cookie)
         if filename:
             safe = str(filename).replace('"', "_").replace("\r", "").replace("\n", "")
             safe = safe.encode("ascii", "replace").decode("ascii")
@@ -58,8 +80,8 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def json(self, value, status=200):
-        self.send_body(json.dumps(value, ensure_ascii=False, allow_nan=False).encode(), "application/json; charset=utf-8", status)
+    def json(self, value, status=200, headers=None):
+        self.send_body(json.dumps(value, ensure_ascii=False, allow_nan=False).encode(), "application/json; charset=utf-8", status, headers=headers)
 
     def read_body(self, maximum=MAX_JSON_BYTES):
         length = int(self.headers.get("Content-Length", "0"))
@@ -73,8 +95,56 @@ class Handler(BaseHTTPRequestHandler):
             raise ValueError("Provide a JSON object.")
         return value
 
+    def remote_mcp(self):
+        from .remote_mcp import PATHS
+        if urlparse(self.path).path not in PATHS:
+            return False
+        from .wsgi import application
+        from io import BytesIO
+        try:
+            length = int(self.headers.get('Content-Length', '0'))
+        except ValueError:
+            length = -1
+        if not 0 <= length <= 65536:
+            self.json({'error': 'Request body is too large or invalid.'}, 413)
+            return True
+        parsed = urlparse(self.path)
+        environ = {'REQUEST_METHOD': self.command, 'PATH_INFO': parsed.path, 'QUERY_STRING': parsed.query,
+            'SERVER_NAME': '127.0.0.1', 'SERVER_PORT': str(getattr(self.server, 'server_port', 8000)),
+            'SERVER_PROTOCOL': 'HTTP/1.1', 'wsgi.url_scheme': 'http', 'wsgi.input': BytesIO(self.rfile.read(length)),
+            'wsgi.errors': sys.stderr, 'wsgi.version': (1, 0), 'wsgi.multithread': True,
+            'wsgi.multiprocess': False, 'wsgi.run_once': False, 'REMOTE_ADDR': self.client_address[0],
+            'CONTENT_TYPE': self.headers.get('Content-Type', ''), 'CONTENT_LENGTH': str(length)}
+        for name, value in self.headers.items():
+            if name.lower() not in {'content-type', 'content-length'}:
+                environ['HTTP_' + name.upper().replace('-', '_')] = value
+        def start(status, headers, exc_info=None):
+            self.send_response(int(status.split()[0]))
+            for name, value in headers:
+                self.send_header(name, value)
+            self.end_headers()
+        response = application(environ, start)
+        try:
+            for chunk in response:
+                self.wfile.write(chunk)
+        finally:
+            if hasattr(response, 'close'):
+                response.close()
+        return True
+
     def accounts(self):
+        self.account_deletion().cleanup()
+        repository = workbench.get_repository()
+        with repository._connection() as connection:
+            expired = connection.execute('SELECT 1 FROM signup_verifications WHERE expires_at<=? LIMIT 1', (int(time.time()),)).fetchone()
+        if expired:
+            with repository._connection(write=True) as connection:
+                connection.execute('DELETE FROM signup_verifications WHERE expires_at<=?', (int(time.time()),))
         return authentication.Accounts(workbench.get_repository())
+
+    def account_deletion(self):
+        from .account_deletion import AccountDeletion
+        return AccountDeletion(workbench.get_repository(), (workbench.DATABASE_DIRECTORY, workbench.UPLOAD_DIRECTORY))
 
     def local_host(self):
         try:
@@ -87,10 +157,13 @@ class Handler(BaseHTTPRequestHandler):
             return False
 
     def login_token(self):
+        return self.cookie_value(authentication.COOKIE_NAME)
+
+    def cookie_value(self, name):
         cookie = SimpleCookie()
         try:
             cookie.load(self.headers.get("Cookie", ""))
-            return cookie[authentication.COOKIE_NAME].value if authentication.COOKIE_NAME in cookie else ""
+            return cookie[name].value if name in cookie else ""
         except Exception:
             return ""
 
@@ -103,16 +176,104 @@ class Handler(BaseHTTPRequestHandler):
         if settings.public_url():
             self.response_cookie += "; Secure"
 
+    def set_google_cookie(self, token):
+        value = (f"{google_auth.COOKIE_NAME}={token}; Path=/api/auth/google; HttpOnly; SameSite=Lax; "
+                 f"Max-Age={google_auth.FLOW_LIFETIME if token else 0}")
+        if settings.public_url():
+            value += "; Secure"
+        self.response_cookies = [value]
+
+    def redirect(self, location):
+        return self.send_body(b"", "text/plain; charset=utf-8", 303, headers={"Location": location,
+                              "Referrer-Policy": "no-referrer"})
+
+    def google_config(self):
+        config = google_auth.configuration()
+        if config and urlparse(config["redirect_uri"]).netloc.lower() == self.headers.get("Host", "").lower():
+            return config
+        return None
+
+    def google_get(self, path, query):
+        config = self.google_config()
+        record = None
+        try:
+            if not config:
+                raise google_auth.GoogleError("unavailable")
+            if len(self.path) > 16 * 1024 or any(len(values) != 1 for values in query.values()):
+                raise google_auth.GoogleError()
+            browser = self.cookie_value(google_auth.COOKIE_NAME)
+            if path.endswith("/start"):
+                intent = query.get("intent", ["signin"])[0]
+                if intent not in {"signin", "link"}:
+                    raise google_auth.GoogleError()
+                with google_auth.durable():
+                    self.accounts()._reserve_attempt(self.client_address[0], "google")
+                    store = google_auth.FlowStore(workbench.get_repository())
+                    if intent == "link":
+                        record = store.consume(browser, grant=True)
+                        store.active_link(record)
+                        # This same-origin hop must still be made by the login
+                        # that confirmed its password, not a replacement login.
+                        if record["login_hash"] != authentication.token_hash(self.login_token()):
+                            raise google_auth.GoogleError("link_expired")
+                flow = google_auth.begin(config)  # Network outside cloud lock.
+                browser = google_auth.new_browser_token()
+                with google_auth.durable():
+                    store = google_auth.FlowStore(workbench.get_repository())
+                    if record:
+                        store.active_link(record)
+                    store.save(browser, flow, intent=intent,
+                               account_id=record["account_id"] if record else None,
+                               login_hash=record["login_hash"] if record else (
+                                   authentication.token_hash(self.login_token()) if self.login_token() else None))
+                self.set_google_cookie(browser)
+                return self.redirect(flow["auth_uri"])
+            with google_auth.durable():
+                record = google_auth.FlowStore(workbench.get_repository()).consume(
+                    browser, state=query.get("state", [None])[0])
+            identity = google_auth.finish(config, record["payload"], {key: values[0] for key, values in query.items()})
+            with google_auth.durable():
+                accounts = self.accounts()
+                if record["intent"] == "link":
+                    google_auth.FlowStore(workbench.get_repository()).active_link(record)
+                    user = accounts.link_google(record["account_id"], identity)
+                    # Replace the login that granted this link, even when the
+                    # Strict app cookie is absent on the cross-site callback.
+                    with workbench.get_repository()._connection(write=True) as connection:
+                        connection.execute("DELETE FROM browser_logins WHERE token_hash=?", (record["login_hash"],))
+                else:
+                    user = accounts.google_login(identity, self.client_address[0])
+                    if record["login_hash"]:
+                        with workbench.get_repository()._connection(write=True) as connection:
+                            connection.execute("DELETE FROM browser_logins WHERE token_hash=?", (record["login_hash"],))
+                token = accounts.issue_login(user["account_id"], self.login_token())
+            self.set_login_cookie(token)
+            self.set_google_cookie("")
+            return self.redirect("/account?google=linked" if record["intent"] == "link" else "/databases")
+        except authentication.GoogleAccountError as error:
+            code = {"identity_in_use": "already_linked", "invalid_identity": "invalid"}.get(error.code, error.code)
+        except google_auth.GoogleError as error:
+            code = error.code
+        except authentication.TooManyAttempts:
+            code = "rate_limited"
+        self.set_google_cookie("")
+        target = "/account" if record and record["intent"] in {"link", "link_grant"} else "/signin"
+        return self.redirect(target + "?google_error=" + code)
+
     def require_csrf(self):
         expected = authentication.csrf_token(self.login_token())
         supplied = self.headers.get("X-CSRF-Token", "")
         if len(supplied) != 64 or any(char not in "0123456789abcdef" for char in supplied) or not hmac.compare_digest(supplied, expected):
             raise PermissionError("Reload the page before sending this request.")
 
-    def owned_session(self, session_id, user, active_only=False):
-        session = workbench.get_repository().get_session(session_id, active_only=active_only)
+    def owned_session(self, session_id, user, active_only=False, check_access=True):
+        session = workbench.get_repository().get_session(session_id)
         if session.get("account_id") != user["account_id"]:
             raise PermissionError("This session is not available for your account.")
+        if check_access:
+            session_access(workbench.get_repository(), session)
+        if active_only and session.get("ended_at") is not None:
+            raise workbench.RepositoryError("This session has ended. Start a new session.")
         return session
 
     def session_id(self, query=None, user=None):
@@ -126,11 +287,26 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self.response_cookie = None
+        self.response_cookies = []
+        # Keep old App Service bookmarks usable without allowing API writes on
+        # a second origin. Only Azure's own configured hostname may redirect.
+        public = settings.public_url()
+        azure_host = os.environ.get("WEBSITE_HOSTNAME", "").strip().lower()
+        host = self.headers.get("Host", "").lower()
+        if (public and azure_host.endswith(".azurewebsites.net")
+                and host == azure_host and host != urlparse(public).netloc.lower()):
+            self.send_response(308)
+            self.send_header("Location", public + "/" + self.path.lstrip("/"))
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         if not self.local_host():
             return self.json({"error": "Use the local Data Genie address."}, 403)
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query)
         try:
+            if self.remote_mcp():
+                return
             if parsed.path == "/healthz":
                 return self.json({"status": "ok"})
             if parsed.path.startswith("/assets/"):
@@ -146,32 +322,74 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_body((ROOT / name).read_bytes(), content_type)
             if not parsed.path.startswith("/api/"):
                 return self.json({"error": "Not found."}, 404)
+            if parsed.path == "/api/auth/providers":
+                return self.json({"google": {"enabled": bool(self.google_config())}})
+            if parsed.path.startswith("/api/auth/microsoft/"):
+                return self.json({"error": "Not found."}, 404)
+            if parsed.path in {"/api/auth/google/start", google_auth.CALLBACK_PATH}:
+                return self.google_get(parsed.path, query)
             if parsed.path == "/api/auth/session":
                 try:
                     user = self.account()
                     return self.json({"user": user, "csrf_token": authentication.csrf_token(self.login_token())})
                 except authentication.LoginRequired:
                     return self.json({"user": None})
+            if parsed.path == "/api/auth/deletion":
+                return self.json(self.account_deletion().summary(self.account()["account_id"]))
+            if agent_api.handle(self, parsed.path):
+                return
             user = self.account()
+            if agent_api.browser_get(self, parsed.path, user):
+                return
+            if workspace_api.get(self, parsed.path, user):
+                return
             if parsed.path == "/api/sessions":
-                return self.json({"sessions": workbench.get_repository().list_sessions(account_id=user["account_id"])})
+                sessions = []
+                for session in workbench.get_repository().list_sessions(account_id=user["account_id"]):
+                    try:
+                        access = session_access(workbench.get_repository(), session)
+                    except PermissionError:
+                        continue
+                    sessions.append({**session, "access": access})
+                return self.json({"sessions": sessions})
             if parsed.path == "/api/status":
                 if not self.headers.get("X-Session-ID"):
                     return self.json({"session_required": True, "database": None, "tables": [], "ai": settings.public_ai_settings()})
-                with workbench.session_scope(self.session_id(user=user)):
-                    return self.json(workbench.database_info())
+                try:
+                    with workbench.session_scope(self.session_id(user=user)):
+                        return self.json(workbench.database_info())
+                except workbench.RepositoryError as error:
+                    return self.json({"error": str(error), "code": "session_unavailable", "recovery": "choose_database"}, 400)
             if parsed.path == "/api/history":
                 explicit = query.get("history_session_id", [None])[0]
                 session_id = self.headers.get("X-Session-ID") or explicit
                 if not session_id:
                     raise ValueError("Choose a saved session to view its history.")
-                self.owned_session(session_id, user)
+                self.owned_session(session_id, user, check_access=not bool(explicit))
                 if explicit:
                     self.owned_session(explicit, user)
-                requests = workbench.history_for_session(session_id, query.get("search", [""])[0],
-                                                        query.get("operation", [None])[0], explicit,
-                                                        refresh_pending=explicit is None or self.headers.get("X-Session-ID") == explicit)
-                return self.json({"requests": requests})
+                search, operation = query.get("search", [""])[0], query.get("operation", [None])[0]
+                paginated = "limit" in query or "offset" in query
+                limit = int(query.get("limit", [20])[0]) if paginated else None
+                offset = int(query.get("offset", [0])[0])
+                request_id = int(query["request_id"][0]) if "request_id" in query else None
+                include_pending = query.get("include_pending", ["0"])[0]
+                if include_pending not in {"0", "1"}:
+                    raise ValueError("Choose include_pending=0 or 1.")
+                refresh_pending = explicit is None or self.headers.get("X-Session-ID") == explicit
+                requests = workbench.history_for_session(session_id, search, operation, explicit,
+                                                        refresh_pending=refresh_pending, limit=limit, offset=offset,
+                                                        request_id=request_id)
+                result = {"requests": requests}
+                if paginated:
+                    total = workbench.get_repository().history_count(explicit or session_id, search, operation, request_id)
+                    result.update(total=total, limit=limit, offset=offset, has_more=offset + len(requests) < total)
+                if include_pending == "1":
+                    present = {request["request_id"] for request in requests}
+                    result["pending_requests"] = [request for request in workbench.history_for_session(
+                        session_id, history_session_id=explicit, refresh_pending=refresh_pending, pending_only=True)
+                        if request["request_id"] not in present]
+                return self.json(result)
             session_id = self.session_id(query, user=user)
             if parsed.path == "/api/schema":
                 return self.json(workbench.schema_for_session(session_id))
@@ -186,6 +404,7 @@ class Handler(BaseHTTPRequestHandler):
                     return self.json({"table": table, "rows": rows})
             if parsed.path == "/api/download":
                 session = workbench.get_repository().get_session(session_id)
+                session_access(workbench.get_repository(), session, "export")
                 with tempfile.TemporaryDirectory(prefix="data-genie-export-") as directory:
                     path = workbench.export_database(session_id, Path(directory) / "download.sqlite3")
                     return self.send_body(path.read_bytes(), "application/vnd.sqlite3", filename=session["database"])
@@ -203,22 +422,81 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         self.response_cookie = None
+        self.response_cookies = []
         if not self.local_host():
             return self.json({"error": "Use the local Data Genie address."}, 403)
         parsed = urlparse(self.path)
+        if self.remote_mcp():
+            return
         origin = self.headers.get("Origin")
         host = self.headers.get("Host", "")
         expected = settings.public_url() or ("http://" + host)
         if self.headers.get("Sec-Fetch-Site") == "cross-site" or (origin and origin != expected):
             return self.json({"error": "Cross-origin requests are blocked."}, 403)
         try:
-            if parsed.path in {"/api/auth/register", "/api/auth/login"}:
+            if agent_api.handle(self, parsed.path):
+                return
+            if parsed.path == "/api/help/faq":
+                if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != "application/json":
+                    raise ValueError("Send the help question as JSON.")
+                question = self.read_json(2048).get("question")
+                if not isinstance(question, str) or not 1 <= len(question.strip()) <= 280:
+                    raise ValueError("Enter a help question of up to 280 characters.")
+                return self.json({"matches": help_faq.match(question.strip(), self.client_address[0])})
+            if parsed.path.startswith("/api/auth/microsoft/"):
+                return self.json({"error": "Not found."}, 404)
+            if parsed.path == "/api/auth/google/link":
+                if not self.google_config():
+                    return self.json({"error": "Google sign-in is unavailable right now."}, 503)
                 if not self.headers.get("Content-Type", "").startswith("application/json"):
                     raise ValueError("Send account requests as JSON.")
                 payload = self.read_json(16 * 1024)
+                with google_auth.durable():
+                    user = self.account()
+                    self.require_csrf()
+                    self.accounts().verify_password(user["account_id"], payload.get("password"), self.client_address[0])
+                    browser = google_auth.new_browser_token()
+                    google_auth.FlowStore(workbench.get_repository()).save(
+                        browser, {}, intent="link_grant", account_id=user["account_id"],
+                        login_hash=authentication.token_hash(self.login_token()))
+                self.set_google_cookie(browser)
+                return self.json({"url": "/api/auth/google/start?intent=link"})
+            if parsed.path in {"/api/auth/forgot-password", "/api/auth/reset-password"}:
                 accounts = self.accounts()
-                if parsed.path.endswith("register"):
-                    user = accounts.register(payload.get("first_name"), payload.get("last_name"), payload.get("email"), payload.get("password"))
+                try:
+                    if not self.headers.get("Content-Type", "").startswith("application/json"):
+                        raise ValueError("Send account requests as JSON.")
+                    payload = self.read_json(16 * 1024)
+                except (ValueError, TypeError):
+                    accounts._reserve_attempt(self.client_address[0], "register" if parsed.path.endswith("forgot-password") else "login")
+                    raise
+                from .password_recovery import PasswordRecovery
+                recovery = PasswordRecovery(workbench.get_repository())
+                if parsed.path.endswith("forgot-password"):
+                    return self.json(recovery.start(payload, self.client_address[0], expected), 202)
+                return self.json(recovery.finish(payload, self.client_address[0]))
+            if parsed.path in {"/api/auth/register", "/api/auth/login", "/api/auth/verify-email", "/api/auth/verification/resend"}:
+                accounts = self.accounts()
+                try:
+                    if not self.headers.get("Content-Type", "").startswith("application/json"):
+                        raise ValueError("Send account requests as JSON.")
+                    payload = self.read_json(16 * 1024)
+                except (ValueError, TypeError):
+                    # Invalid bodies still spend IP capacity without inventing an email key.
+                    accounts._reserve_attempt(self.client_address[0], parsed.path.rsplit("/", 1)[1])
+                    raise
+                from .signup_verification import SignupVerification, required as verification_required
+                verification = SignupVerification(workbench.get_repository())
+                if parsed.path.endswith("resend"):
+                    return self.json(verification.resend(payload, self.client_address[0]), 202)
+                if parsed.path.endswith("verify-email"):
+                    user = verification.verify(payload, self.client_address[0])
+                    if user.get("sign_in_required"):
+                        return self.json(user)
+                elif parsed.path.endswith("register"):
+                    if verification_required():
+                        return self.json(verification.start(payload, self.client_address[0]), 202)
+                    user = accounts.register(payload.get("first_name"), payload.get("last_name"), payload.get("email"), payload.get("password"), self.client_address[0])
                 else:
                     user = accounts.login(payload.get("email"), payload.get("password"), self.client_address[0])
                 token = accounts.issue_login(user["account_id"], self.login_token())
@@ -226,50 +504,60 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json({"user": user, "csrf_token": authentication.csrf_token(token)}, 201 if parsed.path.endswith("register") else 200)
             user = self.account()
             self.require_csrf()
+            if agent_api.browser_post(self, parsed.path, user):
+                return
             if parsed.path == "/api/auth/logout":
                 self.accounts().logout(self.login_token())
                 self.set_login_cookie("")
                 return self.json({"signed_out": True})
             if parsed.path == "/api/auth/password":
                 payload = self.read_json()
-                self.accounts().change_password(user["account_id"], payload.get("current_password"), payload.get("new_password"))
+                self.accounts().change_password(user["account_id"], payload.get("current_password"), payload.get("new_password"), self.client_address[0])
                 token = self.accounts().issue_login(user["account_id"])
                 self.set_login_cookie(token)
                 return self.json({"user": user, "csrf_token": authentication.csrf_token(token), "message": "Password updated. Other logins have been signed out."})
+            if parsed.path == "/api/auth/profile":
+                payload = self.read_json(150 * 1024)
+                updated = self.accounts().update_profile(user["account_id"], payload)
+                return self.json({"user": updated})
+            if parsed.path == "/api/auth/walkthrough":
+                self.read_json(1024)
+                self.accounts().complete_walkthrough(user["account_id"])
+                return self.json({"walkthrough_pending": False})
+            if parsed.path == "/api/auth/delete":
+                result = self.account_deletion().delete(user["account_id"], self.read_json(16 * 1024), self.login_token(), self.client_address[0])
+                self.set_login_cookie("")
+                return self.json(result)
+            if workspace_api.post(self, parsed.path, user):
+                return
+            if parsed.path == "/api/sessions/end":
+                # Ending an owned session also works after its database grant was revoked.
+                current = self.owned_session(self.headers.get("X-Session-ID"), user, check_access=False)
+                return self.json(workbench.end_session(current["session_id"]))
             if parsed.path == "/api/sessions/resume":
                 payload = self.read_json()
                 previous = self.owned_session(payload.get("session_id"), user)
-                current = self.owned_session(self.headers["X-Session-ID"], user) if self.headers.get("X-Session-ID") else None
+                current = self.owned_session(self.headers["X-Session-ID"], user, check_access=False) if self.headers.get("X-Session-ID") else None
                 result = workbench.resume_session(previous["session_id"])
                 if current and current["session_id"] != result["session_id"]:
                     workbench.end_session(current["session_id"])
                 return self.json(result)
             if parsed.path == "/api/connections/test":
-                return self.json(workbench.test_postgres_connection(self.read_json(16 * 1024)))
+                payload = self.read_json(16 * 1024)
+                workspace_api.owned_workspace(user["account_id"], payload.get("workspace_id"))
+                return self.json(workbench.test_postgres_connection(payload))
             if parsed.path == "/api/sessions":
                 payload = self.read_json()
-                # Browser clients choose a file through upload, never an arbitrary server path.
-                identity = (user["first_name"], user["last_name"], user["email"])
-                mode = payload.get("database_mode")
-                previous = self.owned_session(self.headers["X-Session-ID"], user) if self.headers.get("X-Session-ID") else None
-                if mode is None and payload.get("use_demo") is True:
-                    mode = "demo"
-                if mode == "postgresql":
-                    result = workbench.start_postgres_session(user["account_id"], payload)
-                elif mode in {"demo", "sample"}:
-                    result = workbench.start_sample_session(*identity, account_id=user["account_id"])
-                elif mode == "create":
-                    result = workbench.create_database_session(*identity, name=payload.get("database_name"), starter=payload.get("starter", False) is True, account_id=user["account_id"])
-                elif mode == "upload":
-                    contents = base64.b64decode(payload.get("contents", ""), validate=True)
-                    result = workbench.start_uploaded_session(*identity, payload.get("name", "connected.sqlite3"), contents, account_id=user["account_id"])
-                else:
-                    raise ValueError("Choose a database: create a new one, attach a SQLite file, or explicitly use the demo.")
+                # A workspace name is reserved under the same lock as creation.
+                previous = self.owned_session(self.headers["X-Session-ID"], user, check_access=False) if self.headers.get("X-Session-ID") else None
+                result = workspace_api.create_database(user, payload)
                 if previous and previous["session_id"] != result["session_id"]:
                     workbench.end_session(previous["session_id"])
                 return self.json(result, 201)
             session_id = self.session_id(user=user)
             if parsed.path == "/api/connect":
+                current_access = session_access(workbench.get_repository(), self.owned_session(session_id, user))
+                workspace_id = workspace_api.owned_workspace(user["account_id"], current_access["workspace_id"])
                 if self.headers.get("Content-Type", "").startswith("application/octet-stream"):
                     contents = self.read_body(workbench.MAX_DATABASE_BYTES)
                     name = unquote(self.headers.get("X-Filename", "connected.sqlite3"))
@@ -277,20 +565,34 @@ class Handler(BaseHTTPRequestHandler):
                     payload = self.read_json()
                     contents = base64.b64decode(payload.get("contents", ""), validate=True)
                     name = str(payload.get("name", "connected.sqlite3"))
-                return self.json(workbench.connect_upload(session_id, name, contents))
+                name = workbench.database_filename(name)
+                with workbench._lock(self.owned_session(session_id, user)['path']), workspace_api.AUTHORIZATION_LOCK:
+                    workspace_api.store().assert_database_name(user["account_id"], workspace_id, name)
+                    result = workbench.connect_upload(session_id, name, contents)
+                    return self.json(workspace_api.attach_session(user["account_id"], workspace_id, result))
             payload = self.read_json()
             if parsed.path == "/api/sessions/end":
                 return self.json(workbench.end_session(session_id))
             if parsed.path == "/api/conversation/reset":
                 return self.json(workbench.reset_conversation(session_id))
             if parsed.path == "/api/reset":
-                return self.json(workbench.reset_session(session_id, sample=payload.get("sample") is True))
+                access = session_access(workbench.get_repository(), self.owned_session(session_id, user))
+                workspace_id = workspace_api.owned_workspace(user["account_id"], access["workspace_id"])
+                with workbench._lock(self.owned_session(session_id, user)['path']), workspace_api.AUTHORIZATION_LOCK:
+                    result = workbench.reset_session(session_id, sample=payload.get("sample") is True)
+                    return self.json(workspace_api.attach_session(user["account_id"], workspace_id, result))
             if parsed.path == "/api/databases":
-                return self.json(workbench.create_for_session(session_id, payload.get("name"), starter=payload.get("starter", False) is True), 201)
+                access = session_access(workbench.get_repository(), self.owned_session(session_id, user))
+                workspace_id = workspace_api.owned_workspace(user["account_id"], access["workspace_id"])
+                name = workbench.database_filename(payload.get("name"))
+                with workbench._lock(self.owned_session(session_id, user)['path']), workspace_api.AUTHORIZATION_LOCK:
+                    workspace_api.store().assert_database_name(user["account_id"], workspace_id, name)
+                    result = workbench.create_for_session(session_id, name, starter=payload.get("starter", False) is True)
+                    return self.json(workspace_api.attach_session(user["account_id"], workspace_id, result), 201)
             if parsed.path == "/api/ask":
                 return self.json(workbench.submit_request(
                     session_id, payload.get("question", ""), interpreter=payload.get("interpreter", "keywords"),
-                    selected_table=payload.get("selected_table")
+                    selected_table=payload.get("selected_table"), attachments=payload.get('attachments')
                 ))
             if parsed.path == "/api/query":
                 if "confirmed" in payload:
@@ -305,7 +607,8 @@ class Handler(BaseHTTPRequestHandler):
         except PermissionError as exc:
             return self.json({"error": str(exc)}, 403)
         except authentication.TooManyAttempts as exc:
-            return self.json({"error": str(exc)}, 429)
+            return self.json({"error": str(exc), "retry_after": exc.retry_after}, 429,
+                             headers={"Retry-After": str(exc.retry_after)})
         except ConnectionFailure as exc:
             return self.json(exc.payload(), exc.status)
         except (ValueError, TypeError, binascii.Error, sqlite3.Error) as exc:

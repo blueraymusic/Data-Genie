@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Brand } from './Brand';
 import { ThemeToggle } from './PublicHeader';
 import { Link } from '../lib/router';
+import { databaseAccess } from '../lib/access';
+import { useInvitationCount } from '../hooks/useInvitationCount';
+import { ProfileAvatar } from './ProfileAvatar';
 function SessionTimer({ started }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -25,7 +28,9 @@ export function WorkspaceHeader({
   onEnd,
   onLogout,
   disabled,
+  preview = false,
 }) {
+  const invitationCount = useInvitationCount(!preview);
   const dropdown = useRef(null),
     trigger = useRef(null);
   const [menu, setMenu] = useState(false),
@@ -56,25 +61,38 @@ export function WorkspaceHeader({
       <nav className="nav" aria-label="Main navigation">
         {[
           ['connect', 'Databases'],
+          ['workspaces', 'Teams'],
           ['ask', 'Workspace'],
           ['history', 'History'],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            className={
-              view === id || (id === 'ask' && ['schema', 'sql'].includes(view)) ? 'on' : undefined
-            }
-            aria-current={
-              view === id || (id === 'ask' && ['schema', 'sql'].includes(view)) ? 'page' : undefined
-            }
-            onClick={() => onNavigate(id)}
-          >
-            {label}
-            {id === 'ask' && session && (
-              <span className="live-indicator" aria-label="Open session" />
-            )}
-          </button>
-        ))}
+        ]
+          .filter(
+            ([id]) =>
+              !session || databaseAccess(session).canRead || !['ask', 'history'].includes(id),
+          )
+          .map(([id, label]) => (
+            <button
+              key={id}
+              className={
+                view === id || (id === 'ask' && ['schema', 'sql'].includes(view)) ? 'on' : undefined
+              }
+              aria-current={
+                view === id || (id === 'ask' && ['schema', 'sql'].includes(view))
+                  ? 'page'
+                  : undefined
+              }
+              onClick={() => onNavigate(id)}
+            >
+              {label}
+              {id === 'workspaces' && invitationCount > 0 && (
+                <span
+                  className="invitation-count"
+                  aria-label={`${invitationCount} pending team requests`}
+                >
+                  {invitationCount}
+                </span>
+              )}
+            </button>
+          ))}
       </nav>
       <div className="top-actions">
         {session && <SessionTimer started={session.started_at} />}
@@ -89,11 +107,12 @@ export function WorkspaceHeader({
             title={name}
             onClick={() => setMenu(!menu)}
           >
-            {[identity.first_name[0], identity.last_name[0]].join('').toUpperCase()}
+            <ProfileAvatar user={identity} />
           </button>
           {menu && (
             <div className="user-menu-panel" id="userMenuPanel">
               <button onClick={() => onNavigate('account')}>Account &amp; preferences</button>
+              <button onClick={() => onNavigate('workspaces')}>Team workspaces</button>
               <Link href="/faq">FAQ &amp; help</Link>
               <Link href="/">Homepage</Link>
               {session ? (

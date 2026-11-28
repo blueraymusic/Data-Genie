@@ -5,8 +5,11 @@ from datetime import date, datetime, time
 from decimal import Decimal
 import ipaddress
 import logging
+from pathlib import Path
+import re
 from .. import settings
-from .network import public_address
+from .. import preview_guard
+from .network import public_addresses
 from urllib.parse import parse_qsl, unquote, urlsplit
 from uuid import UUID
 
@@ -15,6 +18,16 @@ from .errors import ConnectionFailure, missing_postgres_support
 
 
 SSL_MODES = {"disable", "require", "verify-full"}
+
+
+def _root_certificate(host):
+    # Supabase signs its database endpoints with its own published CA.
+    # Scope this trust to provider-owned endpoints and still verify hostnames.
+    host = host.lower()
+    if (re.fullmatch(r"db\.[a-z0-9]+\.supabase\.co", host)
+            or re.fullmatch(r"[a-z0-9-]+\.pooler\.supabase\.com", host)):
+        return str(Path(__file__).resolve().parent.parent / "assets" / "certificates" / "supabase-prod-ca-2021.crt")
+    return "system"
 
 
 def _result_row(cursor):
@@ -139,11 +152,17 @@ class PostgresConnector:
         parameters = {key: self.config[key] for key in ("host", "port", "user", "password", "dbname", "sslmode")}
         parameters["channel_binding"] = self.config.get("channel_binding", "prefer")
         if settings.public_url():
-            if self.config["sslmode"] != "verify-full":
-                raise ValueError("Hosted PostgreSQL connections require sslmode=verify-full.")
-            parameters["hostaddr"] = public_address(parameters["host"], parameters["port"])
-        if self.config["sslmode"] == "verify-full":
-            parameters["sslrootcert"] = "system"
+            if parameters["sslmode"] not in {"require", "verify-full"}:
+                raise ValueError("Hosted PostgreSQL connections require verified TLS.")
+            # Provider URLs may request encryption only. Always verify the certificate on hosted connections.
+            parameters["sslmode"] = "verify-full"
+            addresses = public_addresses(parameters["host"], parameters["port"])
+            parameters["hostaddr"] = ",".join(addresses)
+            # libpq requires a matching hostname for each pinned address;
+            # retain it for certificate verification and pooler routing.
+            parameters["host"] = ",".join([self.config["host"]] * len(addresses))
+        if parameters["sslmode"] == "verify-full":
+            parameters["sslrootcert"] = _root_certificate(self.config["host"])
         try:
             with psycopg.connect(**parameters, connect_timeout=5, prepare_threshold=None, row_factory=dict_row,
                                  application_name="Data Genie", options="-c statement_timeout=5000 -c lock_timeout=2000") as connection:
@@ -153,6 +172,15 @@ class PostgresConnector:
                 yield connection
         except psycopg.Error as exc:
             code = exc.sqlstate or ""
+            if (not code and re.fullmatch(r"db\.[a-z0-9]+\.supabase\.co", self.config["host"].lower())
+                    and any(reason in str(exc).lower() for reason in
+                            ("network is unreachable", "no route to host", "cannot assign requested address"))):
+                raise ConnectionFailure(
+                    "Data Genie's server cannot reach this Supabase direct endpoint over IPv6. "
+                    "Use the free Session pooler URL from Supabase Connect, or restore outbound IPv6 routing "
+                    "on the Data Genie host. Your saved connection has not been removed.",
+                    "postgres_ipv6_unavailable",
+                ) from None
             if code in {"28P01", "28000", "3D000"}:
                 message = ("PostgreSQL rejected the saved login details. Enter the connection details again."
                            if code != "3D000" else "The saved PostgreSQL database no longer exists. Check its connection details.")
@@ -187,7 +215,7 @@ class PostgresConnector:
                        a.attnotnull,a.attidentity,pg_catalog.pg_get_expr(d.adbin,d.adrelid) AS column_default,
                        c.reltuples::bigint AS approximate_rows
                 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
-                JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped
+                LEFT JOIN pg_catalog.pg_attribute a ON a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped
                 LEFT JOIN pg_catalog.pg_attrdef d ON d.adrelid=c.oid AND d.adnum=a.attnum
                 WHERE n.nspname=%s AND c.relkind IN ('r','p','v','m')
                   AND pg_catalog.has_table_privilege(c.oid,'SELECT')
@@ -210,6 +238,8 @@ class PostgresConnector:
             table = tables.setdefault(row["relname"], {"name": row["relname"], "sql": "", "columns": [], "unique_indexes": [],
                 "foreign_keys": [], "row_count": max(row["approximate_rows"], 0) if row["approximate_rows"] >= 0 else None,
                 "row_count_estimated": True})
+            if row["attnum"] is None:
+                continue  # PostgreSQL permits tables with no remaining columns.
             default = row["column_default"] or ("GENERATED AS IDENTITY" if row["attidentity"] else None)
             table["columns"].append({"name": row["attname"], "type": row["data_type"], "not_null": row["attnotnull"],
                 "notnull": row["attnotnull"], "primary_key": False, "pk": 0, "default": default, "dflt_value": default,
@@ -325,13 +355,29 @@ class PostgresConnector:
 
     def prepare(self, sql, validate_live=True):
         root, details = self._parsed(sql)
-        if validate_live and details["operation"] in {"SELECT", "INSERT", "UPDATE", "DELETE"}:
+        if details["access"] == "write":
+            with self.connection(read_only=False) as connection:
+                self._lock_preview_tables(connection, details["targets"])
+                if validate_live and details["operation"] in {"INSERT", "UPDATE", "DELETE"}:
+                    connection.execute("EXPLAIN (FORMAT JSON) " + root.sql(dialect="postgres")).fetchall()
+                details["preview_guard"] = preview_guard.postgres_snapshot(connection, self.config["schema_name"], details["targets"])
+        elif validate_live:
             with self.connection() as connection:
                 connection.execute("EXPLAIN (FORMAT JSON) " + root.sql(dialect="postgres")).fetchall()
         if details["access"] == "write":
             target = next((item["table_name"] for item in details["targets"] if item["access_type"] != "read"), None)
             details["preview"] = {"table": target, "affected_rows": None}
         return details
+
+    def _lock_preview_tables(self, connection, targets):
+        for name in preview_guard.names(targets):
+            exists = connection.execute("""SELECT 1 FROM pg_catalog.pg_class c
+                JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+                WHERE n.nspname=%s AND c.relname=%s""", (self.config["schema_name"], name)).fetchone()
+            if exists:
+                connection.execute("LOCK TABLE {}.{} IN SHARE ROW EXCLUSIVE MODE".format(
+                    '"' + self.config["schema_name"].replace('"', '""') + '"',
+                    '"' + name.replace('"', '""') + '"'))
 
     def prepare_batch(self, plans):
         """Track planned schema names in memory; never execute writes to preview them."""
@@ -373,7 +419,62 @@ class PostgresConnector:
         finally:
             self._schema = original
 
-    def execute(self, sql, operation="read", limit=500, offset=None):
+    def check_workspace_effects(self, sql, access, connection=None):
+        """Fail closed for limited members when PostgreSQL can add hidden writes.
+
+        A table with triggers, write rules, cascading actions, inheritance, RLS,
+        or custom expression functions needs its database owner to review the
+        operation. Workspace grants never increase the underlying role's access.
+        """
+        if access is None or access["role"] == "owner":
+            return
+        permissions = access["permissions"]
+        if all(permissions.get(key) for key in ("write", "delete", "structure")):
+            return
+        root, details = self._parsed(sql)
+        if details["access"] == "read":
+            return
+        from sqlglot import exp
+        if (any(item.this == exp.DataType.Type.USERDEFINED for item in root.find_all(exp.DataType))
+                or any(isinstance(item, exp.Operator) for item in root.walk())):
+            # Domain checks/type coercions and user-defined operators may call
+            # functions hidden from the query's ordinary function/table nodes.
+            raise PermissionError("Custom SQL types and operators require the workspace owner to review and run this change.")
+        # Limited structure access supports table/column changes through the
+        # parser, but cannot install custom functions, triggers, or server rules.
+        names = sorted({target["table_name"] for target in details["targets"]})
+        query = """SELECT c.relkind,c.relrowsecurity,
+            EXISTS(SELECT 1 FROM pg_catalog.pg_trigger t WHERE t.tgrelid=c.oid AND NOT t.tgisinternal AND t.tgenabled<>'D') AS triggers,
+            EXISTS(SELECT 1 FROM pg_catalog.pg_rewrite r WHERE r.ev_class=c.oid AND r.ev_type<>'1') AS rules,
+            EXISTS(SELECT 1 FROM pg_catalog.pg_constraint k WHERE k.confrelid=c.oid AND
+                (k.confdeltype IN ('c','n','d') OR k.confupdtype IN ('c','n','d'))) AS cascades,
+            EXISTS(SELECT 1 FROM pg_catalog.pg_inherits i WHERE i.inhparent=c.oid OR i.inhrelid=c.oid) AS inheritance,
+            EXISTS(SELECT 1 FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_type t ON t.oid=a.atttypid
+                JOIN pg_catalog.pg_namespace n ON n.oid=t.typnamespace
+                WHERE a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped AND n.nspname<>'pg_catalog') AS custom_types,
+            EXISTS(SELECT 1 FROM pg_catalog.pg_depend d JOIN pg_catalog.pg_proc p ON p.oid=d.refobjid
+                JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+                WHERE d.refclassid='pg_catalog.pg_proc'::pg_catalog.regclass AND n.nspname<>'pg_catalog' AND
+                ((d.classid='pg_catalog.pg_attrdef'::pg_catalog.regclass AND d.objid IN
+                    (SELECT a.oid FROM pg_catalog.pg_attrdef a WHERE a.adrelid=c.oid)) OR
+                 (d.classid='pg_catalog.pg_constraint'::pg_catalog.regclass AND d.objid IN
+                    (SELECT k.oid FROM pg_catalog.pg_constraint k WHERE k.conrelid=c.oid)))) AS custom_functions
+            FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+            WHERE n.nspname=%s AND c.relname=%s"""
+        if connection is None:
+            with self.connection() as checking:
+                self.check_workspace_effects(sql, access, connection=checking)
+            return
+        if details["kind"] == "DDL" and connection.execute(
+                "SELECT EXISTS(SELECT 1 FROM pg_catalog.pg_event_trigger WHERE evtenabled<>'D') AS enabled").fetchone()["enabled"]:
+            raise PermissionError("Database event triggers require the workspace owner to review and run this structure change.")
+        for name in names:
+            row = connection.execute(query, (self.config["schema_name"], name)).fetchone()
+            if row and (row["relkind"] != "r" or row["relrowsecurity"] or any(
+                    row[key] for key in ("triggers", "rules", "cascades", "inheritance", "custom_types", "custom_functions"))):
+                raise PermissionError("This table has database-side rules or functions. Ask the workspace owner to review and run this change.")
+
+    def execute(self, sql, operation="read", limit=500, offset=None, workspace_access=None, expected_guard=None):
         if isinstance(limit, bool) or not isinstance(limit, int) or not 0 <= limit <= 500:
             raise ValueError("Choose a result page size between 0 and 500.")
         if offset is not None and (isinstance(offset, bool) or not isinstance(offset, int) or offset < 0):
@@ -387,6 +488,26 @@ class PostgresConnector:
             # are rendered here; SQL percent literals must never become DB-API placeholders.
             statement = f"SELECT * FROM ({statement}) AS result_page LIMIT {limit + 1} OFFSET {offset or 0}"
         with self.connection(read_only=operation == "read") as connection:
+            if operation == "write" and expected_guard is not None:
+                guard_targets = [{"table_name": name} for name in expected_guard.get("tables", {})]
+                self._lock_preview_tables(connection, guard_targets + details["targets"])
+            if (operation == "write" and workspace_access is not None and workspace_access["role"] != "owner"
+                    and not all(workspace_access["permissions"].get(key) for key in ("write", "delete", "structure"))):
+                from psycopg import sql as pg_sql
+                # Hold relation locks through the catalog check and mutation. An
+                # external trigger/rule/schema change cannot slip between them.
+                locked = set()
+                for target in sorted(details["targets"], key=lambda item: item["table_name"]):
+                    name = target["table_name"]
+                    if name in locked or (details["operation"] == "CREATE" and target["access_type"] == "define"):
+                        continue
+                    connection.execute(pg_sql.SQL("LOCK TABLE {}.{} IN ROW EXCLUSIVE MODE").format(
+                        pg_sql.Identifier(self.config["schema_name"]), pg_sql.Identifier(name)))
+                    locked.add(name)
+                self.check_workspace_effects(sql, workspace_access, connection=connection)
+            if operation == "write" and expected_guard is not None:
+                actual = preview_guard.postgres_snapshot(connection, self.config["schema_name"], guard_targets)
+                preview_guard.verify(expected_guard, actual, details["targets"])
             cursor = connection.cursor(row_factory=_result_row)
             cursor.execute(statement)
             columns = unique_columns([item.name for item in cursor.description]) if cursor.description else []
@@ -396,11 +517,16 @@ class PostgresConnector:
             if operation == "write" and cursor.description:
                 while cursor.fetchmany(1000):
                     pass
+            after = None
+            if operation == "write" and expected_guard is not None:
+                from sqlglot import exp
+                after_targets = guard_targets + [{"table_name": item.this.name} for item in root.find_all(exp.AlterRename)]
+                after = preview_guard.postgres_snapshot(connection, self.config["schema_name"], after_targets)
         if operation == "write":
             self._schema = None
         return {"rows": [{key: _value(value) for key, value in row.items()} for row in fetched[:limit]],
                 "columns": columns, "changes": changes, "truncated": len(fetched) > limit,
-                "sql": sql, "executed_sql": statement}
+                "sql": sql, "executed_sql": statement, **({"_guard_after": after} if after else {})}
 
     def columns(self, sql):
         return self.execute(sql, limit=0, offset=0)["columns"]

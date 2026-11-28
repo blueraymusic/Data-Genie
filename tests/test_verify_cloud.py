@@ -30,6 +30,7 @@ class DeploymentVerificationTests(unittest.TestCase):
             "/assets/app.js": (b"console.log('ready');", "text/javascript"),
             "/assets/app.css": (b"body { color: navy; }", "text/css"),
             "/healthz": (b'{"status":"ok"}', "application/json"),
+            "/api/auth/providers": (b'{"google":{"enabled":false}}', "application/json"),
             "/api/auth/session": (b'{"user":null}', "application/json; charset=utf-8"),
         }
 
@@ -60,6 +61,22 @@ class DeploymentVerificationTests(unittest.TestCase):
             verify_cloud.check_deployment(ORIGIN)
         self.assertNotIn(ORIGIN + "/api/auth/session", [call.args[0] for call in request.call_args_list])
 
+    def test_google_font_stylesheet_is_optional_and_never_replaces_build_css(self):
+        for has_build_css in (True, False):
+            resources = self.resources()
+            html = resources["/"][0]
+            if not has_build_css:
+                html = html.replace(b'<link rel="stylesheet" href="/assets/app.css">', b"")
+            resources["/"] = (html + b'<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader&amp;display=swap">', "text/html")
+            with self.subTest(has_build_css=has_build_css), \
+                    patch.object(verify_cloud, "urlopen", side_effect=self.fetch(resources)) as request:
+                if has_build_css:
+                    verify_cloud.check_deployment(ORIGIN)
+                else:
+                    with self.assertRaises(ValueError):
+                        verify_cloud.check_deployment(ORIGIN)
+                self.assertTrue(all(call.args[0].startswith(ORIGIN + "/") for call in request.call_args_list))
+
     def test_html_fallback_for_missing_javascript_is_rejected(self):
         resources = self.resources()
         resources["/assets/app.js"] = (b"<html>Not found</html>", "text/html")
@@ -86,6 +103,42 @@ class DeploymentVerificationTests(unittest.TestCase):
                     patch.object(verify_cloud, "urlopen", side_effect=self.fetch(resources)), \
                     self.assertRaises(ValueError):
                 verify_cloud.check_deployment(ORIGIN)
+
+    def test_public_provider_discovery_accepts_enabled_and_disabled_without_authentication(self):
+        for enabled in (False, True):
+            resources = self.resources()
+            resources["/api/auth/providers"] = (json.dumps({"google": {"enabled": enabled}}).encode(),
+                                                 "application/json")
+            with self.subTest(enabled=enabled), \
+                    patch.object(verify_cloud, "urlopen", side_effect=self.fetch(resources)) as request:
+                verify_cloud.check_deployment(ORIGIN)
+            self.assertIn(ORIGIN + "/api/auth/providers", [call.args[0] for call in request.call_args_list])
+
+    def test_missing_or_nonboolean_provider_discovery_is_rejected_before_session_check(self):
+        for value in (None, [], {}, {"google": None}, {"google": {}},
+                      {"google": {"enabled": "false"}}, {"google": {"enabled": 0}}):
+            resources = self.resources()
+            resources["/api/auth/providers"] = (json.dumps(value).encode(), "application/json")
+            with self.subTest(value=value), \
+                    patch.object(verify_cloud, "urlopen", side_effect=self.fetch(resources)) as request, \
+                    self.assertRaisesRegex(ValueError, "public sign-in provider check failed"):
+                verify_cloud.check_deployment(ORIGIN)
+            self.assertNotIn(ORIGIN + "/api/auth/session", [call.args[0] for call in request.call_args_list])
+
+    def test_provider_discovery_requiring_login_fails_deployment_check(self):
+        resources = self.resources()
+        fetch = self.fetch(resources)
+
+        def require_provider_login(url, **kwargs):
+            if url == ORIGIN + "/api/auth/providers":
+                raise HTTPError(url, 401, "Log in to continue.", {}, None)
+            return fetch(url, **kwargs)
+
+        with patch.object(verify_cloud, "urlopen", side_effect=require_provider_login) as request, \
+                self.assertRaises(HTTPError) as caught:
+            verify_cloud.check_deployment(ORIGIN)
+        self.assertEqual(caught.exception.code, 401)
+        self.assertNotIn(ORIGIN + "/api/auth/session", [call.args[0] for call in request.call_args_list])
 
     def test_invalid_origin_is_rejected_before_any_request(self):
         with patch.object(verify_cloud, "urlopen") as request:

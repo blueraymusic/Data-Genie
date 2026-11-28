@@ -1,12 +1,26 @@
 # Database connections
 
-Data Genie supports local SQLite files and live PostgreSQL databases, including standard PostgreSQL connections from Supabase and Neon. The current connector uses PostgreSQL's native database protocol. It does not include an MCP client or server, and you do not need an MCP server to connect.
+[Main README](../README.md) · [All guides](README.md) · [Backend](../backend/README.md) · [Agent connections](agents.md)
+
+Data Genie supports local SQLite files and live PostgreSQL databases, including standard PostgreSQL connections from Supabase and Neon. The database connector uses PostgreSQL's native protocol; no MCP server is needed to connect a database. Separately, the [agent API and optional MCP bridge](agents.md) let agents use Data Genie under your current workspace permissions.
 
 ## Connect on the hosted site
 
-Open [Data Genie](https://data-genie-blueray321.azurewebsites.net/), [sign up](https://data-genie-blueray321.azurewebsites.net/signup) or [log in](https://data-genie-blueray321.azurewebsites.net/signin), then open [Databases](https://data-genie-blueray321.azurewebsites.net/databases). Choose **PostgreSQL**, paste a URL containing the username, password, host, and database name, and choose a schema (usually `public`). **Test connection** checks access without saving credentials or changing data. **Connect PostgreSQL** saves the connection for your account.
+Open [Data Genie](https://data-genie.space/), [sign up](https://data-genie.space/signup) or [log in](https://data-genie.space/signin), then open [Databases](https://data-genie.space/databases). Choose **PostgreSQL** and paste a URL containing the username, password, host, and database name. **Test connection** checks access without saving credentials or changing data. **Connect PostgreSQL** saves the connection for your account.
 
-The hosted site already includes the connector. It needs a public PostgreSQL hostname and `sslmode=verify-full` (the default for external hosts). A database listening only on your laptop, a private network, or a cloud-metadata address cannot be reached through the hosted connector. If your provider restricts incoming connections, its network rules must also permit the Data Genie app's outbound addresses; testing a URL does not change those rules.
+The schema defaults to `public`. Expand **Connection options** to change **Schema** or add an optional **Connection name**. These options open automatically when a custom name or schema is already filled in. The connection URL, change-permission checkbox, and test button remain available without opening the options.
+
+The hosted site already includes the connector. It needs a public PostgreSQL hostname and always uses `sslmode=verify-full`. You can paste a provider URL containing `sslmode=require` directly. A database listening only on your laptop, a private network, or a cloud-metadata address cannot be reached through the hosted connector. If your provider restricts incoming connections, its network rules must also permit the Data Genie app's outbound addresses. Testing a URL does not change those rules.
+
+### Supabase, IPv4, and IPv6
+
+Data Genie accepts IPv4 and IPv6 PostgreSQL endpoints. Hosted connections try all resolved public addresses, retaining hostname and certificate verification. The server's network must support the selected endpoint's IP version.
+
+The repository's Terraform opts Azure Linux App Service into outbound IPv6 with `WEBSITE_NETWORK_LINUX_OUTBOUND_DISABLE_IPV6=false`. The live app reached a Supabase direct IPv6 endpoint and verified its TLS certificate after an Azure worker replacement. See [Azure connection configuration and verification](../azure/README.md#direct-postgresql-and-pooled-connections).
+
+Supabase's free plan includes a direct IPv6 endpoint and a shared IPv4 Session pooler. On IPv4 networks, choose **Connect → Session pooler** in Supabase and copy the exact URI: the pooler hostname differs from the direct hostname, and the username becomes `postgres.<project-ref>`. Use port `5432` for session mode. No paid IPv4 add-on is needed. A direct IPv6 URL cannot automatically reveal the project's pooler hostname, so paste the pooler URI when switching. See [Supabase's connection guide](https://supabase.com/docs/guides/database/connecting-to-postgres).
+
+For Supabase-owned direct and shared pooler endpoints, Data Genie uses the bundled official Supabase database CA with `verify-full`. Other hosts use the system trust store. No certificate download occurs during a connection. This keeps certificate and hostname verification enabled for both connection methods.
 
 ## Connect from a local installation
 
@@ -31,7 +45,7 @@ Use `npm start` to run the server with the project's `.venv` when it exists. Run
 
 Data Genie saves PostgreSQL connection settings, not a running PostgreSQL server. If the server is offline, the saved connection stays listed and you can start the database and choose **Try again**, or open another database. A missing encryption key or connection record offers **Enter connection details** to add a fresh connection. Existing History stays saved. Resolve any pending change before switching databases.
 
-External hosts default to certificate-verified SSL. A local Data Genie installation also accepts `sslmode=require`; hosted Data Genie requires `sslmode=verify-full`. SSL can be disabled only for loopback connections in local mode. `channel_binding` is preserved, including the `require` value supplied by [Neon's connection strings](https://neon.com/blog/postgres-needs-better-connection-security-defaults). `sslrootcert=system` selects full verification with system certificates. File-based libpq options and arbitrary connection parameters are not accepted.
+External hosts default to certificate-verified SSL. A local Data Genie installation honors `sslmode=require` as entered. Hosted Data Genie upgrades it to `sslmode=verify-full`. SSL can be disabled only for loopback connections in local mode. `channel_binding` is preserved, including the `require` value supplied by [Neon's connection strings](https://neon.com/blog/postgres-needs-better-connection-security-defaults). `sslrootcert=system` selects full verification. File-based libpq options and arbitrary connection parameters are not accepted.
 
 ## Live changes and exports
 
@@ -39,13 +53,15 @@ PostgreSQL is a live connection. Reads query that server; confirmed edits are sa
 
 To edit, add a connection with **Allow changes after I confirm them** checked. Then ask for a change, review the SQL, and use its confirmation button. An existing read-only connection keeps its original setting. Your PostgreSQL user's permissions still apply, and ending a Data Genie session does not undo confirmed changes.
 
-**Download CSV** exports the rows currently loaded in a result, in their displayed order. **Download SQLite file** applies only to SQLite connections. Data Genie does not export a full PostgreSQL backup or provide automatic undo; keep full database backups separately.
+With download permission, choose **Manage → CSV folder** on the PostgreSQL database card to export readable tables and views in the selected schema as a ZIP with `schema.json`. **Download CSV** on a query result exports the loaded rows in their displayed order. Use native PostgreSQL tools for a restorable backup. SQLite also offers a database file and a SQL dump.
 
 ## Work with data
 
+Use **Ask** for Data Genie AI, **SQL** for explicit statements, and **Structure** for manual table and column controls. The SQL editor stays at the bottom; recent requests use small batches, and [History](https://data-genie.space/history) searches the full saved record by page. See the [workspace guide](user-guide.md) for examples and keyboard shortcuts.
+
 - Schema discovery includes readable tables and views, columns, primary keys, unique/check constraints, and foreign keys. Each connection uses one schema.
 - Schema row counts are estimates and display `~`; query results and explicit counts come from actual reads.
-- The same [Workspace](https://data-genie-blueray321.azurewebsites.net/app), Structure, [History](https://data-genie-blueray321.azurewebsites.net/history), sorting, CSV export, and follow-up flows work with either provider. Gemini receives the correct SQL dialect and schema, without saved database credentials or result rows. Values typed into requests are part of the AI context.
+- The same [Workspace](https://data-genie.space/app), Structure, [History](https://data-genie.space/history), sorting, CSV export, and follow-up flows work with either provider. Data Genie sends the configured AI service the correct SQL dialect and schema, without saved database credentials or result rows. Values typed into requests are part of the AI context.
 - Connections are read-only unless **Allow changes after I confirm them** is checked when connecting. Reads run in database-enforced read-only transactions. Changing permissions requires adding a new connection.
 - Enabled changes support INSERT, UPDATE, DELETE, CREATE TABLE, ALTER TABLE, and DROP TABLE through the usual stored confirmation tokens. Preparing a PostgreSQL write never executes it, even in a rolled-back preview. PostgreSQL write previews do not provide an exact affected-row count. Constraints are finally checked when a confirmed command runs.
 - PostgreSQL operations use five-second statement and two-second lock timeouts. Results are fetched in bounded pages. SQL parsing restricts requests to the connected schema and supported data operations/functions; roles, server functions, temporary tables, file operations, and transactions cannot be changed through chat.
@@ -55,7 +71,7 @@ To edit, add a connection with **Allow changes after I confirm them** checked. T
 
 Connection settings are authenticated and encrypted with Fernet in the Data Genie repository and belong to your account. In a local installation without `GENIE_CONNECTION_KEY`, the separate `data_genie_repository.sqlite3.key` file is readable only by its owner. Hosted Azure uses the Terraform-managed `GENIE_CONNECTION_KEY` app setting instead of that local key file. Keep the repository and the key source together when backing up or moving an installation. Losing the key requires reconnecting; it does not recover the password from PostgreSQL. Repository files and local key files are ignored by Git. Session, schema, and test responses do not return the saved connection URL or password.
 
-The hosted installation durably saves accounts, History, SQLite copies, and encrypted connection settings in Azure SQL. Desktop data is separate and is not uploaded automatically. See [hosted storage and limits](azure-free-hosting.md#storage-and-free-tier-limits) and the [live FAQ](https://data-genie-blueray321.azurewebsites.net/faq).
+The hosted installation durably saves accounts, History, SQLite copies, and encrypted connection settings in Azure SQL. Desktop data is separate and is not uploaded automatically. See [hosted storage and limits](azure-free-hosting.md#storage-and-free-tier-limits) and the [live FAQ](https://data-genie.space/faq).
 
 ## Verify
 
@@ -66,7 +82,7 @@ For a ready-to-use database with a **local Data Genie installation** (PostgreSQL
 .venv/bin/python scripts/postgres_demo.py url
 ```
 
-Paste that URL into the local app's **Databases → PostgreSQL**, keep schema `public`, test, and connect. In Gemini mode, try “show all customers from Missouri”, then “which ones are in Iowa”. In Keywords mode, start with `show customers`, then ask `which ones are in Iowa`. The isolated demo has its own dedicated user and password, listens only on loopback port 55432, and stores its settings under ignored `db/postgres-demo/`. It cannot be connected through the hosted site. Re-running `start` preserves your data. Use `.venv/bin/python scripts/postgres_demo.py stop` when finished.
+Paste that URL into the local app's **Databases → PostgreSQL**, leave the default `public` schema, test, and connect. There is no need to open **Connection options** for this demo. In Ask, try “show all customers from Missouri”, then “which ones are in Iowa”. Without AI, use the SQL tab, for example `SELECT * FROM customers WHERE state = 'Iowa';`. Structure provides forms to add, rename, or delete tables and columns; every change still requires confirmation. The isolated demo has its own dedicated user and password, listens only on loopback port 55432, and stores its settings under ignored `db/postgres-demo/`. It cannot be connected through the hosted site. Re-running `start` preserves your data. Use `.venv/bin/python scripts/postgres_demo.py stop` when finished.
 
 For automated checks:
 
@@ -75,4 +91,4 @@ For automated checks:
 GENIE_TEST_POSTGRES=1 .venv/bin/python -B -m unittest tests.test_postgres_integration
 ```
 
-The integration suite requires `initdb` and `postgres` on PATH. It creates a disposable cluster on a random loopback port and removes it afterward. It covers schema and relationships, reads, follow-ups, pagination, encrypted persistence, account ownership, read-only enforcement, confirmed/declined writes, and table creation/renaming. It never connects to your existing databases.
+The integration suite requires `initdb` and `postgres` on PATH and permission to bind loopback sockets. It creates a disposable cluster on a random loopback port and removes it afterward. It covers schema and relationships, reads, follow-ups, pagination, encrypted persistence, account ownership, read-only enforcement, confirmed/declined writes, and table creation/renaming. It never connects to your existing databases.

@@ -1,19 +1,35 @@
-import { Component, useEffect } from 'react';
+import { Component, lazy, Suspense, useEffect, useLayoutEffect } from 'react';
 import { Router, useRouter } from './lib/router';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthShell } from './components/AuthShell';
+import { HelpChat } from './components/HelpChat';
 import HomePage from './pages/HomePage';
 import FaqPage from './pages/FaqPage';
+import ContactPage from './pages/ContactPage';
+import TermsPage from './pages/TermsPage';
 import AuthPage from './pages/AuthPage';
-import WorkspaceApp from './pages/WorkspaceApp';
+import PasswordRecoveryPage from './pages/PasswordRecoveryPage';
+import AgentConsentPage from './pages/AgentConsentPage';
+import { captureAgentAuthorization, pendingAgentAuthorization } from './lib/agentAuthorization';
+import { captureWorkspaceInvitation, readWorkspaceInvitation } from './lib/workspaceInvites';
+
+const WorkspaceApp = lazy(() => import('./pages/WorkspaceApp'));
 
 function ProtectedPages() {
   const { user, loading } = useAuth(),
-    { pathname, navigate } = useRouter();
+    { pathname, route, navigate } = useRouter();
+  useLayoutEffect(() => {
+    captureAgentAuthorization(route);
+    if (captureWorkspaceInvitation(route)) navigate('/workspaces', true);
+  }, [route, navigate]);
   useEffect(() => {
     if (!loading && !user && !['/signin', '/signup'].includes(pathname)) navigate('/signin', true);
-    if (!loading && user && ['/signin', '/signup'].includes(pathname)) navigate('/databases', true);
+    if (!loading && user && ['/signin', '/signup'].includes(pathname))
+      navigate(
+        pendingAgentAuthorization() || (readWorkspaceInvitation() ? '/workspaces' : '/databases'),
+        true,
+      );
   }, [loading, user, pathname, navigate]);
   if (loading)
     return (
@@ -21,12 +37,32 @@ function ProtectedPages() {
         <p role="status">Loading…</p>
       </AuthShell>
     );
-  return user ? <WorkspaceApp key={user.account_id} /> : <AuthPage />;
+  return user ? (
+    pathname === '/connect-agent' ? (
+      <AgentConsentPage />
+    ) : (
+      <Suspense
+        fallback={
+          <AuthShell title="A moment, please." lead="Opening your workspace.">
+            <p role="status">Loading…</p>
+          </AuthShell>
+        }
+      >
+        <WorkspaceApp key={user.account_id} />
+      </Suspense>
+    )
+  ) : (
+    <AuthPage />
+  );
 }
 function Pages() {
   const { pathname } = useRouter();
   if (['/', '/index.html'].includes(pathname)) return <HomePage />;
   if (['/faq', '/faq.html'].includes(pathname)) return <FaqPage />;
+  if (['/contact', '/contact.html'].includes(pathname)) return <ContactPage />;
+  if (pathname === '/terms') return <TermsPage />;
+  if (['/forgot-password', '/reset-password'].includes(pathname))
+    return <PasswordRecoveryPage key={pathname} />;
   return <ProtectedPages />;
 }
 class ErrorBoundary extends Component {
@@ -50,13 +86,23 @@ class ErrorBoundary extends Component {
     return this.props.children;
   }
 }
+function SiteContent() {
+  const { user } = useAuth();
+  return (
+    <>
+      <Pages />
+      <HelpChat key={user?.account_id ?? 'public'} />
+    </>
+  );
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <Router>
         <ThemeProvider>
           <AuthProvider>
-            <Pages />
+            <SiteContent />
           </AuthProvider>
         </ThemeProvider>
       </Router>

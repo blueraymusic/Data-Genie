@@ -26,7 +26,7 @@ def awaiting_answer(turns):
     last = turns[-1]
     return bool(not last.get("commands") and (
         last.get("intent") or last.get("needs_clarification") or
-        (last.get("clarification") and not last["clarification"].startswith("Gemini"))
+        (last.get("clarification") and not last["clarification"].startswith(("Data Genie AI", "Gemini")))
     ))
 
 

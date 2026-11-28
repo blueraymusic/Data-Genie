@@ -6,6 +6,11 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 FILES = (
     "azure/gunicorn.conf.py", "azure/requirements.txt", "backend/requirements-postgres.txt",
+    "backend/requirements-reports.txt", "backend/assets/fonts/NotoSans-Regular.ttf",
+    "backend/assets/fonts/NotoSans-Bold.ttf", "backend/assets/fonts/NotoSansSymbols2-Regular.ttf",
+    "backend/assets/fonts/OFL.txt", "backend/assets/fonts/NotoSansCJK-Regular.ttf",
+    "backend/assets/fonts/NotoSansCJK-OFL.txt", "backend/assets/fonts/SOURCES.txt",
+    "backend/assets/certificates/supabase-prod-ca-2021.crt",
     "frontend/src/styles/design.css", "frontend/public/favicon.svg",
 )
 

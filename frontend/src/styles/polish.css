@@ -1,0 +1,494 @@
+/* Calm, consistent feedback for the workspace's interactive surfaces. */
+.workspace-page
+  :is(
+    .workspace-rail-item,
+    .workspace-database-row,
+    .report-library > button,
+    .report-move-targets .btn,
+    .database-form,
+    .workspace-person-button
+  ) {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.workspace-page :is(.workspace-database-row, .report-library > button)[draggable='true'] {
+  cursor: grab;
+}
+.workspace-page :is(.workspace-database-row, .report-library > button).is-dragging {
+  opacity: 0.45;
+  transform: scale(0.985);
+  cursor: grabbing;
+}
+.workspace-page .is-drop-target,
+.workspace-page .database-form.is-file-drop-target {
+  outline: 2px solid var(--lapis);
+  outline-offset: 3px;
+  background: var(--lapis-wash);
+  box-shadow: 0 6px 22px color-mix(in srgb, var(--lapis) 16%, transparent);
+}
+.workspace-page .workspace-rail-item.is-drop-target {
+  transform: translateX(4px);
+}
+.workspace-page .report-move-targets {
+  animation: drop-target-enter 180ms ease-out;
+  border: 1px dashed var(--lapis);
+  border-radius: 12px;
+  padding: 18px;
+  background: var(--lapis-wash);
+}
+@keyframes drop-target-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* One scrolling surface keeps the person's identity and controls in a natural flow. */
+.workspace-page .workspace-person-detail {
+  max-height: none;
+  overflow: visible;
+  padding: 24px;
+  border-radius: 14px;
+}
+.workspace-page .workspace-person-heading {
+  margin-bottom: 20px;
+}
+.workspace-page .workspace-access-step > span {
+  display: none;
+}
+.workspace-page .workspace-access-step p {
+  display: none;
+}
+.workspace-page .workspace-member-role {
+  padding: 16px;
+  background: var(--sunken);
+  border-radius: 10px;
+}
+.workspace-page .workspace-access-card {
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+.workspace-page .workspace-permission-options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+.workspace-page .workspace-permission-choice {
+  align-items: center;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 13px 4px;
+  background: transparent;
+  gap: 14px !important;
+}
+.workspace-page .workspace-permission-choice:has(input:checked) {
+  background: transparent;
+  border-color: var(--rule);
+}
+.workspace-page .workspace-permission-choice:has(input:focus-visible) {
+  outline: 2px solid var(--lapis);
+  outline-offset: 2px;
+}
+.workspace-page .workspace-permission-choice input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+.workspace-page .workspace-permission-choice strong {
+  font-size: 13px;
+}
+.workspace-page .workspace-permission-choice small {
+  font-size: 12px;
+}
+.workspace-page .workspace-access-card footer {
+  margin-top: 18px;
+}
+.workspace-page .workspace-remove-member {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--rule);
+}
+/* Charts use the same paper and accent colors in both themes. */
+.workspace-page .bars,
+.workspace-page .line-chart {
+  padding: 20px;
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  background: linear-gradient(160deg, var(--paper), var(--sunken));
+}
+.workspace-page .bars {
+  gap: 18px;
+}
+.workspace-page .bar {
+  grid-template-columns: minmax(70px, 135px) minmax(0, 1fr) auto;
+  gap: 16px;
+}
+.workspace-page .bar > span:last-child {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.workspace-page .bar-track {
+  height: 12px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--lapis) 7%, var(--sunken));
+}
+.workspace-page .bar-track i {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--lapis) 70%, var(--paper)),
+    var(--lapis)
+  );
+  transition:
+    width 320ms ease,
+    left 320ms ease;
+}
+.workspace-page .bar-track i.negative {
+  background: var(--remove);
+}
+.workspace-page .bar-zero {
+  opacity: 0.4;
+}
+.workspace-page .line-chart {
+  display: block;
+  overflow: visible;
+}
+.workspace-page .line-chart circle {
+  transition: stroke-width 140ms ease;
+}
+.workspace-page .line-chart circle:is(:hover, :focus) {
+  stroke: var(--lapis);
+  stroke-width: 6px;
+  outline: none;
+}
+.workspace-page .line-chart line {
+  stroke-dasharray: 3 5;
+}
+.workspace-page .line-chart text {
+  font-family: var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 600px) {
+  .workspace-page .workspace-person-detail {
+    padding: 18px;
+  }
+  .workspace-page .workspace-access-card > header {
+    flex-direction: column;
+  }
+  .workspace-page .workspace-access-preset {
+    width: 100%;
+  }
+  .workspace-page .bars {
+    padding: 16px 12px;
+  }
+  .workspace-page .bar {
+    gap: 10px;
+    grid-template-columns: minmax(55px, 90px) minmax(0, 1fr) auto;
+    font-size: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-page
+    :is(
+      .workspace-rail-item,
+      .workspace-database-row,
+      .report-library > button,
+      .report-move-targets,
+      .database-form,
+      .workspace-person-button,
+      .bar-track i,
+      .line-chart circle
+    ) {
+    transition: none;
+    animation: none;
+    transform: none;
+  }
+}
+.workspace-page .workspace-main:has(.workspace-people-tab) {
+  display: block;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.workspace-page .workspace-people-tab,
+.workspace-page .workspace-people-tab > .workspace-section:last-child {
+  display: block;
+  flex: none;
+  min-height: auto;
+}
+.workspace-page .workspace-people-layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  align-items: start;
+  flex: none;
+  min-height: auto;
+  gap: 24px;
+}
+.workspace-page .workspace-person-detail {
+  flex: none;
+  min-height: auto;
+}
+@media (max-width: 950px) {
+  .workspace-page .workspace-people-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+}
+.workspace-page .workspace-people-layout {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+}
+.workspace-page .workspace-person-picker {
+  max-width: 100%;
+  padding-block: 8px;
+}
+.workspace-page .workspace-person-picker label {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.workspace-page .workspace-person-picker select {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  text-overflow: ellipsis;
+}
+.workspace-page .workspace-person-picker p {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.workspace-page .workspace-person-panels {
+  min-width: 0;
+}
+/* The people picker expands in normal document flow: no popover layers. */
+.workspace-page .person-picker {
+  position: static;
+  min-width: 0;
+}
+.workspace-page .person-picker-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.workspace-page .person-picker-trigger,
+.workspace-page .person-picker-options > button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--paper);
+  text-align: left;
+  color: var(--ink);
+}
+.workspace-page .person-picker-trigger[aria-expanded='true'] {
+  border-color: var(--lapis);
+  background: var(--lapis-wash);
+}
+.workspace-page .person-picker .profile-avatar {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--lapis-wash);
+  color: var(--lapis);
+  font-size: 14px;
+}
+.workspace-page .person-picker .profile-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+.workspace-page .person-picker-identity {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.workspace-page .person-picker-identity strong {
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.workspace-page .person-picker-identity small {
+  color: var(--ink-soft);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.workspace-page .person-picker-role {
+  flex: none;
+  font-size: 11px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: var(--ink-soft);
+}
+.workspace-page .person-picker-chevron {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  align-self: center;
+  color: var(--ink-soft);
+  transition: transform 160ms ease;
+}
+.workspace-page .person-picker-trigger[aria-expanded='true'] .person-picker-chevron {
+  transform: rotate(180deg);
+}
+.workspace-page .person-picker-panel {
+  position: static;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--paper);
+}
+.workspace-page .person-picker-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 10px;
+  border-bottom: 1px solid var(--rule);
+}
+.workspace-page .person-picker-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 10px 4px;
+}
+.workspace-page .person-picker-options {
+  max-height: 300px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 8px 2px 2px;
+  display: grid;
+  gap: 5px;
+}
+.workspace-page .person-picker-options > button {
+  border-color: transparent;
+  border-radius: 9px;
+  padding: 12px 10px;
+}
+.workspace-page .person-picker-options > button:is(:hover, :focus-visible, [aria-selected='true']) {
+  background: var(--lapis-wash);
+  border-color: var(--rule);
+}
+.workspace-page .person-picker-check {
+  width: 18px;
+  color: var(--lapis);
+  flex: none;
+}
+.workspace-page .person-picker-empty {
+  padding: 16px 8px;
+  color: var(--ink-soft);
+}
+.workspace-page .database-drop-destinations {
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--sunken);
+}
+.workspace-page .database-drop-destinations > p {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  margin: 0 0 12px;
+}
+.workspace-page .database-drop-destinations > p > span {
+  color: var(--ink-soft);
+}
+.workspace-page .database-drop-destinations > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 10px;
+}
+.workspace-page .drop-destination,
+.workspace-page .report-move-targets .btn,
+.workspace-page .workspace-rail-item.is-drop-available {
+  border: 2px dashed color-mix(in srgb, var(--lapis) 48%, var(--rule));
+  border-radius: 10px;
+  background: var(--paper);
+  min-height: 68px;
+  padding: 14px;
+  outline: none;
+  box-shadow: none;
+  transform: none;
+}
+.workspace-page .drop-destination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.workspace-page .drop-destination > span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.workspace-page .drop-destination strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.workspace-page .drop-destination small {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.workspace-page .is-drop-target,
+.workspace-page .workspace-rail-item.is-drop-target,
+.workspace-page .database-form.is-file-drop-target {
+  border: 2px solid var(--lapis);
+  outline: none;
+  outline-offset: 0;
+  box-shadow: inset 0 0 0 2px var(--paper);
+  transform: none;
+  background: var(--lapis-wash);
+}
+.workspace-page .report-move-targets {
+  transform: none;
+  animation: none;
+}
+@media (max-width: 460px) {
+  .workspace-page .person-picker-trigger,
+  .workspace-page .person-picker-options > button {
+    gap: 9px;
+    padding: 12px 10px;
+    flex-wrap: wrap;
+  }
+  .workspace-page .person-picker .profile-avatar {
+    width: 36px;
+    height: 36px;
+  }
+  .workspace-page .person-picker-role {
+    margin-left: 48px;
+  }
+  .workspace-page .person-picker-chevron,
+  .workspace-page .person-picker-check {
+    margin-left: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-page .person-picker-chevron {
+    transition: none;
+  }
+}
+.workspace-page .workspace-person-picker .person-picker-search {
+  display: flex;
+}

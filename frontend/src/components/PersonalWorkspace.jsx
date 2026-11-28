@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useEnterMotion } from '../hooks/useMotion';
 import { WorkspaceHeader } from './WorkspaceHeader';
 import { WorkspaceTabs } from './WorkspaceTabs';
 
-export function PersonalWorkspace({ user, view, onNavigate, logout, children }) {
+export function PersonalWorkspace({ user, view, onNavigate, logout, children, preview = false }) {
+  const content = useRef(null);
+  useEnterMotion(content, view, !preview);
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
   async function signOut() {
@@ -29,8 +32,9 @@ export function PersonalWorkspace({ user, view, onNavigate, logout, children }) 
           onNavigate={onNavigate}
           onLogout={signOut}
           disabled={busy}
+          preview={preview}
         />
-        <main className="content personal-content" id="personalContent" tabIndex="-1">
+        <main className="content personal-content" id="personalContent" tabIndex="-1" ref={content}>
           {error && (
             <p className="err" role="alert">
               {error}
@@ -39,7 +43,7 @@ export function PersonalWorkspace({ user, view, onNavigate, logout, children }) 
           {children}
         </main>
       </div>
-      <WorkspaceTabs view={view} onNavigate={onNavigate} />
+      <WorkspaceTabs view={view} onNavigate={onNavigate} preview={preview} />
     </div>
   );
 }

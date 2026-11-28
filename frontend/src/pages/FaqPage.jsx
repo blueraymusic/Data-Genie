@@ -1,26 +1,37 @@
-import { useEffect, useMemo, useState } from 'react';
-import { faqGroups } from '../data/faq';
-import { PublicHeader, EntryLink } from '../components/PublicHeader';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { faqAnswerAnchor, faqGroups } from '../data/faq';
+import { PublicHeader } from '../components/PublicHeader';
 import { Icon } from '../components/Icon';
-import { Link } from '../lib/router';
-import { useAuth } from '../context/AuthContext';
+import { Link, useRouter } from '../lib/router';
+
+const topics = faqGroups.map((group) => ({
+  ...group,
+  items: group.items.map((item, index) => ({
+    ...item,
+    key: group.id + '-' + index,
+    anchor: faqAnswerAnchor(item.question),
+  })),
+}));
 
 export default function FaqPage() {
-  const { user } = useAuth();
+  const { route } = useRouter();
+  const anchor = route.split('#')[1];
+  const linkedTopic = topics.find(
+    (topic) => topic.id === anchor || topic.items.some((item) => item.anchor === anchor),
+  );
+  const activeTopic = linkedTopic?.id;
+  const linkedAnswer = linkedTopic?.items.find((item) => item.anchor === anchor)?.key;
+  const searchField = useRef(null);
   const [search, setSearch] = useState('');
   const [opened, setOpened] = useState(new Set(['getting-started-0']));
   const groups = useMemo(
     () =>
-      faqGroups
+      topics
         .map((group) => ({
           ...group,
-          items: group.items
-            .map((item, index) => ({ ...item, key: group.id + '-' + index }))
-            .filter((item) =>
-              (item.question + ' ' + item.search)
-                .toLowerCase()
-                .includes(search.trim().toLowerCase()),
-            ),
+          items: group.items.filter((item) =>
+            (item.question + ' ' + item.search).toLowerCase().includes(search.trim().toLowerCase()),
+          ),
         }))
         .filter((group) => group.items.length),
     [search],
@@ -30,6 +41,11 @@ export default function FaqPage() {
   useEffect(() => {
     document.title = 'Frequently asked questions | Data Genie';
   }, []);
+  useLayoutEffect(() => {
+    if (!linkedAnswer) return;
+    setSearch('');
+    setOpened((previous) => new Set(previous).add(linkedAnswer));
+  }, [linkedAnswer]);
   function filter(value) {
     setSearch(value);
     setOpened(
@@ -50,77 +66,82 @@ export default function FaqPage() {
     });
   }
   return (
-    <div className="faq-page" data-authenticated={user ? 'true' : undefined}>
+    <div className="faq-page">
       <a className="skip-link" href="#main">
         Skip to main content
       </a>
       <PublicHeader faq />
-      <main className="wrap" id="main">
-        <div className="intro">
-          <p className="eyebrow">A little clarity</p>
-          <h1>
-            Questions about
-            <br />
-            Data Genie.
-          </h1>
-          <p className="lede">
-            How it works, where your data goes, and what happens before a change runs.
-          </p>
-        </div>
+      <main className="wrap" id="main" tabIndex={-1}>
+        <header className="faq-intro">
+          <div>
+            <h1>Frequently asked questions</h1>
+            <p>
+              Find answers about connecting databases, reviewing changes, and managing your data.
+            </p>
+          </div>
+          <form
+            className="search"
+            role="search"
+            aria-label="Search FAQs"
+            onSubmit={(event) => event.preventDefault()}
+          >
+            <Icon name="search" />
+            <input
+              ref={searchField}
+              type="search"
+              value={search}
+              onChange={(event) => filter(event.target.value)}
+              placeholder="Search questions and answers…"
+              aria-label="Search questions and answers"
+              aria-controls="faqAnswers"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => {
+                  filter('');
+                  searchField.current.focus();
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </form>
+        </header>
         <div className="faq-layout">
           <aside className="topics" aria-label="FAQ topics">
-            <p className="eyebrow">On this page</p>
+            <h2>Browse by topic</h2>
             <nav aria-label="Jump to a topic">
               {faqGroups.map((group) => (
-                <a
+                <Link
                   key={group.id}
-                  href={'#' + group.id}
+                  href={'/faq#' + group.id}
+                  aria-current={activeTopic === group.id ? 'location' : undefined}
                   onClick={(event) => {
                     if (search) {
-                      event.preventDefault();
                       filter('');
-                      requestAnimationFrame(() =>
-                        document.getElementById(group.id)?.scrollIntoView(),
-                      );
+                      if (anchor === group.id) {
+                        event.preventDefault();
+                        requestAnimationFrame(() => {
+                          const heading = document.getElementById(group.id);
+                          heading?.scrollIntoView();
+                          heading?.focus({ preventScroll: true });
+                        });
+                      }
                     }
                   }}
                 >
                   {group.title}
-                </a>
+                </Link>
               ))}
             </nav>
-            <p className="topic-note">
-              Your words. The SQL.
-              <br />A clear record of both.
-            </p>
           </aside>
           <div className="questions">
-            <form
-              className="search"
-              role="search"
-              aria-label="Search FAQs"
-              onSubmit={(event) => event.preventDefault()}
-            >
-              <Icon name="search" />
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => filter(event.target.value)}
-                placeholder="Search questions and answers…"
-                aria-label="Search questions and answers"
-                aria-controls="faqAnswers"
-              />
-              {search && (
-                <button type="button" onClick={() => filter('')}>
-                  Clear
-                </button>
-              )}
-            </form>
             <div className="faq-tools">
               <span role="status">
                 {search.trim()
                   ? `${matches.length} matching ${matches.length === 1 ? 'question' : 'questions'}`
-                  : 'Browse the topics below'}
+                  : `${matches.length} questions`}
               </span>
               <button
                 className="text-button"
@@ -145,6 +166,7 @@ export default function FaqPage() {
                   id={group.id}
                   key={group.id}
                   aria-labelledby={group.id + '-title'}
+                  tabIndex={-1}
                 >
                   <h2 id={group.id + '-title'}>{group.title}</h2>
                   {group.items.map((item) => (
@@ -153,9 +175,9 @@ export default function FaqPage() {
                       open={opened.has(item.key)}
                       onToggle={(event) => toggle(item.key, event.currentTarget.open)}
                     >
-                      <summary>
+                      <summary id={item.anchor} tabIndex={0}>
                         {item.question}
-                        <span aria-hidden="true" />
+                        <span className="faq-disclosure" aria-hidden="true" />
                       </summary>
                       <div className="answer">{item.answer}</div>
                     </details>
@@ -164,11 +186,12 @@ export default function FaqPage() {
               ))}
             </div>
             <section className="next-step">
-              <h2>Put your first question to work.</h2>
-              <p>Bring a SQLite file, connect PostgreSQL, start fresh, or explore the sample.</p>
-              <EntryLink primary className="btn primary" />
-              <Link className="back-link" href="/">
-                Back to homepage <span aria-hidden="true">↗</span>
+              <div>
+                <h2>Still need help?</h2>
+                <p>Get in touch about a question or a problem with Data Genie.</p>
+              </div>
+              <Link href="/contact">
+                Contact us <Icon name="arrow" />
               </Link>
             </section>
           </div>
@@ -176,7 +199,9 @@ export default function FaqPage() {
       </main>
       <footer className="wrap foot">
         <span>Data Genie, by Adel Sissoko.</span>
-        <Link href="/">Homepage</Link>
+        <div>
+          <Link href="/contact">Contact us</Link> · <Link href="/">Homepage</Link>
+        </div>
       </footer>
     </div>
   );

@@ -36,18 +36,30 @@ _version = None
 _store_identity = None
 
 
-def log_failure(stage, work_started, error):
-    """Keep SQL diagnostics useful without recording credentials or user data."""
-    types, codes, seen = [], set(), set()
+def failure_chain(error):
+    """Inspect driver causes without parsing potentially sensitive error text."""
+    seen = set()
     current = error
-    while current is not None and id(current) not in seen and len(types) < 4:
+    while current is not None and id(current) not in seen and len(seen) < 4:
         seen.add(id(current))
-        types.append(type(current).__name__)
+        yield current
+        current = current.__cause__ or current.__context__
+
+
+def sql_error_codes(error):
+    codes = set()
+    for current in failure_chain(error):
         for name in ("msg_no", "number"):
             code = getattr(current, name, None)
             if type(code) is int and code > 0:
                 codes.add(code)
-        current = current.__cause__ or current.__context__
+    return codes
+
+
+def log_failure(stage, work_started, error):
+    """Keep SQL diagnostics useful without recording credentials or user data."""
+    types = [type(current).__name__ for current in failure_chain(error)]
+    codes = sql_error_codes(error)
     logging.getLogger(__name__).error(
         "Cloud state failure stage=%s work_started=%s error_types=%s sql_codes=%s",
         stage, work_started, ",".join(types), ",".join(str(code) for code in sorted(codes)) or "none",
@@ -134,7 +146,10 @@ def connect():
         server=host, database=settings.value("GENIE_SQL_DATABASE"),
         user=settings.value("GENIE_SQL_USER"), password=settings.value("GENIE_SQL_PASSWORD"),
         cafile=certifi.where(), validate_host=True, enc_login_only=False,
-        login_timeout=60, timeout=180, autocommit=False,
+        # A paused/free-quota database otherwise gets retried for a full minute.
+        # Bound connection setup, leaving statement/write acknowledgement timeouts
+        # unchanged. The browser can offer an explicit safe connection retry.
+        login_timeout=6, disable_connect_retry=True, timeout=180, autocommit=False,
     )
 
 
@@ -213,9 +228,13 @@ def transaction():
                 # revision, including the case where commit acknowledgement was lost.
                 if loaded and work_started:
                     restore(root, previous)
-            message = ("Cloud storage is temporarily unavailable. No request was run. Try again in a moment."
-                       if not work_started else
-                       "Data Genie could not confirm that the result was saved. Check History before retrying a change.")
+            if work_started:
+                message = "Data Genie could not confirm that the result was saved. Check History before retrying a change."
+            elif 42119 in sql_error_codes(error):
+                message = ("The site's database is paused because its monthly allowance has been used. "
+                           "No request was run. The site owner needs to restore storage access.")
+            else:
+                message = "Cloud storage is temporarily unavailable. No request was run. Try again in a moment."
             raise StateUnavailable(message, retry_safe=not work_started) from None
         finally:
             if connection is not None:

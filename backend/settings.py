@@ -42,7 +42,7 @@ def public_ai_settings():
     config = gemini_settings()
     return {
         "enabled": bool(config["api_key"]),
-        "provider": "Gemini" if config["api_key"] else None,
+        "provider": "Data Genie AI" if config["api_key"] else None,
         "model": config["model"] if config["api_key"] else None,
     }
 

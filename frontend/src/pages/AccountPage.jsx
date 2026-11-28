@@ -1,15 +1,28 @@
-import { useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Link } from '../lib/router';
+import { AccountGeneral } from '../components/AccountGeneral';
+import { AccountSecurity } from '../components/AccountSecurity';
+import { Icon } from '../components/Icon';
+import { useEnterMotion } from '../hooks/useMotion';
+const AgentAccess = lazy(() =>
+  import('../components/AgentAccess').then((module) => ({ default: module.AgentAccess })),
+);
 export default function AccountPage({ workbench, mode, setMode }) {
   const { user, changePassword } = useAuth(),
     { theme, toggle } = useTheme();
+  const passwordEnabled = user.password_enabled !== false;
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState(''),
     [error, setError] = useState('');
+  const [agentsOpen, setAgentsOpen] = useState(false);
+  const [agentsVisited, setAgentsVisited] = useState(false);
+  const panel = useRef(null);
+  useEnterMotion(panel, 'account');
   async function submit(event) {
     event.preventDefault();
+    if (busy) return;
     const form = event.currentTarget,
       values = Object.fromEntries(new FormData(form));
     setMessage('');
@@ -29,128 +42,78 @@ export default function AccountPage({ workbench, mode, setMode }) {
     }
   }
   return (
-    <section>
-      <h1>Account &amp; preferences</h1>
-      <p className="lead">Your account, appearance, and database connection.</p>
-      <div className="account-ledger">
-        <p>
-          <span>Name</span>
-          <strong style={{ textTransform: 'capitalize' }}>
-            {user.first_name} {user.last_name}
-          </strong>
-        </p>
-        <p>
-          <span>Email</span>
-          <strong>{user.email}</strong>
-        </p>
-        <p>
-          <span>Appearance</span>
-          <button className="btn" onClick={toggle}>
-            <strong style={{ textTransform: 'capitalize' }}>{theme}</strong>
-          </button>
-        </p>
-        {workbench.session && (
-          <>
-            <p>
-              <span>Request interpretation</span>
-              <label className="sr-only" htmlFor="requestMode">
-                Request interpretation
-              </label>
-              <select
-                id="requestMode"
-                value={mode}
-                onChange={(event) => setMode(event.target.value)}
-              >
-                <option value="gemini" disabled={!workbench.session.ai?.enabled}>
-                  Gemini AI
-                </option>
-                <option value="keywords">Keywords</option>
-              </select>
-            </p>
-            {workbench.session.source === 'postgresql' ? (
-              <p>
-                <span>PostgreSQL access</span>
-                <strong>
-                  {workbench.session.read_only ? 'Read-only' : 'Changes require confirmation'}
-                </strong>
-              </p>
-            ) : (
-              <p>
-                <span>Database copy</span>
-                <a
-                  className="btn"
-                  href={
-                    '/api/download?session_id=' + encodeURIComponent(workbench.session.session_id)
-                  }
-                  download
-                >
-                  Download SQLite file
-                </a>
-              </p>
-            )}
-          </>
-        )}
+    <section className="account-page" ref={panel}>
+      <header className="page-heading account-page-heading">
+        <div>
+          <h1>Account &amp; preferences</h1>
+          <p className="lead">Your profile, preferences and connections. All in one place.</p>
+        </div>
+        <Link className="account-help-link" href="/faq">
+          Help &amp; FAQ <Icon name="arrow" />
+        </Link>
+      </header>
+      <div className="account-settings-layout">
+        <section className="account-panel-surface" aria-label="General">
+          <AccountGeneral
+            user={user}
+            theme={theme}
+            toggle={toggle}
+            session={workbench.session}
+            mode={mode}
+            setMode={setMode}
+          />
+        </section>
+        <section
+          className="account-panel-surface account-security-panel"
+          aria-label="Sign-in & security"
+        >
+          <AccountSecurity
+            {...{
+              user,
+              passwordEnabled,
+              busy,
+              error,
+              message,
+              submit,
+            }}
+          />
+        </section>
       </div>
-      {!workbench.session && (
-        <p className="small muted">
-          <Link href="/databases">Choose a database</Link> to change request interpretation or
-          export a SQLite file.
-        </p>
-      )}
-      {workbench.session?.source === 'postgresql' && (
-        <p className="small muted">
-          Confirmed edits are saved directly in the connected PostgreSQL database when changes are
-          enabled. Use Download CSV on a result to save a copy of its shown rows.
-        </p>
-      )}
-      <form className="password-form" onSubmit={submit}>
-        <h2>Change password</h2>
-        <label>
-          Current password
-          <input
-            name="current_password"
-            type="password"
-            autoComplete="current-password"
-            maxLength={128}
-            required
-          />
-        </label>
-        <label>
-          New password
-          <input
-            name="new_password"
-            type="password"
-            autoComplete="new-password"
-            minLength={15}
-            maxLength={128}
-            required
-            aria-describedby="newPasswordHelp"
-          />
-        </label>
-        <p className="small muted" id="newPasswordHelp">
-          Use 15 to 128 characters. A long, unique passphrase works well.
-        </p>
-        <label>
-          Confirm new password
-          <input
-            name="confirm"
-            type="password"
-            autoComplete="new-password"
-            minLength={15}
-            maxLength={128}
-            required
-          />
-        </label>
-        <button className="btn" disabled={busy}>
-          {busy ? 'Updating password…' : 'Update password'}
-        </button>
-        <p className={error ? 'err' : 'ok'} role="status">
-          {error || message}
-        </p>
-      </form>
-      <p className="small muted">
-        Accounts and history are saved where Data Genie runs. Changing your password signs out other
-        browser logins.
+      <details
+        className="account-agent-section"
+        onToggle={(event) => {
+          const open = event.currentTarget.open;
+          setAgentsOpen(open);
+          if (open) setAgentsVisited(true);
+        }}
+      >
+        <summary>
+          <span className="account-agent-label">
+            <Icon name="layers" />
+            <strong>Agents &amp; API</strong>
+            <span>Connect an agent or manage access keys.</span>
+          </span>
+          <span className="account-agent-action">
+            Manage connections <Icon name="arrow" />
+          </span>
+        </summary>
+        {agentsVisited && (
+          <div className="account-agent-body">
+            <Suspense
+              fallback={
+                <p className="workspace-loading" role="status">
+                  Loading connections…
+                </p>
+              }
+            >
+              <AgentAccess passwordEnabled={passwordEnabled} active={agentsOpen} />
+            </Suspense>
+          </div>
+        )}
+      </details>
+      <p className="account-storage-note">
+        <Icon name="database" />
+        Accounts and history are saved with this Data Genie installation.
       </p>
     </section>
   );

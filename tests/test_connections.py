@@ -6,12 +6,13 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from decimal import Decimal
 from datetime import date
 
 from backend.connections import CredentialVault, PostgresConnector, connection_config, ConnectionFailure
-from backend.connections.postgres import _value
+from backend.connections.postgres import _value, _root_certificate
+from backend.connections.network import public_addresses
 
 
 class ConnectionSupportTests(unittest.TestCase):
@@ -35,6 +36,70 @@ class ConnectionSupportTests(unittest.TestCase):
 
 
 class ConnectionConfigTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec('psycopg'), 'PostgreSQL driver is not installed')
+    def test_supabase_direct_routing_failure_explains_free_pooler_without_leaking_credentials(self):
+        import psycopg
+        config = connection_config({'connection_url': 'postgresql://postgres:private-fixture@db.project.supabase.co/postgres'})
+        for reason in ('Network is unreachable', 'No route to host', 'Cannot assign requested address'):
+            with self.subTest(reason=reason), \
+                    patch('backend.connections.postgres.settings.public_url', return_value=''), \
+                    patch('psycopg.connect', side_effect=psycopg.OperationalError(reason + ' private-fixture')):
+                with self.assertRaises(ConnectionFailure) as raised:
+                    with PostgresConnector(config).connection():
+                        self.fail('An unreachable endpoint must not open a connection')
+                self.assertEqual(raised.exception.code, 'postgres_ipv6_unavailable')
+                self.assertIn('free Session pooler', str(raised.exception))
+                self.assertNotIn('private-fixture', str(raised.exception))
+
+    def test_supabase_certificate_trust_is_scoped_to_database_endpoints(self):
+        for host in ('db.project.supabase.co', 'aws-1-us-west-2.pooler.supabase.com'):
+            cert = Path(_root_certificate(host))
+            self.assertTrue(cert.is_file())
+            self.assertIn('BEGIN CERTIFICATE', cert.read_text())
+        for host in ('example.com', 'supabase.co', 'db.project.supabase.co.attacker.test',
+                     'evilpooler.supabase.com', 'pooler.supabase.com.attacker.test'):
+            self.assertEqual(_root_certificate(host), 'system')
+
+    def test_public_resolution_retains_both_ip_families_and_rejects_mixed_private_results(self):
+        records = [(10, 1, 6, '', ('2606:4700:4700::1111', 5432, 0, 0)),
+                   (2, 1, 6, '', ('1.1.1.1', 5432)), (2, 1, 6, '', ('1.1.1.1', 5432))]
+        with patch('socket.getaddrinfo', return_value=records):
+            self.assertEqual(public_addresses('public.example.test', 5432),
+                             ['2606:4700:4700::1111', '1.1.1.1'])
+        with patch('socket.getaddrinfo', return_value=records + [(10, 1, 6, '', ('::1', 5432, 0, 0))]):
+            with self.assertRaises(ValueError):
+                public_addresses('mixed.example.test', 5432)
+
+    @unittest.skipUnless(importlib.util.find_spec('psycopg'), 'PostgreSQL driver is not installed')
+    def test_hosted_connector_passes_all_pinned_addresses_with_verified_hostnames(self):
+        config = connection_config({'connection_url': 'postgresql://reader:p@db.example.test/shop'})
+        connection = MagicMock()
+        with patch('backend.connections.postgres.settings.public_url', return_value='https://genie.example.test'), \
+                patch('backend.connections.postgres.public_addresses', return_value=['2606:4700:4700::1111', '1.1.1.1']), \
+                patch('psycopg.connect', return_value=connection) as connect:
+            with PostgresConnector(config).connection():
+                pass
+        self.assertEqual(connect.call_args.kwargs['hostaddr'], '2606:4700:4700::1111,1.1.1.1')
+        self.assertEqual(connect.call_args.kwargs['host'], 'db.example.test,db.example.test')
+        self.assertEqual(connect.call_args.kwargs['sslmode'], 'verify-full')
+        self.assertEqual(connect.call_args.kwargs['sslrootcert'], 'system')
+
+    @unittest.skipUnless(importlib.util.find_spec('psycopg'), 'PostgreSQL driver is not installed')
+    def test_connector_verifies_tls_for_hosted_provider_urls_with_sslmode_require(self):
+        config = connection_config({'connection_url':
+            'postgresql://reader:p@db.example.test/shop?sslmode=require&channel_binding=require'})
+        for origin, expected_mode in (('https://genie.example.test', 'verify-full'), ('', 'require')):
+            with self.subTest(origin=origin), \
+                    patch('backend.connections.postgres.settings.public_url', return_value=origin), \
+                    patch('backend.connections.postgres.public_addresses', return_value=['1.1.1.1']), \
+                    patch('psycopg.connect', return_value=MagicMock()) as connect:
+                with PostgresConnector(config).connection():
+                    pass
+                self.assertEqual(connect.call_args.kwargs['sslmode'], expected_mode)
+                self.assertEqual(connect.call_args.kwargs['channel_binding'], 'require')
+                self.assertEqual(connect.call_args.kwargs.get('sslrootcert'), 'system' if origin else None)
+        self.assertEqual(config['sslmode'], 'require')
+
     def test_postgres_values_preserve_precision_and_serialize_dates(self):
         value = _value({"id": 9007199254740993, "amount": Decimal("1234567890.12345678"), "date": date(2026, 10, 27), "tags": ["sample", True]})
         self.assertEqual(value, {"id":"9007199254740993", "amount":"1234567890.12345678", "date":"2026-10-27", "tags":["sample",True]})

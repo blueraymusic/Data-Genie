@@ -1,0 +1,333 @@
+/* Auth forms use the viewport efficiently; overflow is never clipped at zoom. */
+.workspace-page .gate-header > nav {
+  margin-left: auto;
+  min-width: 0;
+}
+.workspace-page .gate-header > nav a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 13px;
+}
+.workspace-page:not(.auth-screen) .gate-intro > .lead {
+  margin: 12px 0 20px;
+  font-size: 15px;
+  line-height: 1.65;
+}
+.workspace-page.auth-screen {
+  min-height: 100svh;
+  background: var(--chalk);
+}
+.workspace-page.auth-screen .entry-gate {
+  padding: 0 24px 16px;
+}
+.workspace-page.auth-screen .gate-header {
+  height: 68px;
+  gap: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.workspace-page.auth-screen .gate-header > nav a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 0 12px;
+  color: var(--ink);
+  font-weight: 500;
+}
+.workspace-page.auth-screen .gate-header > nav a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.workspace-page.auth-screen .gate-header .brand {
+  font-size: 24px;
+}
+.workspace-page.auth-screen .gate-layout {
+  width: 100%;
+  max-width: 960px;
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(32px, 7vw, 82px);
+  margin-inline: auto;
+  padding-block: clamp(34px, 9vh, 76px) 42px;
+}
+.workspace-page.auth-screen .gate-form {
+  min-width: 0;
+}
+.workspace-page.auth-screen .gate-form h1 {
+  max-width: none;
+  margin: 0;
+  font-size: clamp(36px, 4.4vw, 54px);
+  line-height: 1.06;
+  letter-spacing: -0.025em;
+}
+.workspace-page.auth-screen .gate-form .lead {
+  margin: 10px 0 0;
+  font: 400 15px/1.65 var(--sans);
+  color: var(--ink-soft);
+}
+.workspace-page.auth-screen .auth-step {
+  margin: 0 0 8px;
+  color: var(--ink-soft);
+  font: 500 12px/1.5 var(--sans);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.workspace-page.auth-screen .auth-content {
+  min-width: 0;
+  margin-top: 26px;
+}
+.workspace-page.auth-screen .fields {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  gap: 15px;
+}
+.workspace-page.auth-screen .fields[hidden] {
+  display: none;
+}
+.workspace-page.auth-screen .fields label,
+.workspace-page.auth-screen .fields > div > label {
+  gap: 6px;
+  font-size: 14px;
+  line-height: 22px;
+}
+.workspace-page.auth-screen input:not([type='checkbox']):not([type='radio']) {
+  min-height: 48px;
+  padding: 10px 12px;
+  font-size: 16px;
+  border-color: var(--control-border);
+  border-radius: 8px;
+}
+.workspace-page.auth-screen input:focus-visible {
+  border-color: var(--lapis);
+  outline-offset: 2px;
+}
+.workspace-page.auth-screen .auth-details:not([hidden]) + .auth-passwords {
+  margin-top: 15px;
+}
+.workspace-page.auth-screen .auth-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  line-height: 22px;
+}
+.workspace-page.auth-screen .auth-label-row a {
+  font-size: 12px;
+  text-underline-offset: 3px;
+}
+.workspace-page.auth-screen .password-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.workspace-page.auth-screen .password-input:has(input:focus-visible) {
+  border-color: var(--lapis);
+  outline: 1px solid var(--lapis);
+}
+.workspace-page.auth-screen .password-input button {
+  position: static;
+  align-self: stretch;
+  padding-inline: 12px;
+  border: 0;
+  border-inline-start: 1px solid var(--rule);
+  border-radius: 0 7px 7px 0;
+  outline-offset: -3px;
+  color: var(--lapis);
+  font-size: 12px;
+}
+.workspace-page.auth-screen .password-input button:hover:enabled {
+  background: var(--lapis-wash);
+}
+.workspace-page.auth-screen .password-input input:not([type='checkbox']):not([type='radio']) {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  outline: none;
+}
+.workspace-page.auth-screen .identity-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.workspace-page.auth-screen .auth-form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 19px;
+}
+.workspace-page.auth-screen .start-button {
+  flex: 1;
+  width: auto;
+  min-height: 48px;
+  margin: 0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.workspace-page.auth-screen .start-button .ic {
+  width: 17px;
+  height: 17px;
+}
+.workspace-page.auth-screen .auth-back {
+  min-width: 72px;
+  border-radius: 8px;
+}
+.workspace-page.auth-screen .google-entry {
+  margin: 0 0 19px;
+}
+.workspace-page.auth-screen .google-button {
+  min-height: 48px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.workspace-page.auth-screen .auth-divider {
+  margin: 15px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.workspace-page.auth-screen .auth-feedback {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--remove) 45%, var(--rule));
+  background: color-mix(in srgb, var(--remove) 5%, var(--paper));
+  overflow-wrap: anywhere;
+}
+.workspace-page.auth-screen .auth-feedback .err {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  line-height: 18px;
+}
+.workspace-page.auth-screen .auth-feedback .text-button {
+  min-height: 36px;
+  padding-bottom: 0;
+}
+.workspace-page.auth-screen .auth-footer {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid var(--rule);
+  padding-top: 14px;
+  margin-top: 22px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.workspace-page.auth-screen .auth-footer p {
+  margin: 0;
+}
+.workspace-page.auth-screen .auth-footer > a {
+  flex: none;
+}
+.workspace-page.auth-screen .auth-footer a {
+  text-underline-offset: 3px;
+}
+.workspace-page.auth-screen .auth-verification > p {
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.workspace-page.auth-screen .auth-verification > label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+}
+.workspace-page.auth-screen .auth-verification input {
+  font: 500 22px/28px var(--mono);
+  letter-spacing: 0.3em;
+}
+.workspace-page.auth-screen .auth-verification .start-button {
+  width: 100%;
+  margin-top: 12px;
+}
+.workspace-page.auth-screen .auth-verification .account-profile-actions {
+  margin-top: 8px;
+  gap: 12px;
+}
+.workspace-page.auth-screen .auth-verification .text-button {
+  min-height: 40px;
+  font-size: 11px;
+}
+.workspace-page.auth-screen .auth-story {
+  min-width: 0;
+  padding: 8px 0 8px clamp(24px, 4vw, 48px);
+  margin-top: 8px;
+  border-inline-start: 1px solid var(--rule);
+}
+.workspace-page.auth-screen .auth-story h2 {
+  margin: 0 0 21px;
+  font: 500 clamp(26px, 3vw, 36px)/1.12 var(--serif);
+  letter-spacing: -0.02em;
+}
+.workspace-page.auth-screen .auth-example-label {
+  margin: 0 0 5px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+.workspace-page.auth-screen .auth-story .human-example {
+  margin: 0 0 15px;
+  font: 500 16px/1.5 var(--sans);
+}
+.workspace-page.auth-screen .auth-story .sqlblock {
+  margin: 0;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.workspace-page.auth-screen .auth-story-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 15px 0 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+.workspace-page.auth-screen .auth-story-note .ic {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.workspace-page.auth-screen .gate-recovery .auth-content > form > .start-button {
+  width: 100%;
+  margin-top: 16px;
+}
+@media (max-width: 850px) {
+  .workspace-page.auth-screen .gate-layout {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 420px;
+  }
+  .workspace-page.auth-screen .auth-story {
+    display: none;
+  }
+}
+@media (max-width: 500px) {
+  .workspace-page.auth-screen .entry-gate {
+    padding-inline: 16px;
+  }
+  .workspace-page.auth-screen .gate-header {
+    gap: 4px;
+  }
+  .workspace-page.auth-screen .gate-header .brand {
+    font-size: 21px;
+  }
+  .workspace-page.auth-screen .gate-header > nav a {
+    padding-inline: 6px;
+  }
+  .workspace-page.auth-screen .auth-content {
+    margin-top: 22px;
+  }
+}
+@media (max-height: 520px) {
+  .workspace-page.auth-screen .gate-layout {
+    padding-block: 24px 38px;
+  }
+}

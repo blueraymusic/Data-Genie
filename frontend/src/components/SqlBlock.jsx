@@ -43,8 +43,9 @@ export function SqlBlock({ sql = '', operation = 'SELECT', home = false, decline
           onClick={copy}
           onBlur={() => setCopied(false)}
           aria-label={copied ? 'Copied' : 'Copy SQL'}
+          data-copied={copied || undefined}
         >
-          <Icon name={copied ? 'check' : 'copy'} />
+          <Icon key={copied ? 'copied' : 'copy'} name={copied ? 'check' : 'copy'} />
         </button>
       </div>
       <pre>

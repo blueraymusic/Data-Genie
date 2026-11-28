@@ -1,0 +1,64 @@
+.workspace-page .google-entry {
+  margin: 0 0 20px;
+}
+.workspace-page .google-entry .google-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 46px;
+  width: 100%;
+  border: 1px solid #747775;
+  background: #fff;
+  color: #1f1f1f;
+  text-decoration: none;
+}
+.workspace-page .google-entry .google-button:is(:hover, :focus-visible, :active):not(:disabled) {
+  border-color: #1f1f1f;
+  background: #f2f2f2;
+}
+.workspace-page .google-button[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: wait;
+}
+.workspace-page .google-entry button.google-button:disabled {
+  border-color: var(--control-border);
+  background: var(--paper);
+  color: var(--ink-soft);
+  opacity: 1;
+  cursor: default;
+}
+.workspace-page .google-preview-note {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+.workspace-page .google-mark {
+  flex: none;
+}
+.workspace-page .auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+.workspace-page .auth-divider::before,
+.workspace-page .auth-divider::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: var(--rule);
+}
+.workspace-page .google-account-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.workspace-page .google-link-form .google-button {
+  width: auto;
+}
+.workspace-page .google-link-form p {
+  max-width: 58ch;
+}

@@ -1,112 +1,221 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useScrollReveal } from '../hooks/useMotion';
 import { useAuth } from '../context/AuthContext';
-import { PublicHeader } from '../components/PublicHeader';
+import { PublicHeader, EntryLink } from '../components/PublicHeader';
+import { Brand } from '../components/Brand';
 import { HeroDemo } from '../components/HeroDemo';
+import { HomeTour } from '../components/HomeTour';
+import { HomeExamples } from '../components/HomeExamples';
 import { HomeSafety } from '../components/HomeSafety';
-import { HomeHistory } from '../components/HomeHistory';
-import { SqlBlock } from '../components/SqlBlock';
-import { examples } from '../data/home';
+import { HomeConnections } from '../components/HomeConnections';
 import { Link } from '../lib/router';
 import { Icon } from '../components/Icon';
+
+const steps = [
+  [
+    'Ask in plain English',
+    'Choose your database, then type what you want to know. Try “show all customers from Missouri.”',
+  ],
+  [
+    'See the SQL',
+    'Data Genie translates your request into SQL and explains it, so you can check what will happen.',
+  ],
+  [
+    'Get your answer',
+    'Reads run straight away and return rows. Changes always wait for your OK. Your requests stay in History.',
+  ],
+];
+const questions = [
+  [
+    'Do I need an account to try the demo?',
+    'No. The interactive examples on this page use sample data. Create an account when you’re ready to work with your own database.',
+  ],
+  [
+    'Which databases can I use?',
+    'Upload a SQLite file, create a new SQLite database, or connect an external PostgreSQL database. PostgreSQL connections start read-only.',
+  ],
+  [
+    'Can Data Genie change my data?',
+    'Only after you approve the SQL. Confirmed PostgreSQL changes apply directly to your connected database. You can also manage tables and columns in Structure.',
+  ],
+  [
+    'Can I see my earlier requests?',
+    'Yes. History saves your requests, SQL, status and available results. Search and filter it to find an earlier answer.',
+  ],
+  [
+    'Can I work with my team?',
+    'Yes. Choose “Create team workspace” on the database screen, then add databases and invite teammates using their account email and a private code. You choose what each person can do with each database.',
+  ],
+  [
+    'Can an AI agent use my database safely?',
+    'Connect an MCP client, choose one workspace, and grant only the actions it needs. Database permissions still apply, and changes wait for human review in Data Genie. Revoke the connection from your account at any time.',
+  ],
+];
 export default function HomePage() {
   const { user } = useAuth();
+  const page = useRef(null);
+  useScrollReveal(page, '.section-heading, .home-steps > li, .home-closing .wrap');
   useEffect(() => {
-    document.title = 'Data Genie: ask your database in plain English';
+    document.title = 'Data Genie: reviewed database access for teams and agents';
   }, []);
-  const steps = [
-    [
-      'Choose your database',
-      'Upload a SQLite file, connect PostgreSQL, create a SQLite database, or try the sample. Data Genie reads its structure.',
-    ],
-    ['Ask in plain English', 'Type what you want to find, add, change or total up. No SQL needed.'],
-    ['Review the SQL', 'See the SQL behind your request. Changes always wait for your OK first.'],
-    ['Get the result', 'The result and the SQL behind it are saved, so you can find them again.'],
-  ];
   return (
-    <div className="home-page" data-authenticated={user ? 'true' : undefined}>
+    <div className="home-page" ref={page} data-authenticated={user ? 'true' : undefined}>
       <a className="skip" href="#main">
         Skip to content
       </a>
       <PublicHeader />
       <main id="main">
-        <section className="hero wrap" id="top" aria-labelledby="h1">
-          <div className="hero-intro">
-            <div className="hero-heading">
-              <p className="eyebrow">Your words. Your data.</p>
+        <section className="home-hero" id="top" aria-labelledby="h1">
+          <div className="wrap hero-layout">
+            <div className="hero-copy">
+              <p className="eyebrow">For people, teams &amp; agents</p>
               <h1 id="h1">
-                Ask your database in <em>plain English.</em>
+                Your data. Your agents. <em>Your approval.</em>
               </h1>
-            </div>
-            <div className="hero-start">
-              <p className="lede">
-                Ask a question. See the SQL and your answer. Changes always wait for your OK.
+              <p className="hero-lede">
+                Ask in plain English, inspect the SQL, and approve changes before they run. 
+                Scoped access for teammates and MCP agents, logged in History.
               </p>
               <div className="cta-row">
-                <Link href="/#demo" className="btn btn-primary">
-                  Try the demo <span aria-hidden="true">↓</span>
+                <Link href={user ? '/databases' : '/signup'} className="btn btn-primary">
+                  {user ? 'Go to my workspace' : 'Ask a question'} <Icon name="arrow" />
                 </Link>
-                <Link href={user ? '/databases' : '/signin'} className="btn btn-secondary">
-                  Open my database
+                <Link href={user ? '/databases' : '/signin'} className="btn btn-dark">
+                  Add a database
                 </Link>
               </div>
               <p className="hero-hint">
-                No account needed to try the demo. SQLite files and PostgreSQL connections.
+                Create an account to get started.
+                <br /> Works with SQLite files and PostgreSQL connections.
               </p>
             </div>
+            <div className="hero-preview">
+              <HeroDemo />
+            </div>
           </div>
-          <HeroDemo />
         </section>
-        <section className="sec wrap" id="how" aria-labelledby="how-h">
-          <h2 id="how-h">How it works</h2>
-          <ol className="steps" role="list">
-            {steps.map(([title, copy], index) => (
-              <li className="step" key={title}>
-                <span className="num" aria-hidden="true">
-                  {index + 1}
-                </span>
-                <h3>{title}</h3>
-                <p>{copy}</p>
-              </li>
-            ))}
-          </ol>
-        </section>
-        <section className="sec wrap" id="ask" aria-labelledby="ask-h">
-          <h2 id="ask-h">What you can ask</h2>
-          <p className="lede">
-            Write it the way you would say it. Here is each request next to the SQL Data Genie
-            writes for it.
-          </p>
-          <div className="ask-grid">
-            {examples.map((group) => (
-              <div key={group.title}>
-                <h3>{group.title}</h3>
-                {group.items.map((item) => (
-                  <div className="mini" key={item.request}>
-                    <p className="req">{item.request}</p>
-                    <SqlBlock home sql={item.sql} operation={item.operation} />
-                  </div>
-                ))}
+        <section className="home-section home-control" aria-labelledby="control-h">
+          <div className="wrap">
+            <div className="section-heading centered">
+              <p className="eyebrow">You stay in control</p>
+              <h2 id="control-h">
+                One database. Clear <em>boundaries.</em>
+              </h2>
+            </div>
+            <div className="control-grid">
+              <div className="control-card">
+                <Icon name="check" />
+                <h3>Review every change</h3>
+                <p>
+                  Inspect the SQL and affected rows before approving. Find completed and declined
+                  requests in History.
+                </p>
+                <Link href="/#safety" className="inline-link">
+                  See the review flow <Icon name="arrow" />
+                </Link>
               </div>
-            ))}
+              <div className="control-card">
+                <Icon name="layers" />
+                <h3>Share with your team</h3>
+                <p>
+                  Start in your private workspace. Move a database into a team, set access per
+                  person, and share approved reports.
+                </p>
+                <Link href={user ? '/workspaces' : '/signup'} className="inline-link">
+                  Set up a team <Icon name="arrow" />
+                </Link>
+              </div>
+              <div className="control-card">
+                <Icon name="workspace" />
+                <h3>Connect your agent</h3>
+                <p>
+                  Give an MCP client access to one workspace. Its requests follow your permissions
+                  and the same review process.
+                </p>
+                <Link href="/faq" className="inline-link">
+                  Explore agent access <Icon name="arrow" />
+                </Link>
+              </div>
+            </div>
           </div>
         </section>
-        <HomeSafety />
-        <HomeHistory />
-        <section className="closing wrap" aria-labelledby="closing-title">
-          <div>
-            <p className="eyebrow">From question to clarity</p>
-            <h2 id="closing-title">Your next answer starts with a question.</h2>
-            <p>Bring your database. We’ll help you find your way through it.</p>
+        <HomeConnections />
+        <HomeTour />
+        <section className="home-section" id="how" aria-labelledby="how-h">
+          <div className="wrap">
+            <div className="section-heading centered">
+              <p className="eyebrow">How it works</p>
+              <h2 id="how-h">
+                From question to answer in <em>three steps.</em>
+              </h2>
+            </div>
+            <ol className="home-steps" role="list">
+              {steps.map(([title, copy], index) => (
+                <li key={title} data-motion-delay={index * 70}>
+                  <span className="step-number" aria-hidden="true">
+                    0{index + 1}
+                  </span>
+                  <h3>{title}</h3>
+                  <p>{copy}</p>
+                </li>
+              ))}
+            </ol>
           </div>
-          <Link href={user ? '/databases' : '/signup'} className="btn btn-primary">
-            {user ? 'Open your workspace' : 'Get started'} <Icon name="arrow" />
-          </Link>
+        </section>
+        <HomeExamples />
+        <HomeSafety />
+        <section className="home-section home-faq" id="questions" aria-labelledby="home-faq-h">
+          <div className="wrap faq-layout">
+            <div className="section-heading">
+              <p className="eyebrow">FAQ</p>
+              <h2 id="home-faq-h">
+                Questions,
+                <br />
+                <em>answered.</em>
+              </h2>
+              <Link href="/faq" className="inline-link">
+                All questions & answers <Icon name="arrow" />
+              </Link>
+            </div>
+            <div className="home-faq-list">
+              {questions.map(([question, answer]) => (
+                <details key={question}>
+                  <summary>
+                    {question}
+                    <span aria-hidden="true">+</span>
+                  </summary>
+                  <p>{answer}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+        <section className="home-closing" aria-labelledby="closing-title">
+          <div className="wrap">
+            <h2 id="closing-title">
+              Your next answer starts <em>with a question.</em>
+            </h2>
+            <EntryLink primary className="btn btn-primary" />
+          </div>
         </section>
       </main>
-      <footer className="foot">
+      <footer className="home-footer dark-surface">
         <div className="wrap">
-          <span>Data Genie, by Adel Sissoko.</span>
-          <Link href="/faq">FAQ</Link>
+          <div className="footer-row">
+            <Brand />
+            <nav aria-label="Footer navigation">
+              <Link href="/#how">How it works</Link>
+              <Link href="/#ask">What you can ask</Link>
+              <Link href="/#safety">Safety</Link>
+              <Link href="/faq">FAQ</Link>
+              <Link href="/contact">Contact us</Link>
+              <EntryLink />
+            </nav>
+          </div>
+          <div className="footer-meta">
+            <p className="eyebrow">Your words. Your data.</p>
+            <span>Made by Blueray Inc.</span>
+          </div>
         </div>
       </footer>
     </div>

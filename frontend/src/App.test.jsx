@@ -6,6 +6,8 @@ import { Confirmation, Translation, ResultOutput } from './components/CommandRes
 import AskPage from './pages/AskPage';
 import { SqlBlock } from './components/SqlBlock';
 import { normalizeCommand } from './hooks/useWorkbench';
+import { Router } from './lib/router';
+import { walkthroughSteps } from './data/workspaceWalkthrough';
 
 const user = {
   account_id: 1,
@@ -28,7 +30,7 @@ const session = {
       columns: [{ name: 'customer_id', type: 'INTEGER', primary_key: true }],
     },
   ],
-  ai: { enabled: false },
+  ai: { enabled: true },
 };
 const response = (data, status = 200) =>
   Promise.resolve({ ok: status < 400, status, json: async () => data });
@@ -52,7 +54,7 @@ function switchingFixture({ failures = 0, recovery = 'retry', restore = true } =
   fetch.mockImplementation((path) => {
     if (path === '/api/auth/session') return response({ user, csrf_token: 'csrf-test' });
     if (path === '/api/status') return response(session);
-    if (path === '/api/history') return response({ requests: [] });
+    if (path.startsWith('/api/history')) return response({ requests: [] });
     if (path === '/api/sessions')
       return response({
         sessions: [session, remote, { ...remote, session_id: 'older-pg-session' }],
@@ -110,32 +112,104 @@ afterEach(() => {
 });
 
 describe('React pages and account flow', () => {
+  it.each([
+    ['/databases', false, 'Choose your database.'],
+    ['/databases', true, 'Your databases'],
+    ['/workspaces?workspace=team', true, 'Your workspaces'],
+    ['/account', true, 'Account & preferences'],
+    ['/app?view=ask', true, 'Ask your database.'],
+    ['/app?view=sql', true, 'Run SQL.'],
+  ])(
+    'opens the real authenticated app at %s (restored database: %s)',
+    async (path, restore, title) => {
+      history.replaceState({}, '', path);
+      if (restore)
+        sessionStorage.setItem(
+          'data-genie-session',
+          JSON.stringify({ session_id: session.session_id }),
+        );
+      const personal = {
+        workspace_id: 'personal',
+        name: 'Personal workspace',
+        role: 'owner',
+        personal: true,
+      };
+      const team = { workspace_id: 'team', name: 'Operations', role: 'owner', personal: false };
+      fetch.mockImplementation((url) => {
+        if (url === '/api/auth/session') return response({ user, csrf_token: 'csrf-test' });
+        if (url === '/api/auth/providers') return response({ google: { enabled: false } });
+        if (url === '/api/status') return response(session);
+        if (url.startsWith('/api/history')) return response({ requests: [] });
+        if (url === '/api/sessions') return response({ sessions: [session] });
+        if (url === '/api/workspaces')
+          return response({
+            workspaces: [personal, team],
+            invitations: [],
+            ownership_transfers: [],
+          });
+        if (url === '/api/workspaces/personal' || url === '/api/workspaces/team')
+          return response({
+            workspace: url.endsWith('/team') ? team : personal,
+            databases: [],
+            members: [],
+            invitations: [],
+          });
+        throw new Error('Unexpected smoke-test request: ' + url);
+      });
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const events = userEvent.setup();
+      render(<App />);
+      expect(await screen.findByRole('heading', { name: title, exact: true })).toBeTruthy();
+      if (path.startsWith('/workspaces'))
+        await waitFor(() => expect(screen.getByLabelText('Select workspace').value).toBe('team'));
+      // Exercise a route transition in the same mounted lazy workspace, not only its first render.
+      if (path === '/account') {
+        await events.click(
+          within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
+            name: /Teams/,
+          }),
+        );
+        expect(
+          await screen.findByRole('heading', { name: 'Your workspaces', exact: true }),
+        ).toBeTruthy();
+      }
+      expect(screen.queryByText('The page could not be displayed.')).toBeNull();
+      expect(errors).not.toHaveBeenCalled();
+      errors.mockRestore();
+    },
+  );
+
   it.each(['/signin', '/signup'])(
     'retries an initial connection error on %s with only a GET and preserves form drafts',
     async (path) => {
       history.replaceState({}, '', path);
       let reads = 0,
         finishCheck;
-      fetch.mockImplementation(() =>
-        ++reads === 1
-          ? response({ error: 'Cloud storage is starting. Please try again.' }, 503)
-          : new Promise((resolve) => {
-              finishCheck = resolve;
-            }),
+      fetch.mockImplementation((path) =>
+        path === '/api/auth/providers'
+          ? response({ google: { enabled: false } })
+          : ++reads === 1
+            ? response({ error: 'Cloud storage is starting. Please try again.' }, 503)
+            : new Promise((resolve) => {
+                finishCheck = resolve;
+              }),
       );
       const events = userEvent.setup();
       render(<App />);
       await screen.findByText('Cloud storage is starting. Please try again.');
-      const email = screen.getByRole('textbox', { name: 'Email', exact: true }),
+      const email = screen.getByLabelText('Email', { exact: true }),
         password = screen.getByLabelText('Password', { exact: true });
       await events.type(email, user.email);
-      await events.type(password, 'a long test passphrase');
       if (path === '/signup') {
         await events.type(screen.getByRole('textbox', { name: 'First name', exact: true }), 'Test');
         await events.type(
           screen.getByRole('textbox', { name: 'Last name', exact: true }),
           'Reader',
         );
+        await events.click(screen.getByRole('button', { name: 'Continue', exact: true }));
+      }
+      await events.type(password, 'a long test passphrase');
+      if (path === '/signup') {
         await events.type(
           screen.getByLabelText('Confirm password', { exact: true }),
           'a long test passphrase',
@@ -149,20 +223,19 @@ describe('React pages and account flow', () => {
       });
       expect(screen.queryByText('Cloud storage is starting. Please try again.')).toBeNull();
       expect(screen.queryByRole('button', { name: 'Retry connection', exact: true })).toBeNull();
-      expect(screen.getByRole('textbox', { name: 'Email', exact: true })).toBe(email);
+      expect(screen.getByLabelText('Email', { exact: true })).toBe(email);
       expect(email.value).toBe(user.email);
       expect(password.value).toBe('a long test passphrase');
       if (path === '/signup') {
-        expect(screen.getByRole('textbox', { name: 'First name', exact: true }).value).toBe('Test');
-        expect(screen.getByRole('textbox', { name: 'Last name', exact: true }).value).toBe(
-          'Reader',
-        );
+        expect(screen.getByLabelText('First name', { exact: true }).value).toBe('Test');
+        expect(screen.getByLabelText('Last name', { exact: true }).value).toBe('Reader');
         expect(screen.getByLabelText('Confirm password', { exact: true }).value).toBe(
           'a long test passphrase',
         );
       }
       expect(fetch.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
         ['/api/auth/session', 'GET'],
+        ['/api/auth/providers', 'GET'],
         ['/api/auth/session', 'GET'],
       ]);
     },
@@ -171,11 +244,13 @@ describe('React pages and account flow', () => {
   it('keeps the latest connection error when a read-only retry also fails', async () => {
     history.replaceState({}, '', '/signin');
     let reads = 0;
-    fetch.mockImplementation(() =>
-      response(
-        { error: ++reads === 1 ? 'Initial storage error' : 'Storage is still starting' },
-        503,
-      ),
+    fetch.mockImplementation((path) =>
+      path === '/api/auth/providers'
+        ? response({ google: { enabled: false } })
+        : response(
+            { error: ++reads === 1 ? 'Initial storage error' : 'Storage is still starting' },
+            503,
+          ),
     );
     const events = userEvent.setup();
     render(<App />);
@@ -188,7 +263,11 @@ describe('React pages and account flow', () => {
       false,
     );
     expect(screen.getByRole('textbox', { name: 'Email', exact: true }).value).toBe(user.email);
-    expect(fetch.mock.calls.map(([, options]) => options.method)).toEqual(['GET', 'GET']);
+    expect(fetch.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
+      ['/api/auth/session', 'GET'],
+      ['/api/auth/providers', 'GET'],
+      ['/api/auth/session', 'GET'],
+    ]);
   });
 
   it('clears a stale connection error on login and never automatically replays a failed POST', async () => {
@@ -211,7 +290,35 @@ describe('React pages and account flow', () => {
     await events.click(screen.getByRole('button', { name: 'Show password', exact: true }));
     expect(fetch.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
       ['/api/auth/session', 'GET'],
+      ['/api/auth/providers', 'GET'],
       ['/api/auth/login', 'POST'],
+    ]);
+  });
+
+  it('rechecks storage after a login connection failure without resubmitting credentials', async () => {
+    history.replaceState({}, '', '/signin');
+    const message = 'Cloud storage is temporarily unavailable. No request was run.';
+    fetch.mockImplementation((path) =>
+      path === '/api/auth/session'
+        ? response({ user: null })
+        : response({ error: message, code: 'cloud_storage_unavailable', recovery: 'retry' }, 503),
+    );
+    const events = userEvent.setup();
+    render(<App />);
+    const email = await screen.findByRole('textbox', { name: 'Email', exact: true });
+    await events.type(email, user.email);
+    await events.type(screen.getByLabelText('Password', { exact: true }), 'a long test passphrase');
+    await events.click(screen.getByRole('button', { name: 'Log in', exact: true }));
+    await screen.findByText(message);
+    await events.click(screen.getByRole('button', { name: 'Retry connection', exact: true }));
+    await waitFor(() => expect(screen.queryByText(message)).toBeNull());
+    expect(email.value).toBe(user.email);
+    expect(screen.getByLabelText('Password', { exact: true }).value).toBe('a long test passphrase');
+    expect(fetch.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
+      ['/api/auth/session', 'GET'],
+      ['/api/auth/providers', 'GET'],
+      ['/api/auth/login', 'POST'],
+      ['/api/auth/session', 'GET'],
     ]);
   });
 
@@ -304,40 +411,143 @@ describe('React pages and account flow', () => {
     );
   });
 
-  it('searches FAQ answers and handles no matches', async () => {
-    history.replaceState({}, '', '/faq');
+  it('keeps main navigation when opening FAQ and searches questions by topic', async () => {
     const events = userEvent.setup();
     render(<App />);
+    const homeNav = within(screen.getByRole('navigation', { name: 'Main navigation' }));
+    const links = homeNav.getAllByRole('link').map((link) => link.getAttribute('href'));
+    await events.click(homeNav.getByRole('link', { name: 'FAQ' }));
+    const faqNav = within(screen.getByRole('navigation', { name: 'Main navigation' }));
+    expect(faqNav.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual(links);
+    expect(faqNav.getByRole('link', { name: 'FAQ' }).getAttribute('aria-current')).toBe('page');
     const search = screen.getByRole('searchbox', { name: 'Search questions and answers' });
-    await events.type(search, 'Gemini');
-    expect(screen.getByText('4 matching questions')).toBeTruthy();
+    await events.type(search, 'AI receive');
+    expect(screen.getByRole('status').textContent).toMatch(/^[1-9]\d* matching questions?$/);
+    expect(screen.getByText('What does Data Genie AI receive about my database?')).toBeTruthy();
+    expect(screen.queryByText('Which database files can I upload?')).toBeNull();
     await events.clear(search);
     await events.type(search, 'no-matching-words');
     expect(screen.getByText(/No matching questions/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Expand all' }).disabled).toBe(true);
     await events.click(screen.getByRole('button', { name: 'Clear', exact: true }));
     expect(screen.getByRole('heading', { name: 'Getting started', exact: true })).toBeTruthy();
+    expect(document.activeElement).toBe(search);
+    await events.type(search, 'AI receive');
+    const topics = within(screen.getByRole('navigation', { name: 'Jump to a topic' }));
+    await events.click(topics.getByRole('link', { name: 'PostgreSQL connections' }));
+    expect(location.hash).toBe('#postgresql');
+    expect(search.value).toBe('');
+    expect(
+      screen.getByRole('heading', { name: 'PostgreSQL connections', exact: true }),
+    ).toBeTruthy();
   });
 
-  it('validates registration then opens the authenticated database chooser', async () => {
-    history.replaceState({}, '', '/signup');
+  it('answers how to create an account and links to sign-up and the FAQ', async () => {
+    const events = userEvent.setup();
+    render(<App />);
+    await events.click(screen.getByRole('button', { name: 'Open Data Genie help chat' }));
+    const chat = within(screen.getByRole('dialog', { name: 'Data Genie help' }));
+    await events.type(
+      chat.getByRole('textbox', { name: 'Ask about Data Genie' }),
+      'how to create an account{Enter}',
+    );
+    expect(chat.getByRole('heading', { name: 'How do I create an account?' })).toBeTruthy();
+    expect(chat.getByRole('link', { name: 'Sign up' }).getAttribute('href')).toBe('/signup');
+    expect(chat.getByText(/enter the six-digit code sent to your email/)).toBeTruthy();
+    await events.click(chat.getByRole('link', { name: 'Read this in the FAQ' }));
+    expect(location.hash).toBe('#faq-answer-how-do-i-create-an-account');
+    expect(document.getElementById(location.hash.slice(1)).closest('details').open).toBe(true);
+  });
+
+  it('answers help questions from the FAQ and opens the cited answer', async () => {
+    const events = userEvent.setup();
+    render(<App />);
+    await events.click(screen.getByRole('button', { name: 'Open Data Genie help chat' }));
+    const chat = within(screen.getByRole('dialog', { name: 'Data Genie help' }));
+    const requestCount = fetch.mock.calls.length;
+    await events.click(chat.getByRole('button', { name: 'How does Data Genie work?' }));
+    expect(chat.getByText(/Ask questions about SQLite or PostgreSQL/)).toBeTruthy();
+    const suggestions = within(chat.getByRole('group', { name: 'Suggested follow-up questions' }));
+    await events.click(
+      suggestions.getByRole('button', { name: 'Which database files can I upload?' }),
+    );
+    expect(chat.getByRole('heading', { name: 'Which database files can I upload?' })).toBeTruthy();
+    const input = chat.getByRole('textbox', { name: 'Ask about Data Genie' });
+    await events.type(input, 'What is the weather in Missouri?{Enter}');
+    expect(await chat.findByText('I couldn’t find an answer in the Data Genie FAQ.')).toBeTruthy();
+    await events.type(input, 'I need to connect to Supabase{Enter}');
+    expect(chat.getByRole('heading', { name: 'How do I connect PostgreSQL?' })).toBeTruthy();
+    expect(fetch.mock.calls.slice(requestCount)).toEqual([
+      [
+        '/api/help/faq',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ question: 'What is the weather in Missouri?' }),
+        }),
+      ],
+    ]);
+    await events.click(chat.getAllByRole('link', { name: 'Read this in the FAQ' }).at(-1));
+    expect(screen.queryByRole('dialog', { name: 'Data Genie help' })).toBeNull();
+    expect(location.hash).toBe('#faq-answer-how-do-i-connect-postgresql');
+    expect(document.getElementById(location.hash.slice(1)).closest('details').open).toBe(true);
+    await events.click(screen.getByRole('button', { name: 'Open Data Genie help chat' }));
+    const reopened = within(screen.getByRole('dialog', { name: 'Data Genie help' }));
+    await events.click(reopened.getByRole('button', { name: 'Start a new help chat' }));
+    expect(reopened.getByRole('button', { name: 'How does Data Genie work?' })).toBeTruthy();
+    expect(reopened.queryByRole('link', { name: 'Read this in the FAQ' })).toBeNull();
+  });
+
+  it('renders only known FAQ entries from the Gemini fallback', async () => {
     fetch.mockImplementation((path) =>
       response(
-        path === '/api/auth/session'
-          ? { user: null }
-          : path === '/api/auth/register'
-            ? { user, csrf_token: 'csrf-test' }
-            : { sessions: [] },
+        path === '/api/help/faq'
+          ? { matches: ['unknown-entry', 'faq-answer-how-do-i-create-an-account'] }
+          : { user: null },
       ),
     );
     const events = userEvent.setup();
     render(<App />);
+    await events.click(screen.getByRole('button', { name: 'Open Data Genie help chat' }));
+    const chat = within(screen.getByRole('dialog', { name: 'Data Genie help' }));
+    await events.type(
+      chat.getByRole('textbox', { name: 'Ask about Data Genie' }),
+      'What’s the way in for a brand-new visitor?{Enter}',
+    );
+    expect(await chat.findByRole('heading', { name: 'How do I create an account?' })).toBeTruthy();
+    expect(chat.getByRole('link', { name: 'Read this in the FAQ' }).getAttribute('href')).toBe(
+      '/faq#faq-answer-how-do-i-create-an-account',
+    );
+  });
+
+  it('validates registration, opens the sample walkthrough, and remembers completion', async () => {
+    history.replaceState({}, '', '/signup');
+    let signedIn = false;
+    let pending = true;
+    fetch.mockImplementation((path) => {
+      if (path === '/api/auth/session')
+        return response({ user: signedIn ? { ...user, walkthrough_pending: pending } : null });
+      if (path === '/api/auth/register') {
+        signedIn = true;
+        return response({
+          user: { ...user, walkthrough_pending: pending },
+          csrf_token: 'csrf-test',
+        });
+      }
+      if (path === '/api/auth/walkthrough') {
+        pending = false;
+        return response({ walkthrough_pending: false });
+      }
+      return response({ sessions: [] });
+    });
+    const events = userEvent.setup();
+    const app = render(<App />);
     await events.type(
       await screen.findByRole('textbox', { name: 'First name', exact: true }),
       'Test',
     );
     await events.type(screen.getByRole('textbox', { name: 'Last name', exact: true }), 'Reader');
     await events.type(screen.getByRole('textbox', { name: 'Email', exact: true }), user.email);
+    await events.click(screen.getByRole('button', { name: 'Continue', exact: true }));
     await events.type(screen.getByLabelText('Password', { exact: true }), 'a long test passphrase');
     await events.type(
       screen.getByLabelText('Confirm password', { exact: true }),
@@ -351,10 +561,62 @@ describe('React pages and account flow', () => {
       'a long test passphrase',
     );
     await events.click(screen.getByRole('button', { name: 'Create account', exact: true }));
+    const tour = within(await screen.findByRole('dialog', { name: 'Welcome to Data Genie' }));
+    const welcome = tour.getByRole('heading', { name: 'Welcome to Data Genie' });
+    expect(document.activeElement).toBe(welcome);
+    await events.click(tour.getByRole('button', { name: 'Next' }));
+    expect(tour.getByRole('heading', { name: 'Recent databases' })).toBeTruthy();
+    await events.click(tour.getByRole('button', { name: 'Previous' }));
+    expect(tour.getByRole('heading', { name: 'Welcome to Data Genie' })).toBeTruthy();
+    const surface = document.querySelector('.walkthrough-surface');
+    expect(surface.hasAttribute('inert')).toBe(true);
+    for (const [, selector, title] of walkthroughSteps.slice(1)) {
+      await events.click(tour.getByRole('button', { name: 'Next' }));
+      expect(tour.getByRole('heading', { name: title })).toBeTruthy();
+      await waitFor(() => expect(surface.querySelector(selector)).toBeTruthy());
+    }
+    expect(
+      fetch.mock.calls.filter(([, options]) => options?.method === 'POST').map(([path]) => path),
+    ).toEqual(['/api/auth/register']);
+    expect(
+      fetch.mock.calls.some(([path]) => /walkthrough-example|walkthrough-personal/.test(path)),
+    ).toBe(false);
+    await events.click(tour.getByRole('button', { name: 'Finish' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/auth/walkthrough',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    app.unmount();
+    render(<App />);
     expect(
       await screen.findByRole('heading', { name: 'Choose your database.', exact: true }),
     ).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(localStorage.getItem('password')).toBeNull();
+  });
+
+  it('lets an existing account open and close the walkthrough without saving again', async () => {
+    history.replaceState({}, '', '/account');
+    fetch.mockImplementation((path) =>
+      response(path === '/api/auth/session' ? { user, csrf_token: 'csrf-test' } : { sessions: [] }),
+    );
+    const events = userEvent.setup();
+    render(<App />);
+    const replay = await screen.findByRole('button', { name: 'Take the walkthrough' });
+    expect(replay.closest('.account-walkthrough-row').previousElementSibling.className).toBe(
+      'account-workspace-setting',
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await events.click(replay);
+    const tour = within(screen.getByRole('dialog', { name: 'Welcome to Data Genie' }));
+    await events.click(tour.getByRole('button', { name: 'Skip tour' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(location.search).toBe('');
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Take the walkthrough' }),
+    );
+    expect(fetch.mock.calls.some(([path]) => path === '/api/auth/walkthrough')).toBe(false);
   });
 
   it('does not execute a prepared database change until confirmation', async () => {
@@ -381,7 +643,7 @@ describe('React pages and account flow', () => {
           ? { user, csrf_token: 'csrf-test' }
           : path === '/api/status'
             ? session
-            : path === '/api/history'
+            : path.startsWith('/api/history')
               ? { requests: [] }
               : path === '/api/ask'
                 ? { ...command, commands: [command] }
@@ -443,7 +705,7 @@ describe('React pages and account flow', () => {
           ? { user, csrf_token: 'csrf-test' }
           : path === '/api/status'
             ? { ...session, conversation_after: boundary }
-            : path === '/api/history'
+            : path.startsWith('/api/history')
               ? { requests: [previous] }
               : { sessions: [] },
       );
@@ -464,6 +726,48 @@ describe('React pages and account flow', () => {
 });
 
 describe('command safety', () => {
+  it.each([
+    'Data Genie AI could not be reached right now.',
+    'Gemini could not be reached right now.',
+  ])(
+    'does not treat a provider failure as a request for a numeric clarification: %s',
+    async (error) => {
+      const submit = vi.fn(),
+        events = userEvent.setup();
+      render(
+        <AskPage
+          workbench={{
+            session,
+            submit,
+            workingCommands: new Set(),
+            feed: [
+              {
+                request_id: 8,
+                text: 'show recent customers',
+                submitted_at: new Date().toISOString(),
+                status: 'rejected',
+                error,
+                commands: [],
+              },
+            ],
+          }}
+          draft="5"
+          setDraft={vi.fn()}
+        />,
+        { wrapper: Router },
+      );
+      await events.click(
+        within(screen.getByRole('textbox', { name: 'Ask in plain English' }).form).getByRole(
+          'button',
+          { name: 'Ask', exact: true },
+        ),
+      );
+      expect(submit).not.toHaveBeenCalled();
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Describe what you want to see or change',
+      );
+    },
+  );
   it('keeps incomplete input in the composer without submitting it', async () => {
     const submit = vi.fn(),
       setDraft = vi.fn(),
@@ -501,7 +805,7 @@ describe('command safety', () => {
       mode: 'gemini',
       setDraft: vi.fn(),
     };
-    const view = render(<AskPage {...props} draft="Iowa" />);
+    const view = render(<AskPage {...props} draft="Iowa" />, { wrapper: Router });
     await events.click(screen.getByRole('button', { name: 'Ask', exact: true }));
     expect(submit).toHaveBeenCalledWith('Iowa', false, 'gemini', 'customers');
     view.rerender(<AskPage {...props} draft="e" />);
@@ -535,6 +839,96 @@ describe('command safety', () => {
       }),
     ).toBeTruthy();
     expect(within(screen.getByRole('region', { name: 'Result' })).getByText('Ana')).toBeTruthy();
+  });
+
+  it('mounts an older saved result only when opened, while pending confirmations stay visible', async () => {
+    const events = userEvent.setup(),
+      workbench = { workingCommands: new Set(), decide: vi.fn() };
+    const request = {
+      text: 'show customers',
+      status: 'executed',
+      submitted_at: new Date().toISOString(),
+      commands: [
+        {
+          sql: 'SELECT * FROM customers',
+          status: 'executed',
+          rows: [{ name: 'Older saved customer' }],
+        },
+      ],
+    };
+    const view = render(<Translation request={request} workbench={workbench} compactResult />);
+    expect(screen.queryByText('Older saved customer')).toBeNull();
+    await events.click(screen.getByText('Show saved result'));
+    expect(await screen.findByText('Older saved customer')).toBeTruthy();
+    view.rerender(
+      <Translation
+        request={{
+          ...request,
+          status: 'pending',
+          commands: [
+            {
+              command_id: 14,
+              sql: 'DELETE FROM customers',
+              operation: 'DELETE',
+              status: 'pending',
+              requires_confirmation: true,
+              preview: { table: 'customers', affected_rows: 3 },
+            },
+          ],
+        }}
+        workbench={workbench}
+        compactResult
+      />,
+    );
+    expect(screen.queryByText('Show saved result')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete 3 rows' })).toBeTruthy();
+  });
+
+  it.each([false, true])(
+    'labels submitted and restored raw SQL as user SQL (explicit flag: %s)',
+    (explicit) => {
+      render(
+        <Translation
+          request={{
+            text: 'SELECT * FROM customers;',
+            raw_sql: explicit,
+            status: 'executed',
+            submitted_at: new Date().toISOString(),
+            commands: [
+              { sql: 'SELECT * FROM customers', status: 'executed', rows: [{ name: 'Ana' }] },
+            ],
+          }}
+          workbench={{ workingCommands: new Set() }}
+        />,
+      );
+      expect(screen.getByRole('region', { name: 'Your SQL' }).textContent).toContain(
+        'SELECT * FROM customers;',
+      );
+      expect(screen.getByRole('region', { name: 'SQL review' })).toBeTruthy();
+      expect(screen.queryByRole('region', { name: 'Generated SQL' })).toBeNull();
+      expect(within(screen.getByRole('region', { name: 'Result' })).getByText('Ana')).toBeTruthy();
+    },
+  );
+
+  it('warns that dropping a column deletes its values and still waits for confirmation', async () => {
+    const decide = vi.fn(),
+      events = userEvent.setup();
+    const command = {
+      command_id: 27,
+      sql: 'ALTER TABLE "customers" DROP COLUMN "email"',
+      operation: 'ALTER',
+      status: 'pending',
+      requires_confirmation: true,
+      preview: { table: 'customers' },
+    };
+    render(<Confirmation command={command} onDecide={decide} />);
+    expect(
+      screen.getByText('This will delete a column and its values from customers.'),
+    ).toBeTruthy();
+    expect(screen.getByText(/Deleted data cannot be restored here/)).toBeTruthy();
+    expect(decide).not.toHaveBeenCalled();
+    await events.click(screen.getByRole('button', { name: 'Delete column from customers' }));
+    expect(decide).toHaveBeenCalledWith(command, false);
   });
 
   it('shows clarification once without a SQL block or empty result', () => {
